@@ -74,7 +74,7 @@ ROOT_URLCONF = 'shiftedblog.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': ['templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -84,7 +84,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
             ],
             'libraries': {
-                'blog_tags': 'blog.templates.blog.templatetags.blog_tags',
+                'blog_tags': 'templates.blog.templatetags.blog_tags',
             }
         },
     },

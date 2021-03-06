@@ -5,7 +5,7 @@ from django.db.models import Count
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
 
 from blog.forms import SearchForm
-from blog.models import Post
+from blog.models import Post, Category
 from taggit.models import Tag
 
 
@@ -16,23 +16,28 @@ from taggit.models import Tag
 #     template_name = 'blog/post/list.html'
 
 
-def post_list(request, tag_slug=None):
+def post_list(request, tag_slug=None, category_slug=None):
     object_list = Post.objects.filter(status='published')
     tag = None
+    category = None
 
     if tag_slug:
         tag = get_object_or_404(Tag, slug=tag_slug)
         object_list = object_list.filter(tags__in=[tag])
 
-    paginator = Paginator(object_list, 3)  # 3 поста на каждой странице
+    if category_slug:
+        category = get_object_or_404(Category, slug=category_slug)
+        object_list = object_list.filter(category=category)
+
+    paginator = Paginator(object_list, 10)  # 10 post on every page
     page = request.GET.get('page')
     try:
         posts = paginator.page(page)
     except PageNotAnInteger:
-        # Если страница не является целым числом, поставим первую страницу
+        # If page number is not an integer then set page #1
         posts = paginator.page(1)
     except EmptyPage:
-        # Если страница больше максимальной, доставить последнюю страницу результатов
+        # If page number bigger than possible then set last page #
         posts = paginator.page(paginator.num_pages)
     return render(request,
                   'blog/post/list.html',
@@ -84,3 +89,8 @@ def post_search(request):
                   {'form': form,
                    'query': query,
                    'results': results})
+
+
+def about(request):
+    return render(request,
+                  'blog/about.html')

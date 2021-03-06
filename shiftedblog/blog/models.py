@@ -6,6 +6,11 @@ from django.contrib.auth.models import User
 from taggit.managers import TaggableManager
 
 
+class Category(models.Model):
+    """Model for post categories list"""
+    name = models.CharField(max_length=250)
+
+
 class Post(models.Model):
     """Model for post objects"""
 
@@ -29,6 +34,9 @@ class Post(models.Model):
                               choices=STATUS_CHOICES,
                               default='draft')
     tags = TaggableManager()
+    category = models.ForeignKey(Category,
+                                 on_delete=models.CASCADE,
+                                 related_name='blog_category')
 
     class Meta:
         ordering = ('-published',)
