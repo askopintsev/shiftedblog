@@ -15,8 +15,16 @@ from dotenv import load_dotenv
 
 
 load_dotenv()
+
+# Django settings
 secret_key_value = os.environ.get("SECRET_KEY")
 debug_value = os.environ.get("DEBUG")
+
+# DB settings
+db_name = os.environ.get("DB_NAME")
+db_user = os.environ.get("DB_USER")
+db_pass = os.environ.get("DB_PASS")
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -48,6 +56,7 @@ INSTALLED_APPS = [
     'django.contrib.sitemaps',
     'blog.apps.BlogConfig',
     'taggit',
+    'django.contrib.postgres',
 ]
 
 MIDDLEWARE = [
@@ -89,8 +98,10 @@ WSGI_APPLICATION = 'shiftedblog.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': db_name,
+        'USER': db_user,
+        'PASSWORD': db_pass,
     }
 }
 
