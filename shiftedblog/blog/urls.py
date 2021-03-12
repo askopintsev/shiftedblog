@@ -1,7 +1,13 @@
+from django.contrib import admin
 from django.urls import path
 from blog import views
 
 app_name = 'blog'
+
+# Admin site customization
+admin.site.site_header = 'Shifted Blog'
+admin.site.site_title = 'Admin dashboard'
+admin.site.index_title = 'Shifted Blog'
 
 urlpatterns = [
     # post views

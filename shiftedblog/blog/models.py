@@ -10,6 +10,9 @@ class Category(models.Model):
     """Model for post categories list"""
     name = models.CharField(max_length=250)
 
+    def __str__(self):
+        return self.name
+
 
 class Post(models.Model):
     """Model for post objects"""
@@ -50,3 +53,6 @@ class Post(models.Model):
                              self.published.month,
                              self.published.day,
                              self.slug])
+
+    def get_image_url(self):
+        return 'img/post/' + str(self.cover_image)

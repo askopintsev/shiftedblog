@@ -2,20 +2,90 @@
 {% load static %}
 
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+
+    <!-- Bootstrap CSS -->
+    <link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/css/bootstrap.min.css"
+          integrity="sha384-BmbxuPwQa2lc/FVzBcNJ7UAyJxM6wuqIj61tLrc4wSX0szH/Ev+nYRRuWlolflfl" rel="stylesheet">
+
+    <!-- CSS tweak for very custom css (now for footer)-->
+    {% block css %}{% endblock css %}
+
     <title>{% block title %}{% endblock %}</title>
-    <link href="{% static 'css/blog.css' %}" rel="stylesheet">
 </head>
 <body>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">Navbar</a>
+        <button aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"
+                class="navbar-toggler"
+                data-bs-target="#navbarSupportedContent" data-bs-toggle="collapse" type="button">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a aria-current="page" class="nav-link {% ifequal request.path '/' %} active {% endifequal %}"
+                       href="/">Главная</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% ifequal request.path '/category/blog/' %} active {% endifequal %}"
+                       href="/category/blog">Блог</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% ifequal request.path '/category/projects/' %} active {% endifequal %}"
+                       href="/category/projects">Проекты</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% ifequal request.path '/about' %} active {% endifequal %}" href="/about">Обо
+                        мне</a>
+                </li>
+
+            </ul>
+            <form action="/search" method="get" class="d-flex">
+                <input aria-label="Search" class="form-control me-2" placeholder="Search" type="search">
+                <button class="btn btn-outline-success" type="submit">Search</button>
+            </form>
+        </div>
+    </div>
+</nav>
 <div id="content">
     {% block content %}
     {% endblock %}
 </div>
-<div id="sidebar">
-    <h2>My blog</h2>
-    <p>This is my blog.</p>
-    {% show_latest_posts 3 %}
-</div>
+<!--<div id="sidebar">-->
+<!--    <h2>My blog</h2>-->
+<!--    <p>This is my blog.</p>-->
+<!--    {% show_latest_posts 3 %}-->
+<!--</div>-->
+
+<!-- Footer -->
+<footer class="page-footer font-small">
+
+  <!-- Copyright -->
+  <div class="footer-copyright text-center py-3">© 2021 Copyright:
+    <a href="#">Shifted Stuff</a>
+  </div>
+  <!-- Copyright -->
+
+</footer>
+<!-- Footer -->
+
+<!-- Optional JavaScript; choose one of the two! -->
+
+<!-- Option 1: Bootstrap Bundle with Popper -->
+<script crossorigin="anonymous"
+        integrity="sha384-b5kHyXgcpbZJO/tY9Ul7kGkf1S0CWuKcCD38l8YkeH8z8QjE0GmW1gYU5S9FOnJ0"
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Option 2: Separate Popper and Bootstrap JS -->
+<!--
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.6.0/dist/umd/popper.min.js" integrity="sha384-KsvD1yqQ1/1+IA7gi3P0tyJcT3vR+NdBTt13hSJ2lnve8agRGXTTyNaBYmCR/Nwi" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/js/bootstrap.min.js" integrity="sha384-nsg8ua9HAw1y0W1btsyWgBklPnCUAFLuTMS2G72MMONqmOymq585AcH49TLBQObG" crossorigin="anonymous"></script>
+-->
 </body>
 </html>

@@ -26,7 +26,7 @@ def post_list(request, tag_slug=None, category_slug=None):
         object_list = object_list.filter(tags__in=[tag])
 
     if category_slug:
-        category = get_object_or_404(Category, slug=category_slug)
+        category = get_object_or_404(Category, name=category_slug)
         object_list = object_list.filter(category=category)
 
     paginator = Paginator(object_list, 10)  # 10 post on every page
