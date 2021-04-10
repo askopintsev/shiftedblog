@@ -3,31 +3,49 @@
   
 {% block title %}My Blog{% endblock %}
   
-{% block content %}  
-<!--  <h1>My Blog</h1>-->
-  {% if tag %}
-    <h2>Posts tagged with "{{ tag.name }}"</h2>
-  {% endif %}
-  {% for post in posts %}  
-    <h2>  
-      <a href="{{ post.get_absolute_url }}">  
-       {{ post.title }}  
-      </a>  
-    </h2> 
-    <img src="{% static 'img/post/' %}{{ post.cover_image }}" width='350' height='250'>
-    <p class="tags">
-      Tags:
-      {% for tag in post.tags.all %}
-        <a href="{% url "blog:post_list_by_tag" tag.slug %}">
-          {{ tag.name }}
-        </a>
-        {% if not forloop.last %}, {% endif %}
-      {% endfor %}
-    </p>
-    <p class="date">
-      Published {{ post.published }} by {{ post.author }}
-    </p>  
-    {{ post.body|safe|truncatewords:30|linebreaks }}
-  {% endfor %}
-  {% include "../pagination.html" with page=posts %}
+{% block content %}
+
+<div class="container mt-2">
+    {% if tag %}
+    <h2>Посты с тегом "{{ tag.name }}"</h2>
+    {% endif %}
+    <div class="row">
+        {% for post in posts %}
+        <div class="col-sm-6 col-lg-4 mb-3">
+            <div class="card mb-3 h-100 border rounded overflow-hidden shadow-sm">
+                <a href="{{ post.get_absolute_url }}">
+                    <img class="card-img-top" src="{% static 'img/post/' %}{{ post.cover_image }}" alt="{{ post.title }}">
+                </a>
+                <div class="card-body">
+                    <a href="{{ post.get_absolute_url }}" class="text-decoration-none text-reset">
+                        <h5 class="card-title fw-bolder">
+                             {{ post.title }}
+                        </h5>
+                    </a>
+                    <p class="card-text">
+                        <small class="text-muted">{{ post.published|date:'d.m.Y' }}</small>
+                    </p>
+                    <div class="tags row row-cols-auto mt-1">
+                        {% for tag in post.tags.all %}
+                            <div class="col pe-0">
+                                <a href="{% url "blog:post_list_by_tag" tag.slug %}">
+                                    <p class="tag">#{{ tag.name }}</p>
+                                </a>
+                            </div>
+                        {% if not forloop.last %}{% endif %}
+                        {% endfor %}
+                    </div>
+                    <p class="card-text">{{ post.body|safe|truncatewords:30|linebreaks }}</p>
+                    <a href="{{ post.get_absolute_url }}" class="btn btn-light shadow-sm">
+                        Читать далее
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% include "../pagination.html" with page=posts %}
+</div>
+
+
 {% endblock %}

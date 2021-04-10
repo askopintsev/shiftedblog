@@ -62,10 +62,16 @@ def post_detail(request, year, month, day, post):
     similar_posts = similar_posts.annotate(same_tags=Count('tags')) \
                                  .order_by('-same_tags', '-published')[:3]
 
+    # List of newest posts
+    newest_posts = Post.objects.exclude(id=post.id)\
+                               .exclude(id__in=similar_posts)\
+                               .order_by('-published')[:5-len(similar_posts)]
+
     return render(request,
                   'blog/post/detail.html',
                   {'post': post,
-                   'similar_posts': similar_posts
+                   'similar_posts': similar_posts,
+                   'newest_posts': newest_posts
                    })
 
 
