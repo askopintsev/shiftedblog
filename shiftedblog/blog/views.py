@@ -1,19 +1,11 @@
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.shortcuts import render, get_object_or_404
-from django.views.generic import ListView
 from django.db.models import Count
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
 
 from blog.forms import SearchForm
 from blog.models import Post, Category
 from taggit.models import Tag
-
-
-# class PostListView(ListView):
-#     queryset = Post.objects.filter(status='published')
-#     context_object_name = 'posts'
-#     paginate_by = 30
-#     template_name = 'blog/post/list.html'
 
 
 def post_list(request, tag_slug=None, category_slug=None):
@@ -29,7 +21,7 @@ def post_list(request, tag_slug=None, category_slug=None):
         category = get_object_or_404(Category, name=category_slug)
         object_list = object_list.filter(category=category)
 
-    paginator = Paginator(object_list, 10)  # 10 post on every page
+    paginator = Paginator(object_list, 12)  # 12 post on every page
     page = request.GET.get('page')
     try:
         posts = paginator.page(page)

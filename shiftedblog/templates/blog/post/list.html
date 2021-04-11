@@ -1,13 +1,15 @@
 {% extends "blog/base.html" %}
 {% load static %}
   
-{% block title %}My Blog{% endblock %}
+{% block title %}Shifted Stuff{% endblock %}
   
 {% block content %}
 
 <div class="container mt-2">
     {% if tag %}
-    <h2>Посты с тегом "{{ tag.name }}"</h2>
+    <div class="row my-2">
+        <h4>Посты с тегом <i>#{{ tag.name }}</i></h4>
+    </div>
     {% endif %}
     <div class="row">
         {% for post in posts %}

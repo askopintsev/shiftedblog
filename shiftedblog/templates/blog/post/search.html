@@ -1,28 +1,62 @@
 {% extends "blog/base.html" %}
+{% load static %}
 
-{% block title %}Search{% endblock %}
+{% block css %}
+<style>
+    .container{
+        min-height: 80vh;
+    }
+</style>
+{% endblock css %}
+
+{% block title %}Результаты поиска | Shifted Stuff {% endblock %}
 
 {% block content %}
+<div class="container mt-2">
 {% if query %}
-<h1>Posts containing "{{ query }}"</h1>
-<h3>
-    {% with results.count as total_results %}
-    Found {{ total_results }} result{{ total_results|pluralize }}
-    {% endwith %}
-</h3>
-{% for post in results %}
-<h4><a href="{{ post.get_absolute_url }}">{{ post.title }}</a></h4>
-{{ post.body|truncatewords:5 }}
-{% empty %}
-<p>There are no results for your query.</p>
-{% endfor %}
-<p><a href="{% url "blog:post_search" %}">Search again</a></p>
+    <div class="row my-2">
+        <h4>Посты по запросу: <i>"{{ query }}"</i></h4>
+    </div>
+    <div class="list-group">
+    {% for post in results %}
+    <a class="list-group-item list-group-item-action border-white" href="{{ post.get_absolute_url }}">
+                    <div class="row g-0 border rounded overflow-hidden flex-md-row shadow-sm h-md-250 position-relative">
+                        <div class="col-auto d-none d-lg-block">
+                            <img alt="post_cover_image"
+                                 class="img-responsive rounded mx-auto my-auto"
+                                 height=158px
+                                 src="{% static 'img/post/' %}{{ post.cover_image }}"
+                                 width=auto>
+                        </div>
+                        <div class="col p-4 d-flex flex-column position-static">
+                            <h5 class="mb-1 w-100">{{ post.title }}</h5>
+                            <p class="mb-1 w-100">{{ post.body|safe|truncatechars:300 }}</p>
+                        </div>
+                    </div>
+                </a>
+    {% empty %}
+    <p>Ничего не нашлось</p>
+    {% endfor %}
+    </div>
+<h5 class="mt-2">Искать снова:</h5>
+    <form action="/search" method="get" class="d-flex">
+    <input name="query" type="text" class="form-control" aria-label="Search" class="form-control me-2" placeholder="Поиск" type="search">
+    <button class="btn btn-outline-primary" type="submit">
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+        </svg>
+    </button>
+</form>
 {% else %}
-<h1>Search for posts</h1>
-<form action="." method="get">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <input type="submit" value="Search">
+<h4>Поиск по публикациям:</h4>
+<form action="/search" method="get" class="d-flex">
+    <input name="query" type="text" class="form-control" aria-label="Search" class="form-control me-2" placeholder="Поиск" type="search">
+    <button class="btn btn-outline-primary" type="submit">
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+        </svg>
+    </button>
 </form>
 {% endif %}
+</div>
 {% endblock %}

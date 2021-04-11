@@ -20,35 +20,54 @@
 <body>
 <nav class="navbar navbar-expand-lg navbar-light bg-light">
     <div class="container-fluid">
-        <a class="navbar-brand" href="/">Navbar</a>
+        <a class="navbar-brand" href="/">
+           <img src="{% static 'img/template/' %}cropped-bloglogo-2048x364.png" alt="logo" width="204" height="36">
+        </a>
         <button aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"
                 class="navbar-toggler"
                 data-bs-target="#navbarSupportedContent" data-bs-toggle="collapse" type="button">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                <li class="nav-item">
-                    <a aria-current="page" class="nav-link {% ifequal request.path '/' %} active {% endifequal %}"
-                       href="/">Главная</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% ifequal request.path '/category/blog/' %} active {% endifequal %}"
-                       href="/category/blog">Блог</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% ifequal request.path '/category/projects/' %} active {% endifequal %}"
-                       href="/category/projects">Проекты</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% ifequal request.path '/about' %} active {% endifequal %}" href="/about">Обо
-                        мне</a>
-                </li>
-
-            </ul>
+            <div class="navbar-nav me-auto mb-2 mb-lg-0">
+                <a aria-current="page" class="nav-link {% ifequal request.path '/' %} active {% endifequal %}"
+                       href="/"><p class="fw-bolder">Главная</p></a>
+                <a class="nav-link {% ifequal request.path '/category/blog/' %} active {% endifequal %}"
+                       href="/category/blog"><p class="fw-bolder">Блог</p></a>
+                <a class="nav-link {% ifequal request.path '/category/projects/' %} active {% endifequal %}"
+                       href="/category/projects"><p class="fw-bolder">Проекты</p></a>
+                <a class="nav-link {% ifequal request.path '/about' %} active {% endifequal %}"
+                       href="/about"><p class="fw-bolder">Обо мне</p></a>
+            </div>
+            <div class="row justify-content-center">
+              <div class="col-2">
+                  <a href="http://ru.linkedin.com/in/askopintsev">
+                      <img src="{% static 'img/template/' %}linkedin.png" alt="linkedin" width="36" height="36">
+                  </a>
+              </div>
+              <div class="col-2">
+                  <a href="http://twitter.com/SH1ft_R">
+                      <img src="{% static 'img/template/' %}twitter.png" alt="twitter" width="36" height="36">
+                  </a>
+              </div>
+              <div class="col-2">
+                  <a href="http://www.instagram.com/SH1ft_R/">
+                      <img src="{% static 'img/template/' %}instagram.png" alt="instagram" width="36" height="36">
+                  </a>
+              </div>
+              <div class="col-2">
+                  <a href="http://facebook.com/AKSkopintsev">
+                      <img src="{% static 'img/template/' %}facebook.png" alt="facebook" width="36" height="36">
+                  </a>
+              </div>
+          </div>
             <form action="/search" method="get" class="d-flex">
-                <input aria-label="Search" class="form-control me-2" placeholder="Search" type="search">
-                <button class="btn btn-outline-success" type="submit">Search</button>
+                <input name="query" type="text" class="form-control"  aria-label="Search" class="form-control me-2" placeholder="Поиск" type="search">
+                <button class="btn btn-outline-primary" type="submit">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                    </svg>
+                </button>
             </form>
         </div>
     </div>
@@ -64,14 +83,47 @@
 <!--</div>-->
 
 <!-- Footer -->
-<footer class="page-footer font-small">
-
+<footer class="page-footer font-small py-3">
+<div class="row container-fluid">
+  <div class="col-4 pt-2">
   <!-- Copyright -->
-  <div class="footer-copyright text-center py-3">© 2021 Copyright:
+  <div class="footer-copyright text-center">© 2021 Copyright:
     <a href="#">Shifted Stuff</a>
   </div>
-  <!-- Copyright -->
+    </div>
+      <div class="col-4 text-center">
+  <!-- Logo -->
+        <a href="/">
+           <img src="{% static 'img/template/' %}cropped-bloglogo-2048x364.png" alt="logo" width="204" height="36">
+        </a>
+    </div>
+      <div class="col-4">
+  <!-- Links -->
+          <div class="row justify-content-end">
+              <div class="col-1">
+                  <a href="http://ru.linkedin.com/in/askopintsev">
+                      <img src="{% static 'img/template/' %}linkedin.png" alt="linkedin" width="36" height="36">
+                  </a>
+              </div>
+              <div class="col-1">
+                  <a href="http://twitter.com/SH1ft_R">
+                      <img src="{% static 'img/template/' %}twitter.png" alt="twitter" width="36" height="36">
+                  </a>
+              </div>
+              <div class="col-1">
+                  <a href="http://www.instagram.com/SH1ft_R/">
+                      <img src="{% static 'img/template/' %}instagram.png" alt="instagram" width="36" height="36">
+                  </a>
+              </div>
+              <div class="col-1">
+                  <a href="http://facebook.com/AKSkopintsev">
+                      <img src="{% static 'img/template/' %}facebook.png" alt="facebook" width="36" height="36">
+                  </a>
+              </div>
+          </div>
 
+    </div>
+</div>
 </footer>
 <!-- Footer -->
 
