@@ -1,3 +1,14 @@
+/*DIVS*/
+.container-fluid {
+    padding: 0px;
+}
+
+/*Fonts*/
+.card-title{
+    color: #212529
+}
+
+/*Article card*/
 .tag{
     border: 0;
     font: inherit;
@@ -19,4 +30,29 @@
     background-color: #d1e5f1;
     border-color: #00000000;
     font-size: 12px;
+}
+
+/*Buttons*/
+a.btn.btn-light.shadow-sm{
+    border-color: #e2e6e9;
+}
+
+/*Social icons (top)*/
+.sm-icons {
+  flex-direction: row;
+}
+@media only screen and (max-width: 960px) {
+  .sm-icons .nav-item {
+    padding-right: 1em;
+  }
+}
+
+/*About page*/
+.info_block {
+  color: #343a40;  /*#212529;*/
+}
+
+.accordion-button:not(.collapsed) {
+    color: #0c63e4;
+    background-color: transparent;
 }

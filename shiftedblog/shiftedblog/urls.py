@@ -18,6 +18,9 @@ from django.urls import path, include
 from django.contrib.sitemaps.views import sitemap
 from blog.sitemap import PostSitemap
 
+from django.conf import settings
+from django.conf.urls.static import static
+
 
 app_name = 'blog'
 
@@ -32,4 +35,9 @@ urlpatterns = [
          sitemap,
          {'sitemaps': sitemaps},
          name='django.contrib.sitemaps.views.sitemap')
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+handler404 = 'blog.views.custom_page_not_found_view'
+handler500 = 'blog.views.custom_error_view'
+handler403 = 'blog.views.custom_permission_denied_view'
+handler400 = 'blog.views.custom_bad_request_view'

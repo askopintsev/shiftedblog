@@ -4,7 +4,7 @@ from django.db.models import Count
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
 
 from blog.forms import SearchForm
-from blog.models import Post, Category
+from blog.models import Person, Post, Category
 from taggit.models import Tag
 
 
@@ -90,5 +90,34 @@ def post_search(request):
 
 
 def about(request):
+    person = Person.objects.get(id=1)
+    skills = person.skill_set.all()
+    accounts = person.account_set.all()
+    grouped_accounts = {}
+    for account in accounts:
+        if account.group.name in grouped_accounts:
+            grouped_accounts[account.group.name].append(account)
+        else:
+            grouped_accounts[account.group.name] = [account]
+
     return render(request,
-                  'blog/about.html')
+                  'blog/about.html',
+                  {'person': person,
+                   'skills': skills,
+                   'grouped_accounts': grouped_accounts})
+
+
+def custom_page_not_found_view(request, exception):
+    return render(request, "blog/errors/404.html", {})
+
+
+def custom_error_view(request, exception=None):
+    return render(request, "blog/errors/500.html", {})
+
+
+def custom_permission_denied_view(request, exception=None):
+    return render(request, "blog/errors/403.html", {})
+
+
+def custom_bad_request_view(request, exception=None):
+    return render(request, "blog/errors/400.html", {})

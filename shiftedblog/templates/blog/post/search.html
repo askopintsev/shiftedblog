@@ -1,15 +1,8 @@
 {% extends "blog/base.html" %}
 {% load static %}
 
-{% block css %}
-<style>
-    .container{
-        min-height: 80vh;
-    }
-</style>
-{% endblock css %}
 
-{% block title %}Результаты поиска | Shifted Stuff {% endblock %}
+{% block title %}Результаты поиска | Shifted Stuff{% endblock %}
 
 {% block content %}
 <div class="container mt-2">
@@ -25,7 +18,7 @@
                             <img alt="post_cover_image"
                                  class="img-responsive rounded mx-auto my-auto"
                                  height=158px
-                                 src="{% static 'img/post/' %}{{ post.cover_image }}"
+                                 src="{% static '/' %}{{ post.cover_image }}"
                                  width=auto>
                         </div>
                         <div class="col p-4 d-flex flex-column position-static">

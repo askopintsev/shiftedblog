@@ -1,0 +1,59 @@
+{% load static %}
+
+{% block header %}
+<div class="container mt-2">
+    <nav class="navbar navbar-expand-lg navbar-light">  <!--bg-light">-->
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <img alt="" src="{% static 'img/template/' %}new_logo_1.png" width="50%">
+            </a>
+            <button aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Переключатель навигации" class="navbar-toggler"
+                    data-bs-target="#navbarNavDropdown" data-bs-toggle="collapse" type="button">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNavDropdown">
+                <ul class="navbar-nav mx-auto">
+                    <li class="nav-item">
+                        <a aria-current="page" class="nav-link {% ifequal request.path '/' %} active {% endifequal %}"
+                           href="/">Главная</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% ifequal request.path '/category/blog/' %} active {% endifequal %}"
+                           href="/category/blog">Блог</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% ifequal request.path '/category/projects/' %} active {% endifequal %}"
+                           href="/category/projects">Проекты</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% ifequal request.path '/about' %} active {% endifequal %}" href="/about">Обо
+                            мне</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% ifequal request.path '/search' %} active {% endifequal %}"
+                           href="/search/">
+                            <svg class="bi bi-search" fill="currentColor" height="21" viewBox="0 0 16 16"
+                                 width="21" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                            </svg>
+                            Поиск
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav sm-icons">
+                    <li class="nav-item"><a class="nav-link" href="http://ru.linkedin.com/in/askopintsev"><i
+                            class="fab fa-linkedin"></i></a></li>
+                    <li class="nav-item"><a class="nav-link" href="http://twitter.com/SH1ft_R"><i
+                            class="fab fa-twitter"></i></a></li>
+                    <li class="nav-item"><a class="nav-link" href="http://www.instagram.com/SH1ft_R/"><i
+                            class="fab fa-instagram"></i></a></li>
+                    <li class="nav-item"><a class="nav-link" href="http://facebook.com/AKSkopintsev"><i
+                            class="fab fa-facebook-f"></i></a></li>
+                    <li class="nav-item"><a class="nav-link" href="https://github.com/askopintsev"><i
+                            class="fab fa-github"></i></a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+</div>
+{% endblock %}

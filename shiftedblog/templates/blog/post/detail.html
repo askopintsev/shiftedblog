@@ -24,13 +24,22 @@
     <div class="post-body my-2">
         <h2>{{ post.title }}</h2>
     </div>
-    </div>
-<div class="container-fluid mb-4 p-0">
-        <img src="{% static 'img/post/' %}{{ post.cover_image }}"  class="img-fluid">
 </div>
+<div class="container-fluid mb-4 p-0">
+    <img class="img-fluid" src="{% static '/' %}{{ post.cover_image }}">
+</div>
+
+
 <div class="container">
-        {{ post.body|safe|linebreaks }}
-    </div>
+    {% if post.cover_image_credits %}
+        <figure>
+            <figcaption class="blockquote-footer">
+                {{ post.cover_image_credits|safe }}
+            </figcaption>
+        </figure>
+    {% endif %}
+    {{ post.body|safe|linebreaks }}
+</div>
 
 <div class="container">
     <hr class="my-4">
@@ -46,7 +55,7 @@
                         <img alt="post_cover_image"
                              class="img-responsive rounded mx-auto my-auto"
                              height=158px
-                             src="{% static 'img/post/' %}{{ post.cover_image }}"
+                             src="{% static '/' %}{{ post.cover_image }}"
                              width=auto>
                     </div>
                     <div class="col p-4 d-flex flex-column position-static">
@@ -73,7 +82,7 @@
                         <img alt="post_cover_image"
                              class="img-responsive rounded mx-auto my-auto"
                              height=158px
-                             src="{% static 'img/post/' %}{{ post.cover_image }}"
+                             src="{% static '/' %}{{ post.cover_image }}"
                              width=auto>
                     </div>
                     <div class="col p-4 d-flex flex-column position-static">
