@@ -25,12 +25,11 @@
         <h2>{{ post.title }}</h2>
     </div>
 </div>
-<div class="container-fluid mb-4 p-0">
-    <img class="img-fluid" src="{% static '/' %}{{ post.cover_image }}">
-</div>
-
 
 <div class="container">
+    <div class="container-fluid mb-4 p-0">
+        <img class="img-fluid" src="{% static '/' %}{{ post.cover_image }}">
+    </div>
     {% if post.cover_image_credits %}
         <figure>
             <figcaption class="blockquote-footer">
