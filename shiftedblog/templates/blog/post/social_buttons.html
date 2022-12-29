@@ -1,0 +1,24 @@
+{% load static %}
+
+<h5>Поделиться</h5>
+<a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}{{ post.get_absolute_url }}"
+   rel="nofollow" target="_blank"  style="text-decoration: none">
+    <img src="{% static 'img/template/' %}facebook.png" width="50px">
+</a>
+<a href="http://www.odnoklassniki.ru/dk?st.cmd=addShare&st.s=1&st._surl={{ request.build_absolute_uri }}{{ post.get_absolute_url }}"
+   rel="nofollow" target="_blank"  style="text-decoration: none">
+    <img src="{% static 'img/template/' %}linkedin.png" width="50px">
+</a>
+<a href="https://twitter.com/share?url={{ request.build_absolute_uri }}{{ post.get_absolute_url }}"
+   rel="nofollow" target="_blank" style="text-decoration: none">
+    <img src="{% static 'img/template/' %}twitter.png" width="50px">
+</a>
+<a href="http://vk.com/share.php?url={{ request.build_absolute_uri }}{{ post.get_absolute_url }}"
+   rel="nofollow" target="_blank" style="text-decoration: none">
+    <img src="{% static 'img/template/' %}vk.png" width="50px">
+</a>
+<a href="https://t.me/share/url?url={{ request.build_absolute_uri }}{{ post.get_absolute_url }}&text={{ post.title }}"
+   rel="nofollow" target="_blank" style="text-decoration: none">
+    <img src="{% static 'img/template/' %}telegram.jpg" width="50px">
+</a>
+

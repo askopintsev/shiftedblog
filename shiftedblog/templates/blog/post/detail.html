@@ -39,6 +39,11 @@
     {% endif %}
     {{ post.body|safe|linebreaks }}
 </div>
+<div class="container">
+    <div class="share-social text-reset text-decoration-none">
+        {% include "blog/post/social_buttons.html" %}
+    </div>
+</div>
 
 <div class="container">
     <hr class="my-4">
