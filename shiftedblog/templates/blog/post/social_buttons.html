@@ -1,24 +1,58 @@
 {% load static %}
 
 <h5>Поделиться</h5>
-<a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}{{ post.get_absolute_url }}"
-   rel="nofollow" target="_blank"  style="text-decoration: none">
-    <img src="{% static 'img/template/' %}facebook.png" width="50px">
-</a>
-<a href="http://www.odnoklassniki.ru/dk?st.cmd=addShare&st.s=1&st._surl={{ request.build_absolute_uri }}{{ post.get_absolute_url }}"
-   rel="nofollow" target="_blank"  style="text-decoration: none">
-    <img src="{% static 'img/template/' %}linkedin.png" width="50px">
-</a>
-<a href="https://twitter.com/share?url={{ request.build_absolute_uri }}{{ post.get_absolute_url }}"
-   rel="nofollow" target="_blank" style="text-decoration: none">
-    <img src="{% static 'img/template/' %}twitter.png" width="50px">
-</a>
-<a href="http://vk.com/share.php?url={{ request.build_absolute_uri }}{{ post.get_absolute_url }}"
-   rel="nofollow" target="_blank" style="text-decoration: none">
-    <img src="{% static 'img/template/' %}vk.png" width="50px">
-</a>
-<a href="https://t.me/share/url?url={{ request.build_absolute_uri }}{{ post.get_absolute_url }}&text={{ post.title }}"
-   rel="nofollow" target="_blank" style="text-decoration: none">
-    <img src="{% static 'img/template/' %}telegram.jpg" width="50px">
-</a>
+<input class="visually-hidden" id="pageLink" type="text"
+       value="{{ request.build_absolute_uri }}{{ post.get_absolute_url }}">
+<div class="row">
+    <div class="col-sm-12">
+        <button class="btn" type="button">
+            <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}{{ post.get_absolute_url }}"
+               rel="nofollow" style="text-decoration: none" target="_blank">
+                <img src="{% static 'img/template/' %}facebook.png" width="50px">
+            </a>
+        </button>
+        <button class="btn" type="button">
+            <a href="http://www.odnoklassniki.ru/dk?st.cmd=addShare&st.s=1&st._surl={{ request.build_absolute_uri }}{{ post.get_absolute_url }}"
+               rel="nofollow" style="text-decoration: none" target="_blank">
+                <img src="{% static 'img/template/' %}linkedin.png" width="50px">
+            </a>
+        </button>
+        <button class="btn" type="button">
+            <a href="https://twitter.com/share?url={{ request.build_absolute_uri }}{{ post.get_absolute_url }}"
+               rel="nofollow" style="text-decoration: none" target="_blank">
+                <img src="{% static 'img/template/' %}twitter.png" width="50px">
+            </a>
+        </button>
+        <button class="btn" type="button">
+            <a href="http://vk.com/share.php?url={{ request.build_absolute_uri }}{{ post.get_absolute_url }}"
+               rel="nofollow" style="text-decoration: none" target="_blank">
+                <img src="{% static 'img/template/' %}vk.png" width="50px">
+            </a>
+        </button>
+        <button class="btn" type="button">
+            <a href="https://t.me/share/url?url={{ request.build_absolute_uri }}{{ post.get_absolute_url }}&text={{ post.title }}"
+               rel="nofollow" style="text-decoration: none" target="_blank">
+                <img src="{% static 'img/template/' %}telegram.jpg" width="50px">
+            </a>
+        </button>
+        <button class="btn btn-block" type="button" onclick="myFunction()"><img src="{% static 'img/template/' %}link.png" width="50px"></button>
+    </div>
+</div>
+
+<script>
+    function myFunction() {
+        // Get the text field
+        var copyText = document.getElementById("pageLink");
+
+        // Select the text field
+        copyText.select();
+        copyText.setSelectionRange(0, 99999); // For mobile devices
+
+        // Copy the text inside the text field
+        navigator.clipboard.writeText(copyText.value);
+
+        // Alert the copied text
+        alert("Copied the link: " + copyText.value);
+    }
+</script>
 

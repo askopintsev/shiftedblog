@@ -37,6 +37,10 @@ a.btn.btn-light.shadow-sm{
     border-color: #e2e6e9;
 }
 
+.btn-custom {
+    min-width: 50px;
+}
+
 /*Social icons (top)*/
 .sm-icons {
   flex-direction: row;
