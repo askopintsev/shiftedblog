@@ -14,23 +14,23 @@
             <div class="collapse navbar-collapse" id="navbarNavDropdown">
                 <ul class="navbar-nav mx-auto">
                     <li class="nav-item">
-                        <a aria-current="page" class="nav-link {% ifequal request.path '/' %} active {% endifequal %}"
+                        <a aria-current="page" class="nav-link {% if request.path == '/' %} active {% endif %}"
                            href="/">Главная</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% ifequal request.path '/category/blog/' %} active {% endifequal %}"
+                        <a class="nav-link {% if request.path == '/category/blog/' %} active {% endif %}"
                            href="/category/blog">Блог</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% ifequal request.path '/category/projects/' %} active {% endifequal %}"
+                        <a class="nav-link {% if request.path == '/category/projects/' %} active {% endif %}"
                            href="/category/projects">Проекты</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% ifequal request.path '/about' %} active {% endifequal %}" href="/about">Обо
+                        <a class="nav-link {% if request.path == '/about' %} active {% endif %}" href="/about">Обо
                             мне</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% ifequal request.path '/search' %} active {% endifequal %}"
+                        <a class="nav-link {% if request.path == '/search' %} active {% endif %}"
                            href="/search/">
                             <svg class="bi bi-search" fill="currentColor" height="21" viewBox="0 0 16 16"
                                  width="21" xmlns="http://www.w3.org/2000/svg">
