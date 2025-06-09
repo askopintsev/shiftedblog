@@ -12,9 +12,10 @@
                 <div class="col-md-3 col-lg-4 col-xl-3 mx-auto mb-4">
                     <!-- Logo -->
                     <a href="/">
-                        <img alt="logo" src="{% static 'img/template/' %}new_logo_1.png" width="62%">
+                        <img alt="logo" src="{% static 'img/template/' %}new_logo_1.png" width="42%">
                     </a>
-                    <div class="footer-copyright pt-3">© 2020-{%now "Y" %}, <a class="text-reset text-decoration-none" href="/">Shifted Stuff</a>
+                    <div class="footer-copyright pt-3">© <a class="text-reset text-decoration-none" href="/">Shifted Stuff</a>, 2020-{%now "Y" %}.</br>Все права защищены. 
+
                     </div>
                 </div>
                 <!-- Grid column -->
@@ -44,26 +45,29 @@
                         Контакты
                     </h6>
                     <div class="pb-3">
-                        <a class="me-4 text-reset text-decoration-none" href="http://ru.linkedin.com/in/askopintsev">
-                            <i class="fab fa-linkedin"></i>
-                        </a>
-                        <a class="me-4 text-reset text-decoration-none" href="http://twitter.com/SH1ft_R">
-                            <i class="fab fa-twitter"></i>
-                        </a>
-                        <a class="me-4 text-reset text-decoration-none" href="http://www.instagram.com/SH1ft_R/">
-                            <i class="fab fa-instagram"></i>
-                        </a>
-                        <a class="me-4 text-reset text-decoration-none" href="http://facebook.com/AKSkopintsev">
-                            <i class="fab fa-facebook-f"></i>
-                        </a>
-                        <a class="me-4 text-reset text-decoration-none" href="https://github.com/askopintsev">
-                            <i class="fab fa-github"></i>
-                        </a>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <a class="text-reset text-decoration-none" href="https://t.me/shifted_stuff">
+                                    <i class="fa-brands fa-telegram me-2"></i>Telegram
+                                </a>
+                            </li>
+                            <li class="mb-2">
+                                <a class="text-reset text-decoration-none" href="https://career.habr.com/shifter">
+                                    <i class="fa-solid fa-address-card me-2"></i>Habr Career
+                                </a>
+                            </li>
+                            <li class="mb-2">
+                                <a class="text-reset text-decoration-none" href="https://github.com/askopintsev">
+                                    <i class="fa-brands fa-github me-2"></i>GitHub
+                                </a>
+                            </li>
+                            <li class="mb-2">
+                                <a class="text-reset text-decoration-none" href="mailto:askopintsev@hotmail.com">
+                                    <i class="fa-solid fa-envelope me-2"></i>e-mail
+                                </a>
+                            </li>
+                        </ul>
                     </div>
-                    <p>
-                        <i class="fas fa-envelope me-3"></i>
-                        askopintsev@hotmail.com
-                    </p>
                 </div>
                 <!-- Grid column -->
             </div>
