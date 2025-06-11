@@ -11,7 +11,9 @@
   {% endif %}
       <div class="col-2">
     <span class="current">
-        <p class="text-muted">Страница {{ page.number }} из {{ page.paginator.num_pages }}</p>
+        {% if page.paginator.num_pages != 1 %}
+            <p class="text-muted">Страница {{ page.number }} из {{ page.paginator.num_pages }}</p>
+        {% endif %}
     </span>
       </div>
   {% if page.has_next %}
