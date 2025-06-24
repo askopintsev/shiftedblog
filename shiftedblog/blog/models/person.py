@@ -7,5 +7,8 @@ class Person(models.Model):
     greeting = models.TextField()
     biography = models.TextField()
 
+    class Meta:
+        app_label = 'blog'
+
     def __str__(self):
         return self.name
