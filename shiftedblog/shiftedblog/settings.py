@@ -51,12 +51,14 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'django.contrib.postgres',
     'django.contrib.staticfiles',
     'django.contrib.sites',
     'django.contrib.sitemaps',
-    'blog.apps.BlogConfig',
+
     'taggit',
-    'django.contrib.postgres',
+
+    'blog',
 ]
 
 MIDDLEWARE = [
@@ -125,6 +127,8 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+AUTH_USER_MODEL = 'blog.User'
 
 
 # Internationalization
