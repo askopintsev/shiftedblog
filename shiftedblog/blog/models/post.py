@@ -1,8 +1,9 @@
 import datetime
-from django.db import models
-from django.utils import timezone
-from django.urls import reverse
+
 from django.contrib.auth.models import User
+from django.db import models
+from django.urls import reverse
+from django.utils import timezone
 
 from taggit.managers import TaggableManager
 
@@ -60,48 +61,3 @@ class Post(models.Model):
 
     def get_image_url(self):
         return str(self.cover_image)
-
-
-class Person(models.Model):
-    avatar = models.ImageField(upload_to='img/template/')
-    name = models.CharField(max_length=250)
-    greeting = models.TextField()
-    biography = models.TextField()
-
-    def __str__(self):
-        return self.name
-
-
-class SkillGroup(models.Model):
-    name = models.CharField(max_length=250)
-
-    def __str__(self):
-        return self.name
-
-
-class Skill(models.Model):
-    name = models.CharField(max_length=250)
-    rating = models.IntegerField(default=0)
-    person = models.ForeignKey('Person', on_delete=models.CASCADE, null=True, blank=True)
-    group = models.ForeignKey('SkillGroup', on_delete=models.CASCADE, null=True, blank=True)
-
-    def __str__(self):
-        return self.name
-
-
-class AccountGroup(models.Model):
-    name = models.CharField(max_length=250)
-
-    def __str__(self):
-        return self.name
-
-
-class Account(models.Model):
-    name = models.CharField(max_length=250)
-    url = models.CharField(max_length=250)
-    icon = models.FileField(upload_to='img/template/')
-    group = models.ForeignKey('AccountGroup', on_delete=models.CASCADE, null=True, blank=True)
-    person = models.ForeignKey('Person', on_delete=models.CASCADE, null=True, blank=True)
-
-    def __str__(self):
-        return self.name
