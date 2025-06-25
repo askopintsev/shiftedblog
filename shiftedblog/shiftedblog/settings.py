@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'django.contrib.sites',
     'django.contrib.sitemaps',
 
+    'axes',
     'django_otp',
     'django_otp.plugins.otp_totp',  # TOTP: Google Authenticator, Authy, etc.
     'django_otp.plugins.otp_static',  # Backup tokens
@@ -75,6 +76,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django_otp.middleware.OTPMiddleware',
+    # AxesMiddleware should be the last middleware in the MIDDLEWARE list.
+    'axes.middleware.AxesMiddleware',
 ]
 
 ROOT_URLCONF = 'shiftedblog.urls'
@@ -114,6 +117,7 @@ DATABASES = {
         'PASSWORD': db_pass,
     }
 }
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # Password validation
@@ -137,6 +141,14 @@ AUTH_PASSWORD_VALIDATORS = [
 AUTH_USER_MODEL = 'blog.User'
 LOGIN_URL = 'two_factor:login'
 LOGIN_REDIRECT_URL = '/mellon'
+
+AUTHENTICATION_BACKENDS = [
+    # AxesStandaloneBackend should be the first backend in the AUTHENTICATION_BACKENDS list.
+    'axes.backends.AxesStandaloneBackend',
+
+    # Django ModelBackend is the default authentication backend.
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 
 # Internationalization

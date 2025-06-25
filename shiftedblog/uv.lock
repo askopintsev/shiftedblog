@@ -35,6 +35,19 @@ wheels = [
 ]
 
 [[package]]
+name = "django-axes"
+version = "8.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "asgiref" },
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9b/bf/ce259e79cf66cdd1aa7b1968af04a036cf39737c3ff69ced3a39808cd40d/django_axes-8.0.0.tar.gz", hash = "sha256:f95b6ae67fd77d44cc688818cef174914c4ad98c48daf65020b6f03f37220e45", size = 249419, upload-time = "2025-05-10T11:17:43.657Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fe/4b/8862d6d326411fe18854db98305dc292b694d84b2b91398c33a792b7e772/django_axes-8.0.0-py3-none-any.whl", hash = "sha256:7ddc55f21b704b7e9b3e793a75deac01ff16cb67f561649b04336e1e96980035", size = 68884, upload-time = "2025-05-10T11:17:41.351Z" },
+]
+
+[[package]]
 name = "django-formtools"
 version = "2.5.1"
 source = { registry = "https://pypi.org/simple" }
@@ -247,6 +260,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "django" },
+    { name = "django-axes" },
     { name = "django-taggit" },
     { name = "django-two-factor-auth" },
     { name = "phonenumbers" },
@@ -259,6 +273,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "django", specifier = ">=5.2.2" },
+    { name = "django-axes", specifier = ">=8.0.0" },
     { name = "django-taggit", specifier = ">=6.1.0" },
     { name = "django-two-factor-auth", specifier = ">=1.17.0" },
     { name = "phonenumbers", specifier = ">=9.0.8" },
