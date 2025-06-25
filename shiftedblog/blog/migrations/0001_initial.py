@@ -9,8 +9,6 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    replaces = [('blog', '0001_initial'), ('blog', '0002_series_alter_post_cover_image_post_series')]
-
     initial = True
 
     dependencies = [

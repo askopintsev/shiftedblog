@@ -1,11 +1,20 @@
 import datetime
+import os
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
 
 from taggit.managers import TaggableManager
+
+
+def validate_image_extension(value):
+    valid_extensions = ['.jpg', '.jpeg', '.png']
+    ext = os.path.splitext(value.name.lower())[1]
+    if ext not in valid_extensions:
+        raise ValidationError('Unsupported file extension. Only JPG, JPEG, and PNG are allowed.')
 
 
 class Category(models.Model):
@@ -48,7 +57,10 @@ class Post(models.Model):
         on_delete=models.PROTECT,
         related_name='blog_posts',
     )
-    cover_image = models.ImageField(upload_to='img/post/' + datetime.datetime.today().strftime('%Y/%m/%d'))
+    cover_image = models.ImageField(
+        upload_to='img/post/' + datetime.datetime.today().strftime('%Y/%m/%d'),
+        validators=[validate_image_extension],
+    )
     cover_image_credits = models.CharField(max_length=250, null=True, blank=True)
     cover_description = models.CharField(max_length=250)
     body = models.TextField()

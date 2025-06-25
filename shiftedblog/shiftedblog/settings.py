@@ -39,7 +39,7 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG")
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 SITE_ID = 1
 
@@ -56,11 +56,13 @@ INSTALLED_APPS = [
     'django.contrib.sites',
     'django.contrib.sitemaps',
 
+    'axes',
     'django_otp',
     'django_otp.plugins.otp_totp',  # TOTP: Google Authenticator, Authy, etc.
     'django_otp.plugins.otp_static',  # Backup tokens
     'two_factor',
     'taggit',
+    'sslserver',
 
     'blog',
 ]
@@ -75,6 +77,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django_otp.middleware.OTPMiddleware',
+    # AxesMiddleware should be the last middleware in the MIDDLEWARE list.
+    'axes.middleware.AxesMiddleware',
 ]
 
 ROOT_URLCONF = 'shiftedblog.urls'
@@ -114,6 +118,7 @@ DATABASES = {
         'PASSWORD': db_pass,
     }
 }
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # Password validation
@@ -137,6 +142,14 @@ AUTH_PASSWORD_VALIDATORS = [
 AUTH_USER_MODEL = 'blog.User'
 LOGIN_URL = 'two_factor:login'
 LOGIN_REDIRECT_URL = '/mellon'
+
+AUTHENTICATION_BACKENDS = [
+    # AxesStandaloneBackend should be the first backend in the AUTHENTICATION_BACKENDS list.
+    'axes.backends.AxesStandaloneBackend',
+
+    # Django ModelBackend is the default authentication backend.
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 
 # Internationalization
@@ -167,13 +180,21 @@ MEDIA_URL = '/media/'
 
 
 # Security settings
-# SECURE_HSTS_SECONDS = 86400  # 1 day
-# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-# SECURE_HSTS_PRELOAD = True
-# SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-CSRF_COOKIE_HTTPONLY = True
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
-SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', False)
+SESSION_COOKIE_HTTPONLY = os.environ.get('SESSION_COOKIE_HTTPONLY', False)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = os.environ.get('SESSION_EXPIRE_AT_BROWSER_CLOSE', False)
+
+SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', False)
+
+CSRF_COOKIE_SECURE = os.environ.get('CSRF_COOKIE_SECURE', False)
+CSRF_COOKIE_HTTPONLY = os.environ.get('CSRF_COOKIE_HTTPONLY', False)
+
+SECURE_HSTS_SECONDS = os.environ.get('SECURE_HSTS_SECONDS', 0)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', False)
+SECURE_HSTS_PRELOAD = os.environ.get('SECURE_HSTS_PRELOAD', False)
+
+SECURE_REFERRER_POLICY = os.environ.get('SECURE_BROWSER_XSS_FILTER','no-referrer-when-downgrade')
+SECURE_BROWSER_XSS_FILTER = os.environ.get('SECURE_BROWSER_XSS_FILTER', False)
+SECURE_CONTENT_TYPE_NOSNIFF = os.environ.get('SECURE_CONTENT_TYPE_NOSNIFF', False)
+
+X_FRAME_OPTIONS = 'DENY'
