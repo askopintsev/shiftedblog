@@ -22,6 +22,11 @@ class CategoryAdmin(admin.ModelAdmin):
     list_display = ('name',)
     ordering = ('name',)
 
+@admin.register(models.Series)
+class SeriesAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    ordering = ('name',)
+
 
 @admin.register(models.SkillGroup)
 class SkillGroupAdmin(admin.ModelAdmin):
