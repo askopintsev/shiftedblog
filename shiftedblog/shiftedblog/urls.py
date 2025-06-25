@@ -21,6 +21,8 @@ from blog.sitemap import PostSitemap
 from django.conf import settings
 from django.conf.urls.static import static
 
+import two_factor.urls
+
 
 app_name = 'blog'
 
@@ -31,13 +33,16 @@ sitemaps = {
 urlpatterns = [
     path('mellon/', admin.site.urls),
     path('', include('blog.urls', namespace='blog')),
-    path('sitemap.xml',
-         sitemap,
-         {'sitemaps': sitemaps},
-         name='django.contrib.sitemaps.views.sitemap')
+    path(
+        'sitemap.xml',
+        sitemap,
+        {'sitemaps': sitemaps},
+        name='django.contrib.sitemaps.views.sitemap',
+    ),
+    path('', include((two_factor.urls.urlpatterns), namespace='two_factor')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
+handler400 = 'blog.views.custom_bad_request_view'
+handler403 = 'blog.views.custom_permission_denied_view'
 handler404 = 'blog.views.custom_page_not_found_view'
 handler500 = 'blog.views.custom_error_view'
-handler403 = 'blog.views.custom_permission_denied_view'
-handler400 = 'blog.views.custom_bad_request_view'

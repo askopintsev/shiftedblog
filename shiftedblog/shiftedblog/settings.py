@@ -56,6 +56,10 @@ INSTALLED_APPS = [
     'django.contrib.sites',
     'django.contrib.sitemaps',
 
+    'django_otp',
+    'django_otp.plugins.otp_totp',  # TOTP: Google Authenticator, Authy, etc.
+    'django_otp.plugins.otp_static',  # Backup tokens
+    'two_factor',
     'taggit',
 
     'blog',
@@ -69,6 +73,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django_otp.middleware.OTPMiddleware',
 ]
 
 ROOT_URLCONF = 'shiftedblog.urls'
@@ -129,6 +135,8 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 AUTH_USER_MODEL = 'blog.User'
+LOGIN_URL = 'two_factor:login'
+LOGIN_REDIRECT_URL = '/mellon'
 
 
 # Internationalization
