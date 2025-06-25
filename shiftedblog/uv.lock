@@ -84,6 +84,17 @@ wheels = [
 ]
 
 [[package]]
+name = "django-sslserver"
+version = "0.22"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6f/97/e4011f3944f83a7d2aaaf893c3689ad70e8d2ae46fb6e14fd0e3b0c6ce0b/django_sslserver-0.22-py3-none-any.whl", hash = "sha256:c598a363d2ccdc2421c08ddb3d8b0973f80e8e47a3a5b74e4a2896f21c2947c5", size = 10295, upload-time = "2019-12-10T02:30:03.76Z" },
+]
+
+[[package]]
 name = "django-taggit"
 version = "6.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -261,6 +272,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "django" },
     { name = "django-axes" },
+    { name = "django-sslserver" },
     { name = "django-taggit" },
     { name = "django-two-factor-auth" },
     { name = "phonenumbers" },
@@ -274,6 +286,7 @@ dependencies = [
 requires-dist = [
     { name = "django", specifier = ">=5.2.2" },
     { name = "django-axes", specifier = ">=8.0.0" },
+    { name = "django-sslserver", specifier = ">=0.22" },
     { name = "django-taggit", specifier = ">=6.1.0" },
     { name = "django-two-factor-auth", specifier = ">=1.17.0" },
     { name = "phonenumbers", specifier = ">=9.0.8" },

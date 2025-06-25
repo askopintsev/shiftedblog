@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'django_otp.plugins.otp_static',  # Backup tokens
     'two_factor',
     'taggit',
+    'sslserver',
 
     'blog',
 ]
