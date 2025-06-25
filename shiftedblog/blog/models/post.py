@@ -17,6 +17,17 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
+    
+
+class Series(models.Model):
+    """Model for post series list"""
+    name = models.CharField(max_length=250)
+
+    class Meta:
+        app_label = 'blog'
+
+    def __str__(self):
+        return self.name
 
 
 class Post(models.Model):
@@ -54,6 +65,14 @@ class Post(models.Model):
         Category,
         on_delete=models.CASCADE,
         related_name='blog_category',
+    )
+    series = models.ForeignKey(
+        Series,
+        on_delete=models.CASCADE,
+        related_name='blog_series',
+        null=True,
+        blank=True,
+        default=None,
     )
     short_description = models.CharField(max_length=300)
 
