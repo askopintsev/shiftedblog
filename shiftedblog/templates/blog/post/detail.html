@@ -1,5 +1,4 @@
 {% extends "blog/base.html" %}
-{% load static %}
 
 {% block title %}{{ post.title }} | Shifted Stuff{% endblock %}
 
@@ -27,8 +26,8 @@
 </div>
 
 <div class="container">
-    <div class="container-fluid mb-4 p-0">
-        <img class="img-fluid" src="{% static '/' %}{{ post.cover_image }}">
+    <div class="container-fluid mb-4 p-0 d-flex justify-content-center align-items-center">
+        <img class="img-fluid" src="{{ post.cover_image.url|urlencode }}">
     </div>
     {% if post.cover_image_credits %}
         <figure>
@@ -59,7 +58,7 @@
                         <img alt="post_cover_image"
                              class="img-responsive rounded mx-auto my-auto"
                              height=158px
-                             src="{% static '/' %}{{ post.cover_image }}"
+                             src="media/{{ post.cover_image.url|urlencode }}"
                              width=auto>
                     </div>
                     <div class="col p-4 d-flex flex-column position-static">
@@ -86,7 +85,7 @@
                         <img alt="post_cover_image"
                              class="img-responsive rounded mx-auto my-auto"
                              height=158px
-                             src="{% static '/' %}{{ post.cover_image }}"
+                             src="media/{{ post.cover_image.url|urlencode }}"
                              width=auto>
                     </div>
                     <div class="col p-4 d-flex flex-column position-static">
