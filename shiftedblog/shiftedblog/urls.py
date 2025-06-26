@@ -40,6 +40,7 @@ urlpatterns = [
         name='django.contrib.sitemaps.views.sitemap',
     ),
     path('', include((two_factor.urls.urlpatterns), namespace='two_factor')),
+    path("ckeditor5/", include('django_ckeditor_5.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 handler400 = 'blog.views.custom_bad_request_view'
