@@ -16,7 +16,7 @@
         <div class="col-sm-6 col-lg-4 mb-3">
             <div class="card mb-3 h-100 border rounded overflow-hidden shadow-sm">
                 <a href="{{ post.get_absolute_url }}">
-                    <img class="card-img-top" src="media/{{ post.cover_image }}" alt="{{ post.title }}">
+                    <img class="card-img-top" src="{{ post.cover_image.url|urlencode }}" alt="{{ post.title }}">
                 </a>
                 <div class="card-body">
                     <a href="{{ post.get_absolute_url }}" class="text-decoration-none text-reset">
