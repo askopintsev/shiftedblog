@@ -61,8 +61,18 @@ class Post(models.Model):
         upload_to='img/post/' + datetime.datetime.today().strftime('%Y/%m/%d'),
         validators=[validate_image_extension],
     )
-    cover_image_credits = models.CharField(max_length=250, null=True, blank=True)
-    cover_description = models.CharField(max_length=250)
+    cover_image_credits = models.CharField(
+        max_length=250,
+        null=True,
+        blank=True,
+        default=None,
+    )
+    cover_description = models.CharField(
+        max_length=250,
+        null=True,
+        blank=True,
+        default=None,
+    )
     body = models.TextField()
     published = models.DateTimeField(default=timezone.now)
     created = models.DateTimeField(auto_now_add=True)
@@ -86,7 +96,12 @@ class Post(models.Model):
         blank=True,
         default=None,
     )
-    short_description = models.CharField(max_length=300)
+    short_description = models.CharField(
+        max_length=300,
+        null=True,
+        blank=True,
+        default=None,
+    )
 
     class Meta:
         app_label = 'blog'

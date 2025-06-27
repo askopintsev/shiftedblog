@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     'two_factor',
     'taggit',
     'sslserver',
+    'django_ckeditor_5',
 
     'blog',
 ]
@@ -169,13 +170,13 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
-
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static')
+    os.path.join(BASE_DIR, 'static'),  # Project-level static files
 ]
 
-MEDIA_ROOT = os.path.join(BASE_DIR, 'static')
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
 
 
@@ -187,7 +188,8 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = os.environ.get('SESSION_EXPIRE_AT_BROWSER_CLOS
 SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', False)
 
 CSRF_COOKIE_SECURE = os.environ.get('CSRF_COOKIE_SECURE', False)
-CSRF_COOKIE_HTTPONLY = os.environ.get('CSRF_COOKIE_HTTPONLY', False)
+### CSRF_COOKIE_HTTPONLY need to be False for CKEditor
+CSRF_COOKIE_HTTPONLY = False
 
 SECURE_HSTS_SECONDS = os.environ.get('SECURE_HSTS_SECONDS', 0)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', False)
@@ -198,3 +200,46 @@ SECURE_BROWSER_XSS_FILTER = os.environ.get('SECURE_BROWSER_XSS_FILTER', False)
 SECURE_CONTENT_TYPE_NOSNIFF = os.environ.get('SECURE_CONTENT_TYPE_NOSNIFF', False)
 
 X_FRAME_OPTIONS = 'DENY'
+
+# CKEditor Settings
+CKEDITOR_5_CONFIGS = {
+    'default': {
+        'toolbar': {
+            'items': [
+                'heading', '|',
+                'Bold', 'Italic', 'Underline', 'Strikethrough', 'code', 'Subscript', 
+                'Superscript',  'specialCharacters', 'highlight', 'RemoveFormat', '|',
+                'NumberedList', 'BulletedList', 'todoList', '|',
+                'Blockquote', '|',
+                'codeBlock', '|',
+                'alignment', 'Outdent', 'Indent', '|',
+                'insertImage', '|',
+                'Link', 'Unlink', '|',
+                'fontSize', 'fontFamily', 'fontColor', 'fontBackgroundColor', '|',
+                'mediaEmbed',
+                'insertTable',
+                'HorizontalLine',
+                'sourceEditing', '|',
+                'undo', 'redo',
+            ],
+            "shouldNotGroupWhenFull": True,
+        },
+        'image': {
+            'toolbar': [
+                'imageStyle:full', 'imageStyle:side', 'imageStyle:alignLeft',
+                'imageStyle:alignCenter', 'imageStyle:alignRight', 'toggleImageCaption',
+                'imageTextAlternative',
+            ],
+        },
+        'table': {
+            'contentToolbar': [
+                'tableColumn', 'tableRow', 'mergeTableCells',
+                'tableProperties', 'tableCellProperties',
+            ],
+        },
+    },
+}
+
+# Define a constant in settings.py to specify file upload permissions
+CKEDITOR_5_FILE_UPLOAD_PERMISSION = "staff"  # Possible values: "staff", "authenticated", "any"
+CK_EDITOR_5_UPLOAD_FILE_VIEW_NAME = "custom_image_upload"

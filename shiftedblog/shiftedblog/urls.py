@@ -21,6 +21,8 @@ from blog.sitemap import PostSitemap
 from django.conf import settings
 from django.conf.urls.static import static
 
+from blog.views import custom_image_upload
+
 import two_factor.urls
 
 
@@ -31,6 +33,8 @@ sitemaps = {
 }
 
 urlpatterns = [
+    path("custom-image-upload/", custom_image_upload, name="custom_image_upload"),
+    # path("ckeditor5/", include('django_ckeditor_5.urls')),
     path('mellon/', admin.site.urls),
     path('', include('blog.urls', namespace='blog')),
     path(

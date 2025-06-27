@@ -12,7 +12,7 @@ class PostAdmin(admin.ModelAdmin):
     list_filter = ('status', 'created', 'published', 'author')
     search_fields = ('title', 'body')
     prepopulated_fields = {'slug': ('title',)}
-    raw_id_fields = ('author',)
+
     date_hierarchy = 'published'
     ordering = ('status', 'published')
 
@@ -54,4 +54,9 @@ class AccountAdmin(admin.ModelAdmin):
 
 @admin.register(models.Person)
 class PersonAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(models.User)
+class UserAdmin(admin.ModelAdmin):
     pass
