@@ -18,8 +18,16 @@ def post_list(request, tag_slug=None, category_slug=None):
         object_list = object_list.filter(tags__in=[tag])
 
     if category_slug:
-        category = get_object_or_404(Category, name=category_slug)
+        category = Category.objects.filter(name=category_slug).first()
         object_list = object_list.filter(category=category)
+
+        if not object_list:
+            return render(request,
+                  'blog/post/list.html',
+                  {'page': None,
+                   'posts': None,
+                   'tag': tag})
+
 
     paginator = Paginator(object_list, 12)  # 12 post on every page
     page = request.GET.get('page')
@@ -90,7 +98,15 @@ def post_search(request):
 
 
 def about(request):
-    person = Person.objects.get(id=1)
+    person = Person.objects.first()
+
+    if not person:
+            return render(request,
+                  'blog/about.html',
+                  {'person': None,
+                   'skills':  None,
+                   'grouped_accounts':  None})
+
     skills = person.skill_set.all()
     accounts = person.account_set.all()
     grouped_accounts = {}
