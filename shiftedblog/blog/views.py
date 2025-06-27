@@ -1,11 +1,20 @@
+import datetime
+import os
+
+from django.conf import settings
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.shortcuts import render, get_object_or_404
 from django.db.models import Count
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_protect
+
+from taggit.models import Tag
 
 from blog.forms import SearchForm
 from blog.models import Person, Post, Category
-from taggit.models import Tag
 
 
 def post_list(request, tag_slug=None, category_slug=None):
@@ -137,3 +146,25 @@ def custom_permission_denied_view(request, exception=None):
 
 def custom_bad_request_view(request, exception=None):
     return render(request, "blog/errors/400.html", {})
+
+@csrf_protect
+def custom_image_upload(request):
+    if request.method == 'POST' and request.FILES.get('upload'):
+        uploaded_file = request.FILES['upload']
+        valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff']
+        ext = os.path.splitext(uploaded_file.name)[1].lower()
+        if ext not in valid_extensions:
+            return JsonResponse({'error': 'Unsupported file type'}, status=400)
+
+        filename = f"img/post/{datetime.datetime.now().strftime('%Y/%m/%d')}/{uploaded_file.name}"
+        file_path = default_storage.save(filename, ContentFile(uploaded_file.read()))
+
+        url = f"{settings.MEDIA_URL}{file_path}"
+        return JsonResponse({
+            'url': url,
+            'uploaded': 1,
+            'fileName': uploaded_file.name,
+            'filePath': file_path
+        })
+
+    return JsonResponse({'error': 'Invalid request'}, status=400)

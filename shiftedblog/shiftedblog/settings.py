@@ -189,7 +189,7 @@ SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', False)
 
 CSRF_COOKIE_SECURE = os.environ.get('CSRF_COOKIE_SECURE', False)
 ### CSRF_COOKIE_HTTPONLY need to be False for CKEditor
-CSRF_COOKIE_HTTPONLY = os.environ.get('CSRF_COOKIE_HTTPONLY', False)
+CSRF_COOKIE_HTTPONLY = False
 
 SECURE_HSTS_SECONDS = os.environ.get('SECURE_HSTS_SECONDS', 0)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', False)
@@ -242,3 +242,4 @@ CKEDITOR_5_CONFIGS = {
 
 # Define a constant in settings.py to specify file upload permissions
 CKEDITOR_5_FILE_UPLOAD_PERMISSION = "staff"  # Possible values: "staff", "authenticated", "any"
+CK_EDITOR_5_UPLOAD_FILE_VIEW_NAME = "custom_image_upload"
