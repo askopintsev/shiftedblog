@@ -94,5 +94,7 @@ Control.ca-bundle
 Control.system-ca-bundle
 GitHub.sublime-settings
 
-/static
-/staticfiles
+static/
+staticfiles/
+
+zen_*
