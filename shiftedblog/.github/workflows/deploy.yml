@@ -10,10 +10,20 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master'
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
+    - name: Install Doppler CLI
+      run: |
+        curl -Ls https://cli.doppler.com/install.sh | sh
+
+    - name: Download Doppler secrets
+      env:
+        DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+      run: |
+        doppler secrets download --no-file --format env > .env
+
     - name: Deploy to VPS
       uses: appleboy/ssh-action@v1.0.3
       with:
