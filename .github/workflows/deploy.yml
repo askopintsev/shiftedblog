@@ -16,7 +16,10 @@ jobs:
 
     - name: Install Doppler CLI
       run: |
-        curl -Ls https://cli.doppler.com/install.sh | sh
+        mkdir -p $HOME/.local/bin
+        curl -Ls https://github.com/DopplerHQ/cli/releases/latest/download/doppler_$(uname -s)_$(uname -m).tar.gz | tar xz
+        mv doppler $HOME/.local/bin/
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
 
     - name: Download Doppler secrets
       env:
