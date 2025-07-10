@@ -23,6 +23,7 @@ jobs:
     - name: Fetch Doppler Secrets
       run: doppler secrets download --no-file --format=env > .env
       env:
+        DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
         DOPPLER_PROJECT: shifted_blog
         DOPPLER_CONFIG: prd
 
