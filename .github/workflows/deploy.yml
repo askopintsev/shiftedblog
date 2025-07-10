@@ -23,7 +23,6 @@ jobs:
     - name: Fetch Doppler Secrets
       run: doppler secrets download --no-file --format=env > .env
       env:
-        DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
         DOPPLER_PROJECT: shifted_blog
         DOPPLER_CONFIG: prd
 
@@ -40,4 +39,12 @@ jobs:
           docker compose -f docker-compose.prod.yml down
           docker compose -f docker-compose.prod.yml build --no-cache
           docker compose -f docker-compose.prod.yml up -d
-          docker system prune -f 
+          docker system prune -f
+
+    - name: Verify Deployment
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: docker ps
