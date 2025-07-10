@@ -14,18 +14,18 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Doppler CLI
-      run: |
-        curl -L https://github.com/DopplerHQ/cli/releases/latest/download/doppler_linux_amd64.tar.gz | tar xz
-        mkdir -p $HOME/.local/bin
-        mv doppler $HOME/.local/bin/
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
-    - name: Download Doppler secrets
+    - name: Install Doppler CLI
+      uses: dopplerhq/cli-action@v3
+
+    - name: Fetch Doppler Secrets
+      run: doppler secrets download --no-file --format=env > .env
       env:
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
-      run: |
-        doppler secrets download --no-file --format env > .env
+        DOPPLER_PROJECT: shifted_blog
+        DOPPLER_CONFIG: prd
 
     - name: Deploy to VPS
       uses: appleboy/ssh-action@v1.0.3
