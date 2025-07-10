@@ -21,11 +21,12 @@ jobs:
       uses: dopplerhq/cli-action@v3
 
     - name: Fetch Doppler Secrets
-      run: doppler secrets download --no-file --format=env > .env
-      env:
-        DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
-        DOPPLER_PROJECT: shifted_blog
-        DOPPLER_CONFIG: prd
+      uses: dopplerhq/cli-action@v3
+      with:
+          token: ${{ secrets.DOPPLER_TOKEN }}
+          project: shifted_blog
+          config: prd
+          command: secrets download --no-file --format=env > .env
 
     - name: Deploy to VPS
       uses: appleboy/ssh-action@v1.0.3
