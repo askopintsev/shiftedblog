@@ -20,6 +20,7 @@ from blog.sitemap import PostSitemap
 
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.generic import TemplateView
 
 from blog.views import custom_image_upload
 
@@ -31,6 +32,8 @@ app_name = 'blog'
 sitemaps = {
     'posts': PostSitemap,
 }
+
+zen_html_file = settings.DZEN_VERIFICATION_FILE
 
 urlpatterns = [
     path("custom-image-upload/", custom_image_upload, name="custom_image_upload"),
@@ -44,7 +47,16 @@ urlpatterns = [
         name='django.contrib.sitemaps.views.sitemap',
     ),
     path('', include((two_factor.urls.urlpatterns), namespace='two_factor')),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT,)
+
+if settings.DZEN_VERIFICATION_FILE:
+    urlpatterns.append(
+        path(
+            settings.DZEN_VERIFICATION_FILE,
+            TemplateView.as_view(template_name=f"static_html/{settings.DZEN_VERIFICATION_FILE}"),
+            name="zen_static_page",
+        )
+    )
 
 handler400 = 'blog.views.custom_bad_request_view'
 handler403 = 'blog.views.custom_permission_denied_view'
