@@ -39,7 +39,7 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG")
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 SITE_ID = 1
 
@@ -51,12 +51,21 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'django.contrib.postgres',
     'django.contrib.staticfiles',
     'django.contrib.sites',
     'django.contrib.sitemaps',
-    'blog.apps.BlogConfig',
+
+    'axes',
+    'django_otp',
+    'django_otp.plugins.otp_totp',  # TOTP: Google Authenticator, Authy, etc.
+    'django_otp.plugins.otp_static',  # Backup tokens
+    'two_factor',
     'taggit',
-    'django.contrib.postgres',
+    'sslserver',
+    'django_ckeditor_5',
+
+    'blog',
 ]
 
 MIDDLEWARE = [
@@ -67,6 +76,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django_otp.middleware.OTPMiddleware',
+    # AxesMiddleware should be the last middleware in the MIDDLEWARE list.
+    'axes.middleware.AxesMiddleware',
 ]
 
 ROOT_URLCONF = 'shiftedblog.urls'
@@ -106,6 +119,7 @@ DATABASES = {
         'PASSWORD': db_pass,
     }
 }
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # Password validation
@@ -126,6 +140,18 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+AUTH_USER_MODEL = 'blog.User'
+LOGIN_URL = 'two_factor:login'
+LOGIN_REDIRECT_URL = '/mellon'
+
+AUTHENTICATION_BACKENDS = [
+    # AxesStandaloneBackend should be the first backend in the AUTHENTICATION_BACKENDS list.
+    'axes.backends.AxesStandaloneBackend',
+
+    # Django ModelBackend is the default authentication backend.
+    'django.contrib.auth.backends.ModelBackend',
+]
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/3.1/topics/i18n/
@@ -144,24 +170,79 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
-
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static')
+    os.path.join(BASE_DIR, 'static'),  # Project-level static files
 ]
 
-MEDIA_ROOT = os.path.join(BASE_DIR, 'static')
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
 
 
 # Security settings
-# SECURE_HSTS_SECONDS = 86400  # 1 day
-# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-# SECURE_HSTS_PRELOAD = True
-# SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-CSRF_COOKIE_HTTPONLY = True
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
-SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', False)
+SESSION_COOKIE_HTTPONLY = os.environ.get('SESSION_COOKIE_HTTPONLY', False)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = os.environ.get('SESSION_EXPIRE_AT_BROWSER_CLOSE', False)
+
+SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', False)
+
+CSRF_COOKIE_SECURE = os.environ.get('CSRF_COOKIE_SECURE', False)
+### CSRF_COOKIE_HTTPONLY need to be False for CKEditor
+CSRF_COOKIE_HTTPONLY = False
+
+SECURE_HSTS_SECONDS = os.environ.get('SECURE_HSTS_SECONDS', 0)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', False)
+SECURE_HSTS_PRELOAD = os.environ.get('SECURE_HSTS_PRELOAD', False)
+
+SECURE_REFERRER_POLICY = os.environ.get('SECURE_BROWSER_XSS_FILTER','no-referrer-when-downgrade')
+SECURE_BROWSER_XSS_FILTER = os.environ.get('SECURE_BROWSER_XSS_FILTER', False)
+SECURE_CONTENT_TYPE_NOSNIFF = os.environ.get('SECURE_CONTENT_TYPE_NOSNIFF', False)
+
+X_FRAME_OPTIONS = 'DENY'
+
+# CKEditor Settings
+CKEDITOR_5_CONFIGS = {
+    'default': {
+        'toolbar': {
+            'items': [
+                'heading', '|',
+                'Bold', 'Italic', 'Underline', 'Strikethrough', 'code', 'Subscript', 
+                'Superscript',  'specialCharacters', 'highlight', 'RemoveFormat', '|',
+                'NumberedList', 'BulletedList', 'todoList', '|',
+                'Blockquote', '|',
+                'codeBlock', '|',
+                'alignment', 'Outdent', 'Indent', '|',
+                'insertImage', '|',
+                'Link', 'Unlink', '|',
+                'fontSize', 'fontFamily', 'fontColor', 'fontBackgroundColor', '|',
+                'mediaEmbed',
+                'insertTable',
+                'HorizontalLine',
+                'sourceEditing', '|',
+                'undo', 'redo',
+            ],
+            "shouldNotGroupWhenFull": True,
+        },
+        'image': {
+            'toolbar': [
+                'imageStyle:full', 'imageStyle:side', 'imageStyle:alignLeft',
+                'imageStyle:alignCenter', 'imageStyle:alignRight', 'toggleImageCaption',
+                'imageTextAlternative',
+            ],
+        },
+        'table': {
+            'contentToolbar': [
+                'tableColumn', 'tableRow', 'mergeTableCells',
+                'tableProperties', 'tableCellProperties',
+            ],
+        },
+    },
+}
+
+# Define a constant in settings.py to specify file upload permissions
+CKEDITOR_5_FILE_UPLOAD_PERMISSION = "staff"  # Possible values: "staff", "authenticated", "any"
+CK_EDITOR_5_UPLOAD_FILE_VIEW_NAME = "custom_image_upload"
+
+
+DZEN_VERIFICATION_FILE = os.environ.get('DZEN_VERIFICATION_FILE', False)

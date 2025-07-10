@@ -7,7 +7,7 @@
 <div class="container">
     <div class="row align-items-start info_block">
         <div class="col-sm my-2">
-            <img alt="avatar" class="avatar" height="300px" src="{% static '/' %}{{ person.avatar }}">
+            <img alt="avatar" class="avatar" height="300px" src="{{ person.avatar.url|urlencode }}">
         </div>
         <div class="col-sm">
             <p>
@@ -31,13 +31,13 @@
     <div class="accordion accordion-flush my-3" id="accordionPanelsStayOpenExample">
         <div class="accordion-item">
             <h2 class="accordion-header" id="panelsStayOpen-headingOne">
-                <button aria-controls="panelsStayOpen-collapseOne" aria-expanded="true" class="accordion-button"
+                <button aria-controls="panelsStayOpen-collapseOne" aria-expanded="false" class="accordion-button collapsed"
                         data-bs-target="#panelsStayOpen-collapseOne" data-bs-toggle="collapse"
                         type="button">
                     Мои навыки
                 </button>
             </h2>
-            <div aria-labelledby="panelsStayOpen-headingOne" class="accordion-collapse collapse show"
+            <div aria-labelledby="panelsStayOpen-headingOne" class="accordion-collapse collapse"
                  id="panelsStayOpen-collapseOne">
                 <div class="accordion-body">
                     <ol class="list-group list-group">
