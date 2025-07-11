@@ -65,6 +65,9 @@ jobs:
           
           # Pull latest changes
           git pull origin master
+
+          # Create .env file from Doppler secrets
+          doppler secrets download --no-file --format=env > .env
           
           # Stop existing containers
           docker compose -f docker-compose.prod.yml down || echo "No containers to stop"
