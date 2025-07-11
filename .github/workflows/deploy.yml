@@ -36,12 +36,32 @@ jobs:
         key: ${{ secrets.VPS_SSH_KEY }}
         port: ${{ secrets.VPS_PORT }}
         script: |
-          cd /opt/shiftedblog
+          echo "Current directory: $(pwd)"
+          echo "Docker version: $(docker --version)"
+          echo "Docker compose version: $(docker compose version)"
+          
+          # Navigate to correct project directory
+          cd /opt  # Adjust this path
+          echo "Project directory: $(pwd)"
+          ls -la
+          
+          # Pull latest changes
           git pull origin master
-          docker compose -f docker-compose.prod.yml down
+          
+          # Stop existing containers
+          docker compose -f docker-compose.prod.yml down || echo "No containers to stop"
+          
+          # Build and start
           docker compose -f docker-compose.prod.yml build --no-cache
           docker compose -f docker-compose.prod.yml up -d
-          docker system prune -f
+          
+          # Verify deployment
+          echo "Running containers:"
+          docker ps
+          
+          # Check logs if needed
+          echo "Container logs:"
+          docker compose -f docker-compose.prod.yml logs --tail=20
 
     - name: Verify Deployment
       uses: appleboy/ssh-action@v1.0.3
