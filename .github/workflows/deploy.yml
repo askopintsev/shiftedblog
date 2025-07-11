@@ -39,9 +39,27 @@ jobs:
           echo "Current directory: $(pwd)"
           echo "Docker version: $(docker --version)"
           echo "Docker compose version: $(docker compose version)"
+
+          # Find the project directory
+          echo "Searching for project files..."
+          find /opt -name "docker-compose.prod.yml" 2>/dev/null || echo "File not found in /opt"
+          find /home -name "docker-compose.prod.yml" 2>/dev/null || echo "File not found in /home"
+          find /root -name "docker-compose.prod.yml" 2>/dev/null || echo "File not found in /root"
+          
+          # List contents of common directories
+          echo "Contents of /opt:"
+          ls -la /opt
+          echo "Contents of /home:"
+          ls -la /home
           
           # Navigate to correct project directory
           cd /opt  # Adjust this path
+          if [ ! -d "shiftedblog" ]; then
+            echo "Cloning repository..."
+            git clone https://github.com/yourusername/shiftedblog.git
+          fi
+        
+          cd shiftedblog
           echo "Project directory: $(pwd)"
           ls -la
           
