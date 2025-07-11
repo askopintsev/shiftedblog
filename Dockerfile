@@ -20,6 +20,9 @@ RUN apt-get update \
 # Install uv
 RUN curl -Ls https://astral.sh/uv/install.sh | sh
 
+# Add uv to PATH
+ENV PATH="/root/.cargo/bin:$PATH"
+
 # Copy project files
 COPY . .
 
