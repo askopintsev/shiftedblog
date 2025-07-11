@@ -23,7 +23,6 @@ services:
       - .env
     depends_on:
       - db
-      - redis
     restart: unless-stopped
 
   nginx:

@@ -25,7 +25,6 @@ services:
       - .env
     depends_on:
       - db
-      - redis
 
   nginx:
     image: nginx:alpine
