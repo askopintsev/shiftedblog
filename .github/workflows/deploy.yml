@@ -56,7 +56,7 @@ jobs:
           cd /opt  # Adjust this path
           if [ ! -d "shiftedblog" ]; then
             echo "Cloning repository..."
-            git clone https://github.com/yourusername/shiftedblog.git
+            git clone https://github.com/askopintsev/shiftedblog.git
           fi
         
           cd shiftedblog
