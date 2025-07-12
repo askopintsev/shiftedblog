@@ -26,8 +26,8 @@ ENV PATH="/root/.cargo/bin:$PATH"
 # Copy project files
 COPY . .
 
-# Install Python dependencies using uv and pyproject.toml
-RUN uv pip install .
+# Install Python dependencies
+RUN pip install -e .
 
 # Collect static files
 RUN python manage.py collectstatic --noinput
