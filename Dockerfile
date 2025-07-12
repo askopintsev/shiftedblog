@@ -15,7 +15,9 @@ RUN apt-get update \
         build-essential \
         libpq-dev \
         curl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    # Installing gunicorn
+    && pip install "gunicorn==23.0.0"
 
 # Install Python dependencies
 COPY requirements.txt .
