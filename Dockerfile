@@ -27,7 +27,7 @@ ENV PATH="/root/.cargo/bin:$PATH"
 COPY . .
 
 # Install Python dependencies
-RUN pip install -e .
+RUN pip install -r requirements.txt
 
 # Collect static files
 RUN python manage.py collectstatic --noinput
