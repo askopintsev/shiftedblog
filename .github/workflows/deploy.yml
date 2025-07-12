@@ -48,12 +48,23 @@ jobs:
           # Pull latest changes
           git pull origin master
 
+          # Install Doppler CLI if not available
+          if ! command -v doppler &> /dev/null; then
+            echo "Installing Doppler CLI..."
+            curl -Ls https://cli.doppler.com/install.sh | sh
+            export PATH="$HOME/.local/bin:$PATH"
+          fi
+          
+          # Set up Doppler authentication
+          echo "${{ secrets.DOPPLER_TOKEN }}" | doppler configure set token
+          
           # Create .env file from Doppler secrets
           doppler secrets download --no-file --format=env > .env
           
           # Verify .env file was created
           echo "Checking .env file:"
           ls -la .env
+          echo "File size: $(wc -c < .env)"
           echo "First few lines of .env (without values):"
           head -5 .env | sed 's/=.*/=***/'
           
