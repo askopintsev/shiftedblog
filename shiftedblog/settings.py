@@ -39,7 +39,7 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG")
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS','localhost,127.0.0.1').split(',')
 
 SITE_ID = 1
 
@@ -171,13 +171,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATIC_URL = '/static/'
+STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),  # Project-level static files
 ]
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-MEDIA_URL = '/media/'
+MEDIA_URL = 'media/'
 
 
 # Security settings
@@ -190,6 +190,7 @@ SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', False)
 CSRF_COOKIE_SECURE = os.environ.get('CSRF_COOKIE_SECURE', False)
 ### CSRF_COOKIE_HTTPONLY need to be False for CKEditor
 CSRF_COOKIE_HTTPONLY = False
+CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS','http://localhost:8001,http://127.0.0.1:8001,http://0.0.0.0:8001').split(',')
 
 SECURE_HSTS_SECONDS = os.environ.get('SECURE_HSTS_SECONDS', 0)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', False)

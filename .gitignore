@@ -98,3 +98,5 @@ static/
 staticfiles/
 
 zen_*
+
+nginx_local.conf

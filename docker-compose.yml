@@ -1,42 +1,37 @@
 services:
   db:
-    image: postgres:15
+    image: postgres:17
+    ports:
+      - "5436:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data/
-    environment:
-      - POSTGRES_DB=${DB_NAME}
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASS}
-    ports:
-      - "5432:5432"
+    env_file:
+      - .env
 
   web:
     build: .
-    command: python manage.py runserver 0.0.0.0:8000
     volumes:
-      - .:/app
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
-    ports:
-      - "8000:8000"
+      - ./static:/app/staticfiles
+      - ./media:/app/media
     env_file:
       - .env
     depends_on:
       - db
 
   nginx:
-    image: nginx:alpine
+    image: nginx:latest
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
-      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./nginx/nginx_local.conf:/etc/nginx/nginx_local.conf:ro
+      - ./static:/static:ro
+      - ./media:/media
+      - ./nginx/ssl:/etc/nginx/ssl
     ports:
-      - "80:80"
+      - "8001:8000"
+      - "443:443"
     depends_on:
       - web
 
 volumes:
   postgres_data:
-  static_volume:
-  media_volume: 
+  static:
+  media: 

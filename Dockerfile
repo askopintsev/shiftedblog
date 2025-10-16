@@ -1,12 +1,14 @@
-# Use Python 3.11 slim image
-FROM python:3.11-slim
+# Stage 1
+# Use Python 3.13 slim image
+FROM python:3.13-slim AS builder
+
+# Set work directory
+RUN mkdir /app
+WORKDIR /app
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-
-# Set work directory
-WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update \
@@ -18,24 +20,41 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     # Installing gunicorn
     && pip install "gunicorn==23.0.0"
+RUN pip install --upgrade pip
 
 # Install Python dependencies
-COPY requirements.txt .
+COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Stage 2
+FROM python:3.13-slim
+
+RUN useradd -m -r appuser && \
+   mkdir /app && \
+   chown -R appuser /app
+ 
+# Copy the Python dependencies from the builder stage
+COPY --from=builder /usr/local/lib/python3.13/site-packages/ /usr/local/lib/python3.13/site-packages/
+COPY --from=builder /usr/local/bin/ /usr/local/bin/
+
+# Set work directory
+WORKDIR /app
+
 # Copy project files
-COPY . .
+COPY --chown=appuser:appuser . .
 
-# Collect static files
-RUN python manage.py collectstatic --noinput
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# Create non-root user
-RUN adduser --disabled-password --gecos '' appuser
-RUN chown -R appuser:appuser /app
+# Switch to non-root user
 USER appuser
 
 # Expose port
 EXPOSE 8000
 
-# Run gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shiftedblog.wsgi:application"] 
+# Make entry file executable
+RUN chmod +x  /app/entrypoint.prod.sh
+ 
+# Start the application using Gunicorn
+CMD ["/app/entrypoint.prod.sh"]
