@@ -95,8 +95,9 @@ Control.system-ca-bundle
 GitHub.sublime-settings
 
 static/
+static_blog/css/**
+static_blog/img/favicons/**
+static_blog/img/template/**
 staticfiles/
 
 zen_*
-
-nginx_local.conf

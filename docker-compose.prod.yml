@@ -15,7 +15,9 @@ services:
     build: .
     volumes:
       - ./static:/app/staticfiles
+      - ./static_blog:/app/static_blog
       - ./media:/app/media
+      - ./templates:/app/templates
     env_file:
       - .env
     networks:
@@ -29,7 +31,9 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./static:/static:ro
+      - ./static_blog:/static_blog:ro
       - ./media:/media
+      - ./templates:/templates:ro
       - ./nginx/ssl:/etc/nginx/ssl
       - /etc/letsencrypt:/etc/letsencrypt:ro
     ports:
