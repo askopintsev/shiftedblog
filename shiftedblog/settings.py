@@ -62,7 +62,6 @@ INSTALLED_APPS = [
     'django_otp.plugins.otp_static',  # Backup tokens
     'two_factor',
     'taggit',
-    'sslserver',
     'django_ckeditor_5',
 
     'blog',
@@ -186,12 +185,12 @@ SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', False)
 SESSION_COOKIE_HTTPONLY = os.environ.get('SESSION_COOKIE_HTTPONLY', False)
 SESSION_EXPIRE_AT_BROWSER_CLOSE = os.environ.get('SESSION_EXPIRE_AT_BROWSER_CLOSE', False)
 
-SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', False)
+SECURE_SSL_REDIRECT = False
 
 CSRF_COOKIE_SECURE = os.environ.get('CSRF_COOKIE_SECURE', False)
 ### CSRF_COOKIE_HTTPONLY need to be False for CKEditor
 CSRF_COOKIE_HTTPONLY = False
-CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS','http://localhost:8001,http://127.0.0.1:8001,http://0.0.0.0:8001').split(',')
+CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS','http://localhost:8000,http://127.0.0.1:8000,http://0.0.0.0:8000').split(',')
 
 SECURE_HSTS_SECONDS = os.environ.get('SECURE_HSTS_SECONDS', 0)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', False)

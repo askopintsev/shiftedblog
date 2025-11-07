@@ -19,7 +19,6 @@ django==5.2.2 \
     #   django-formtools
     #   django-otp
     #   django-phonenumber-field
-    #   django-sslserver
     #   django-taggit
     #   django-two-factor-auth
     #   shiftedblog
@@ -43,9 +42,6 @@ django-phonenumber-field==8.1.0 \
     --hash=sha256:9ba66873bf47401b13fc57797fbf85e785864a6bfdc8b9daa3a9012886567045 \
     --hash=sha256:f19450625574ad3a2de047c409527d0e57699496849e71e53b53e8679ff67b27
     # via django-two-factor-auth
-django-sslserver==0.22 \
-    --hash=sha256:c598a363d2ccdc2421c08ddb3d8b0973f80e8e47a3a5b74e4a2896f21c2947c5
-    # via shiftedblog
 django-taggit==6.1.0 \
     --hash=sha256:ab776264bbc76cb3d7e49e1bf9054962457831bd21c3a42db9138b41956e4cf0 \
     --hash=sha256:c4d1199e6df34125dd36db5eb0efe545b254dec3980ce5dd80e6bab3e78757c3
