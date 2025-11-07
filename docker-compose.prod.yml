@@ -14,7 +14,7 @@ services:
   web:
     build: .
     volumes:
-      - ./static:/app/staticfiles
+      - ./static:/app/static
       - ./static_blog:/app/static_blog
       - ./media:/app/media
       - ./templates:/app/templates
