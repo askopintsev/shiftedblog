@@ -12,10 +12,18 @@ services:
   web:
     build: .
     volumes:
+      # Mount source code directories for autoreload
+      - ./blog:/app/blog
+      - ./shiftedblog:/app/shiftedblog
+      - ./manage.py:/app/manage.py
+      - ./templates:/app/templates
       - ./static:/app/staticfiles
       - ./static_blog:/app/static_blog
       - ./media:/app/media
-      - ./templates:/app/templates
+      # Mount requirements for dependency changes
+      - ./requirements.txt:/app/requirements.txt
+      # Mount entrypoint script (make it executable)
+      - ./entrypoint.dev.sh:/app/entrypoint.dev.sh
     env_file:
       - .env
     depends_on:
@@ -28,6 +36,9 @@ services:
       "
     ports:
       - "8888:8000"
+    environment:
+      # Enable Django autoreload (default, but explicit)
+      - DJANGO_SETTINGS_MODULE=shiftedblog.settings
 
 volumes:
   postgres_data:
