@@ -50,7 +50,7 @@ class Post(models.Model):
     title = models.CharField(max_length=250)
     slug = models.SlugField(
         max_length=250,
-        unique_for_date='published',
+        unique=True,
     )
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -113,12 +113,7 @@ class Post(models.Model):
     def get_absolute_url(self):
         return reverse(
             'blog:post_detail',
-            args=[
-                self.published.year,
-                self.published.month,
-                self.published.day,
-                self.slug,
-            ]
+            args=[self.slug],
         )
 
     def get_image_url(self):

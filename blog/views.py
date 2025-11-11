@@ -4,11 +4,11 @@ import os
 from django.conf import settings
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.shortcuts import render, get_object_or_404
+from django.http import JsonResponse
 from django.db.models import Count
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_protect
 
 from taggit.models import Tag
@@ -55,33 +55,44 @@ def post_list(request, tag_slug=None, category_slug=None):
                    'tag': tag})
 
 
-def post_detail(request, year, month, day, post):
-    post = get_object_or_404(Post,
-                             slug=post,
-                             status='published',
-                             published__year=year,
-                             published__month=month,
-                             published__day=day)
+def post_detail(request, slug):
+    post = get_object_or_404(
+        Post,
+        slug=slug,
+        status='published',
+    )
 
     # List of similar posts
     post_tags_ids = post.tags.values_list('id', flat=True)
-    similar_posts = Post.objects.filter(status='published')\
-                                .filter(tags__in=post_tags_ids) \
-                                .exclude(id=post.id)
-    similar_posts = similar_posts.annotate(same_tags=Count('tags')) \
-                                 .order_by('-same_tags', '-published')[:3]
+    similar_posts = (
+        Post.objects
+        .filter(status='published')
+        .filter(tags__in=post_tags_ids)
+        .exclude(id=post.id)
+    )
+    similar_posts = (
+        similar_posts
+        .annotate(same_tags=Count('tags'))
+        .order_by('-same_tags', '-published')[:3]
+    )
 
     # List of newest posts
-    newest_posts = Post.objects.exclude(id=post.id)\
-                               .exclude(id__in=similar_posts)\
-                               .order_by('-published')[:5-len(similar_posts)]
+    newest_posts = (
+        Post.objects
+        .exclude(id=post.id)
+        .exclude(id__in=similar_posts)
+        .order_by('-published')[:5-len(similar_posts)]
+    )
 
-    return render(request,
-                  'blog/post/detail.html',
-                  {'post': post,
-                   'similar_posts': similar_posts,
-                   'newest_posts': newest_posts
-                   })
+    return render(
+        request,
+        'blog/post/detail.html',
+        {
+            'post': post,
+            'similar_posts': similar_posts,
+            'newest_posts': newest_posts,
+        },
+    )
 
 
 def post_search(request):

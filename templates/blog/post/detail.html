@@ -26,16 +26,23 @@
 </div>
 
 <div class="container">
-    <div class="container-fluid mb-4 p-0 d-flex justify-content-center align-items-center">
-        <img class="img-fluid" src="{{ post.cover_image.url|urlencode }}">
+    <div class="mb-4">
+        <div class="d-flex justify-content-center align-items-center">
+            <img class="img-fluid" src="{{ post.cover_image.url|urlencode }}">
+        </div>
+        {% if post.cover_description %}
+            <div class="text-center mt-2">
+                <p class="text-muted mb-0">{{ post.cover_description }}</p>
+            </div>
+        {% endif %}
+        {% if post.cover_image_credits %}
+            <figure class="mb-0">
+                <figcaption class="blockquote-footer text-center">
+                    {{ post.cover_image_credits|safe }}
+                </figcaption>
+            </figure>
+        {% endif %}
     </div>
-    {% if post.cover_image_credits %}
-        <figure>
-            <figcaption class="blockquote-footer">
-                {{ post.cover_image_credits|safe }}
-            </figcaption>
-        </figure>
-    {% endif %}
     {{ post.body|safe|linebreaks }}
 </div>
 <div class="container">
