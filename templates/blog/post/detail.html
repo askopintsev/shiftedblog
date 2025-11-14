@@ -3,109 +3,123 @@
 {% block title %}{{ post.title }} | Shifted Stuff{% endblock %}
 
 {% block content %}
-<div class="container mt-2">
-    <div class="post-header">
-        <div class="postinfo row row-cols-auto my-0">
-            <p class="col text-muted my-0">{{ post.published|date:'d.m.Y' }}</p>
-            <p class="col text-muted my-0">{{ post.author|upper }}</p>
-        </div>
-        <div class="tags row row-cols-auto mt-1">
-            {% for tag in post.tags.all %}
-                <div class="col pe-0">
-                    <a href="{% url "blog:post_list_by_tag" tag.slug %}">
-                        <p class="tag">#{{ tag.name }}</p>
-                    </a>
+<div class="post-detail-wrapper">
+    <div class="container">
+        <div class="post-content-container">
+            <div class="post-header">
+                <div class="postinfo row row-cols-auto my-0">
+                    <p class="col text-muted my-0">{{ post.published|date:'d.m.Y' }}</p>
+                    <p class="col text-muted my-0">{{ post.author|upper }}</p>
                 </div>
-            {% if not forloop.last %}{% endif %}
-            {% endfor %}
-        </div>
-    </div>
-    <div class="post-body my-2">
-        <h2>{{ post.title }}</h2>
-    </div>
-</div>
-
-<div class="container">
-    <div class="mb-4">
-        <div class="d-flex justify-content-center align-items-center">
-            <img class="img-fluid" src="{{ post.cover_image.url|urlencode }}">
-        </div>
-        {% if post.cover_description %}
-            <div class="text-center mt-2">
-                <p class="text-muted mb-0">{{ post.cover_description }}</p>
+                <div class="tags row row-cols-auto mt-1">
+                    {% for tag in post.tags.all %}
+                        <div class="col pe-0">
+                            <a href="{% url "blog:post_list_by_tag" tag.slug %}">
+                                <p class="tag">#{{ tag.name }}</p>
+                            </a>
+                        </div>
+                    {% if not forloop.last %}{% endif %}
+                    {% endfor %}
+                </div>
             </div>
-        {% endif %}
-        {% if post.cover_image_credits %}
-            <figure class="mb-0">
-                <figcaption class="blockquote-footer text-center">
-                    {{ post.cover_image_credits|safe }}
-                </figcaption>
-            </figure>
-        {% endif %}
-    </div>
-    {{ post.body|safe|linebreaks }}
-</div>
-<div class="container">
-    <div class="share-social text-reset text-decoration-none">
-        {% include "blog/post/social_buttons.html" %}
-    </div>
-</div>
-
-<div class="container">
-    <hr class="my-4">
-    {% if similar_posts %}
-    <div class="similar-posts">
-        <h5>Рекомендую:</h5>
-        <div class="list-group">
-            {% for post in similar_posts %}
-
-            <a class="list-group-item list-group-item-action border-white" href="{{ post.get_absolute_url }}">
-                <div class="row g-0 border rounded overflow-hidden flex-md-row shadow-sm h-md-250 position-relative">
-                    <div class="col-auto d-none d-lg-block">
-                        <img alt="post_cover_image"
-                             class="img-responsive rounded mx-auto my-auto"
-                             height=158px
-                             src="{{ post.cover_image.url|urlencode }}"
-                             width=auto>
-                    </div>
-                    <div class="col p-4 d-flex flex-column position-static">
-                        <h5 class="mb-1 w-100">{{ post.title }}</h5>
-                        <p class="mb-1 w-100">{{ post.body|safe|truncatechars:300 }}</p>
-                    </div>
-                </div>
-            </a>
-            {% empty %}
-            Рекомендуемые посты отсутствуют
-            {% endfor %}
+            <div class="post-title-section">
+                <h2 class="post-title">{{ post.title }}</h2>
+            </div>
         </div>
     </div>
-    {% endif %}
-    {% if newest_posts %}
-    <div class="newest-posts my-3">
-        <h5>Новые посты:</h5>
-        <div class="list-group">
-            {% for post in newest_posts %}
 
-            <a class="list-group-item list-group-item-action border-white" href="{{ post.get_absolute_url }}">
-                <div class="row g-0 border rounded overflow-hidden flex-md-row shadow-sm h-md-250 position-relative">
-                    <div class="col-auto d-none d-lg-block">
-                        <img alt="post_cover_image"
-                             class="img-responsive rounded mx-auto my-auto"
-                             height=158px
-                             src="{{ post.cover_image.url|urlencode }}"
-                             width=auto>
+    <div class="post-cover-image-wrapper">
+        <div class="container">
+            <div class="post-cover-image-container">
+                <img class="post-cover-image" src="{{ post.cover_image.url|urlencode }}" alt="{{ post.title }}">
+                {% if post.cover_description %}
+                    <div class="post-cover-description">
+                        <p class="text-muted mb-0">{{ post.cover_description }}</p>
                     </div>
-                    <div class="col p-4 d-flex flex-column position-static">
-                        <h5 class="mb-1 w-100">{{ post.title }}</h5>
-                        <p class="mb-1 w-100">{{ post.body|safe|truncatechars:300 }}</p>
-                    </div>
-                </div>
-            </a>
-            {% empty %}
-            Новые посты отсутствуют
-            {% endfor %}
+                {% endif %}
+                {% if post.cover_image_credits %}
+                    <figure class="post-cover-credits">
+                        <figcaption class="blockquote-footer text-center">
+                            {{ post.cover_image_credits|safe }}
+                        </figcaption>
+                    </figure>
+                {% endif %}
+            </div>
         </div>
     </div>
-    {% endif %}
+
+    <div class="container">
+        <div class="post-content-container">
+            <div class="post-body-content">
+                {{ post.body|safe|linebreaks }}
+            </div>
+
+            <div class="post-share-section">
+                <div class="share-social text-reset text-decoration-none">
+                    {% include "blog/post/social_buttons.html" %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="post-recommendations-wrapper">
+        <hr class="my-4">
+        {% if similar_posts %}
+        <div class="similar-posts">
+            <h5>Рекомендую:</h5>
+            <div class="list-group">
+                {% for post in similar_posts %}
+
+                <a class="list-group-item list-group-item-action border-white" href="{{ post.get_absolute_url }}">
+                    <div class="row g-0 border rounded overflow-hidden flex-md-row shadow-sm h-md-250 position-relative">
+                        <div class="col-auto d-none d-lg-block">
+                            <img alt="post_cover_image"
+                                 class="img-responsive rounded mx-auto my-auto"
+                                 height=158px
+                                 src="{{ post.cover_image.url|urlencode }}"
+                                 width=auto>
+                        </div>
+                        <div class="col p-4 d-flex flex-column position-static">
+                            <h5 class="mb-1 w-100">{{ post.title }}</h5>
+                            <p class="mb-1 w-100">{{ post.body|safe|truncatechars:300 }}</p>
+                        </div>
+                    </div>
+                </a>
+                {% empty %}
+                Рекомендуемые посты отсутствуют
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% if newest_posts %}
+        <div class="newest-posts my-3">
+            <h5>Новые посты:</h5>
+            <div class="list-group">
+                {% for post in newest_posts %}
+
+                <a class="list-group-item list-group-item-action border-white" href="{{ post.get_absolute_url }}">
+                    <div class="row g-0 border rounded overflow-hidden flex-md-row shadow-sm h-md-250 position-relative">
+                        <div class="col-auto d-none d-lg-block">
+                            <img alt="post_cover_image"
+                                 class="img-responsive rounded mx-auto my-auto"
+                                 height=158px
+                                 src="{{ post.cover_image.url|urlencode }}"
+                                 width=auto>
+                        </div>
+                        <div class="col p-4 d-flex flex-column position-static">
+                            <h5 class="mb-1 w-100">{{ post.title }}</h5>
+                            <p class="mb-1 w-100">{{ post.body|safe|truncatechars:300 }}</p>
+                        </div>
+                    </div>
+                </a>
+                {% empty %}
+                Новые посты отсутствуют
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
 </div>
 {% endblock content %}
