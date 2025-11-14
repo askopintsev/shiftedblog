@@ -33,6 +33,9 @@
     <!-- CSS tweak for very custom css now for footer-->
     {% block css %}{% endblock css %}
 
+    <!-- Extra head content (meta tags, etc.) -->
+    {% block extra_head %}{% endblock extra_head %}
+
     <title>{% block title %}{% endblock %}</title>
 </head>
 <body class="d-flex flex-column min-vh-100">
