@@ -47,6 +47,7 @@ urlpatterns = [
         name='django.contrib.sitemaps.views.sitemap',
     ),
     path('', include((two_factor.urls.urlpatterns), namespace='two_factor')),
+    path('robots.txt', TemplateView.as_view(template_name='static_html/robots.txt', content_type='text/plain')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT,)
 
 if settings.DZEN_VERIFICATION_FILE:
