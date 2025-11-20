@@ -159,4 +159,17 @@
         {% endif %}
     </div>
 </div>
+
+<!-- Image Lightbox Modal -->
+<div class="image-lightbox-modal" id="imageLightboxModal">
+    <div class="image-lightbox-content">
+        <img id="lightboxImage" alt="Enlarged image">
+    </div>
+    <span class="image-lightbox-close" aria-label="Close">&times;</span>
+</div>
+
 {% endblock content %}
+
+{% block extra_js %}
+<script src="{% static 'js/image-lightbox.js' %}"></script>
+{% endblock extra_js %}
