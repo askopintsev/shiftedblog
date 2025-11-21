@@ -100,3 +100,4 @@ static_blog/img/template/**
 staticfiles/
 
 zen_*
+backup_*
