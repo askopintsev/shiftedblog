@@ -5,7 +5,7 @@
     <nav class="navbar navbar-expand-lg navbar-light">  <!--bg-light">-->
         <div class="container-fluid">
             <a class="navbar-brand" href="/">
-                <img alt="" src="{% static 'img/template/' %}new_logo_1.png" width="20%">
+                <img alt="" src="{% static 'img/template/' %}new_logo_1.png" width="100px">
             </a>
             <button aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Переключатель навигации" class="navbar-toggler"
                     data-bs-target="#navbarNavDropdown" data-bs-toggle="collapse" type="button">
@@ -30,11 +30,13 @@
                             мне</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/search' %} active {% endif %}"
-                           href="/search/">
+                        <button class="nav-link search-nav-button" 
+                                type="button" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#searchModal">
                            <i class="fa-solid fa-magnifying-glass"></i>
                             Поиск
-                        </a>
+                        </button>
                     </li>
                 </ul>
                 <ul class="navbar-nav sm-icons">

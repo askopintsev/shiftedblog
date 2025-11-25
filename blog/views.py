@@ -106,7 +106,8 @@ def post_search(request):
             query = form.cleaned_data['query']
             search_vector = SearchVector('title', weight='A') + SearchVector('body', weight='B')
             search_query = SearchQuery(query)
-            results = Post.objects.annotate(rank=SearchRank(search_vector, search_query))\
+            results = Post.objects.filter(status='published')\
+                                  .annotate(rank=SearchRank(search_vector, search_query))\
                                   .filter(rank__gte=0.3)\
                                   .order_by('-rank')
 

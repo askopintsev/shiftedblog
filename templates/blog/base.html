@@ -1,4 +1,3 @@
-{% load blog_tags %}
 {% load static %}
 
 <!DOCTYPE html>
@@ -68,6 +67,58 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/js/bootstrap.min.js" integrity="sha384-nsg8ua9HAw1y0W1btsyWgBklPnCUAFLuTMS2G72MMONqmOymq585AcH49TLBQObG" crossorigin="anonymous"></script>
 -->
 <script src="https://kit.fontawesome.com/caf8af2354.js" crossorigin="anonymous"></script>
+
+<!-- Search Modal -->
+<div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border: none; background: transparent; box-shadow: none;">
+            <div class="modal-body p-0">
+                <form action="{% url 'blog:post_search' %}" method="get" class="search-form">
+                    <div class="input-group">
+                        <input type="text" 
+                               name="query" 
+                               class="form-control form-control-lg" 
+                               placeholder="Введите запрос..." 
+                               autocomplete="off"
+                               autofocus
+                               style="border-radius: 8px; border: 2px solid rgba(0,0,0,0.1); padding: 1rem 1.5rem; font-size: 1.1rem;">
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-focus search input when modal opens
+document.addEventListener('DOMContentLoaded', function() {
+    const searchModal = document.getElementById('searchModal');
+    const searchInput = searchModal.querySelector('input[name="query"]');
+    
+    searchModal.addEventListener('shown.bs.modal', function () {
+        searchInput.focus();
+    });
+    
+    // Submit form on Enter key
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            this.closest('form').submit();
+        }
+    });
+    
+    // Close modal on Escape key
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modal = bootstrap.Modal.getInstance(searchModal);
+            if (modal) {
+                modal.hide();
+            }
+        }
+    });
+});
+</script>
+
 {% block extra_js %}{% endblock extra_js %}
 </body>
 </html>

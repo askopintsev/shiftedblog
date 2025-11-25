@@ -18,7 +18,7 @@
                 <a href="{{ post.get_absolute_url }}">
                     <img class="card-img-top" src="{{ post.cover_image.url|urlencode }}" alt="{{ post.title }}">
                 </a>
-                <div class="card-body">
+                <div class="card-body d-flex flex-column">
                     <a href="{{ post.get_absolute_url }}" class="text-decoration-none text-reset">
                         <h5 class="card-title fw-bolder">
                              {{ post.title }}
@@ -38,9 +38,11 @@
                         {% endfor %}
                     </div>
                     <p class="card-text">{{ post.body|safe|truncatewords:30|linebreaks }}</p>
-                    <a href="{{ post.get_absolute_url }}" class="btn btn-light shadow-sm">
-                        Читать далее
-                    </a>
+                    <div class="text-end mt-auto">
+                        <a href="{{ post.get_absolute_url }}" class="btn btn-light shadow-sm">
+                            Читать далее
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
