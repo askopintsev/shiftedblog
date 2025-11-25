@@ -320,6 +320,33 @@ a.btn.btn-light.shadow-sm{
     color: #212529;
 }
 
+/* Post List Cards */
+.row .card {
+    display: flex;
+    flex-direction: column;
+}
+
+.row .card .card-body {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.row .card .card-img-top {
+    height: 200px;
+    object-fit: cover;
+    width: 100%;
+}
+
+.card-body blockquote {
+    border-left: 4px solid #e2e6e9;
+    padding-left: 1rem;
+    margin: 0.75rem 0;
+    font-style: italic;
+    color: #495057;
+    font-size: 0.9rem;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .post-content-container {

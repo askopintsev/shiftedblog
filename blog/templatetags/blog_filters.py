@@ -1,6 +1,5 @@
 import re
 from django import template
-from django.utils.text import Truncator
 
 register = template.Library()
 
