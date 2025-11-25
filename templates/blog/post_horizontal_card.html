@@ -1,0 +1,25 @@
+{% load static %}
+{% load blog_filters %}
+
+<figure class="shb-card shb-bookmark-card">
+    <a class="shb-bookmark-container" href="{{ post.get_absolute_url }}">
+        <div class="shb-bookmark-thumbnail">
+            {% if post.cover_image %}
+            <img src="{{ post.cover_image.url|urlencode }}" alt="{{ post.title }}">
+            {% endif %}
+        </div>
+        <div class="shb-bookmark-content">
+            <div class="shb-bookmark-title">{{ post.title }}</div>
+            <div class="shb-bookmark-description">
+                {% if post.short_description %}
+                    {{ post.short_description|linebreaks }}
+                {% else %}
+                    {{ post.body|striptags_preserve_paragraphs|truncatewords_preserve_newlines:30|linebreaks }}
+                {% endif %}
+            </div>
+            <div class="shb-bookmark-metadata">
+                <span class="shb-bookmark-publisher">{{ post.published|date:"d.m.Y" }}</span>
+            </div>
+        </div>
+    </a>
+</figure>

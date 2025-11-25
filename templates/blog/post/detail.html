@@ -101,60 +101,25 @@
 </div>
 
 <div class="container">
-    <div class="post-recommendations-wrapper">
-        <hr class="my-4">
+    <div class="post-content-container">
         {% if similar_posts %}
         <div class="similar-posts">
-            <h5>Рекомендую:</h5>
-            <div class="list-group">
-                {% for post in similar_posts %}
-
-                <a class="list-group-item list-group-item-action border-white" href="{{ post.get_absolute_url }}">
-                    <div class="row g-0 border rounded overflow-hidden flex-md-row shadow-sm h-md-250 position-relative">
-                        <div class="col-auto d-none d-lg-block">
-                            <img alt="post_cover_image"
-                                 class="img-responsive rounded mx-auto my-auto"
-                                 height=158px
-                                 src="{{ post.cover_image.url|urlencode }}"
-                                 width=auto>
-                        </div>
-                        <div class="col p-4 d-flex flex-column position-static">
-                            <h5 class="mb-1 w-100">{{ post.title }}</h5>
-                            <p class="mb-1 w-100">{{ post.body|safe|truncatechars:300 }}</p>
-                        </div>
-                    </div>
-                </a>
-                {% empty %}
-                Рекомендуемые посты отсутствуют
-                {% endfor %}
-            </div>
+            <h3>Рекомендую:</h3>
+            {% for post in similar_posts %}
+                {% include "blog/post_horizontal_card.html" with post=post %}
+            {% empty %}
+                <p>Рекомендуемые посты отсутствуют.</p>
+            {% endfor %}
         </div>
         {% endif %}
         {% if newest_posts %}
-        <div class="newest-posts my-3">
-            <h5>Новые посты:</h5>
-            <div class="list-group">
-                {% for post in newest_posts %}
-
-                <a class="list-group-item list-group-item-action border-white" href="{{ post.get_absolute_url }}">
-                    <div class="row g-0 border rounded overflow-hidden flex-md-row shadow-sm h-md-250 position-relative">
-                        <div class="col-auto d-none d-lg-block">
-                            <img alt="post_cover_image"
-                                 class="img-responsive rounded mx-auto my-auto"
-                                 height=158px
-                                 src="{{ post.cover_image.url|urlencode }}"
-                                 width=auto>
-                        </div>
-                        <div class="col p-4 d-flex flex-column position-static">
-                            <h5 class="mb-1 w-100">{{ post.title }}</h5>
-                            <p class="mb-1 w-100">{{ post.body|safe|truncatechars:300 }}</p>
-                        </div>
-                    </div>
-                </a>
-                {% empty %}
-                Новые посты отсутствуют
-                {% endfor %}
-            </div>
+        <div class="similar-posts">
+            <h3>Новые посты:</h3>
+            {% for post in newest_posts %}
+                {% include "blog/post_horizontal_card.html" with post=post %}
+            {% empty %}
+                <p>Новые посты отсутствуют.</p>
+            {% endfor %}
         </div>
         {% endif %}
     </div>
