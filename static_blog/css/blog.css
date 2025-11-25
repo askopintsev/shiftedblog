@@ -284,6 +284,42 @@ a.btn.btn-light.shadow-sm{
     color: #212529;
 }
 
+/* Search Results Page */
+.search-results-header {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+.search-results-header h3 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-bottom: 0;
+    color: #212529;
+}
+
+.search-results {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+.search-results .no-results {
+    color: #6c757d;
+    font-size: 1rem;
+    margin-top: 2rem;
+}
+
+.search-again-section {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid #e2e6e9;
+}
+
+.search-again-section h5 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #212529;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .post-content-container {
@@ -574,4 +610,65 @@ a.btn.btn-light.shadow-sm{
     .shb-bookmark-title {
         font-size: 1.125rem;
     }
+}
+
+/* Search Modal */
+#searchModal .modal-dialog {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+#searchModal .modal-content {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+#searchModal .modal-body {
+    padding: 2rem 1rem;
+}
+
+#searchModal .form-control {
+    background-color: #fff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#searchModal .form-control:focus {
+    border-color: rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1);
+    outline: 0;
+}
+
+#searchModal .modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Search button in navbar */
+.nav-item .search-nav-button {
+    background: none;
+    border: none;
+    padding: 0.5rem 1rem;
+    color: inherit;
+    text-decoration: none;
+    display: block;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    font-size: inherit;
+    line-height: inherit;
+}
+
+.nav-item .search-nav-button:hover {
+    color: inherit;
+    opacity: 0.8;
+}
+
+.nav-item .search-nav-button:focus {
+    box-shadow: none;
+    outline: none;
+}
+
+.nav-item .search-nav-button:active {
+    background: none;
+    border: none;
 }

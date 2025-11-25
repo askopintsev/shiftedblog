@@ -30,11 +30,13 @@
                             мне</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/search' %} active {% endif %}"
-                           href="/search/">
+                        <button class="nav-link search-nav-button" 
+                                type="button" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#searchModal">
                            <i class="fa-solid fa-magnifying-glass"></i>
                             Поиск
-                        </a>
+                        </button>
                     </li>
                 </ul>
                 <ul class="navbar-nav sm-icons">
