@@ -14,8 +14,11 @@
                     <a href="/">
                         <img alt="logo" src="{% static 'img/template/' %}new_logo_1.png" width="42%">
                     </a>
-                    <div class="footer-copyright pt-3">© <a class="text-reset text-decoration-none" href="/">Shifted Stuff</a>, 2020-{%now "Y" %}.</br>Все права защищены. 
-
+                    <div class="footer-copyright pt-3">
+                        © {% now "Y" %} <a class="text-reset text-decoration-none" href="/">Shifted Stuff</a>.</br>
+                        Автор: Александр Скопинцев</br>
+                        Все материалы лицензированы под <a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ru">CC BY-NC-ND 4.0</a>.</br>
+                        <img alt="CC BY-NC-ND 4.0" src="https://licensebuttons.net/l/by-nc-nd/4.0/80x15.png"/>
                     </div>
                 </div>
                 <!-- Grid column -->
