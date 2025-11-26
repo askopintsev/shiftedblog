@@ -289,6 +289,13 @@ a.btn.btn-light.shadow-sm{
     display: block;
     margin: 0 auto;
     border-radius: 4px;
+    /* Color grade filter for cohesive look */
+    filter: brightness(1.02) contrast(1.08) saturate(0.88);
+    transition: filter 0.3s ease;
+}
+
+.post-cover-image:hover {
+    filter: brightness(1.05) contrast(1.1) saturate(0.92);
 }
 
 .post-cover-description {
@@ -562,6 +569,13 @@ a.btn.btn-light.shadow-sm{
     object-fit: cover;
     object-position: center;
     display: block;
+    /* Color grade filter for cohesive look - matches detail page */
+    filter: brightness(1.02) contrast(1.08) saturate(0.88);
+    transition: filter 0.3s ease;
+}
+
+.row .card:hover .card-img-top {
+    filter: brightness(1.05) contrast(1.1) saturate(0.92);
 }
 
 /* Small screens (≥ 576px) - 2 columns (col-sm-6) */
@@ -851,6 +865,13 @@ a.btn.btn-light.shadow-sm{
     height: 100%;
     object-fit: cover;
     border-radius: var(--bookmark-radius) 0 0 var(--bookmark-radius);  /* Rounded left corners */
+    /* Color grade filter for cohesive look */
+    filter: brightness(1.02) contrast(1.08) saturate(0.88);
+    transition: filter 0.3s ease;
+}
+
+.shb-bookmark-container:hover .shb-bookmark-thumbnail img {
+    filter: brightness(1.05) contrast(1.1) saturate(0.92);
 }
 
 /* Content (right side) */
