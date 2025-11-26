@@ -102,6 +102,10 @@ class Post(models.Model):
         blank=True,
         default=None,
     )
+    views = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Views count',
+    )
 
     class Meta:
         app_label = 'blog'

@@ -61,6 +61,10 @@ def post_detail(request, slug):
         slug=slug,
         status='published',
     )
+    
+    # Increment views count
+    post.views += 1
+    post.save(update_fields=['views'])
 
     # List of similar posts
     post_tags_ids = post.tags.values_list('id', flat=True)
