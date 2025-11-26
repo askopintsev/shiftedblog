@@ -78,3 +78,22 @@ def truncatewords_preserve_newlines(value, arg):
     
     return '\n\n'.join(result_paragraphs)
 
+
+@register.filter
+def reading_time(value):
+    """
+    Calculate approximate reading time in minutes based on word count.
+    Assumes average reading speed of 200 words per minute.
+    """
+    if not value:
+        return 1
+    
+    from django.utils.html import strip_tags
+    # Strip HTML tags to get plain text
+    text = strip_tags(str(value))
+    # Count words
+    word_count = len(text.split())
+    # Calculate minutes (200 words per minute)
+    minutes = max(1, round(word_count / 200))
+    return minutes
+

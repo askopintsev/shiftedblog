@@ -1,5 +1,6 @@
 {% extends "blog/base.html" %}
 {% load static %}
+{% load blog_filters %}
 
 {% block title %}{{ post.title }} | Shifted Stuff{% endblock %}
 
@@ -56,6 +57,7 @@
                 <div class="postinfo row row-cols-auto my-0">
                     <p class="col text-muted my-0">{{ post.published|date:'d.m.Y' }}</p>
                     <p class="col text-muted my-0">{{ post.author }}</p>
+                    <p class="col text-muted my-0"><i class="fa-regular fa-clock"></i> {{ post.body|reading_time }} мин чтения</p>
                 </div>
                 <div class="tags row row-cols-auto mt-1">
                     {% for tag in post.tags.all %}
