@@ -97,3 +97,20 @@ def reading_time(value):
     minutes = max(1, round(word_count / 200))
     return minutes
 
+
+@register.filter
+def add_space_after_period(value):
+    """
+    Add a space after each period (.) when followed by a letter (character).
+    Supports both Latin and Cyrillic letters.
+    """
+    if not value:
+        return ''
+    
+    value = str(value)
+    # Add space after period if followed by a letter (both Latin and Cyrillic)
+    # Pattern: period followed by a letter (a-z, A-Z, а-я, А-Я, ё, Ё, etc.)
+    result = re.sub(r'\.([a-zA-Zа-яА-ЯёЁ])', r'. \1', value)
+    
+    return result
+

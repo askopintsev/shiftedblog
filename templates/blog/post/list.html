@@ -40,7 +40,7 @@
                         {% if not forloop.last %}{% endif %}
                         {% endfor %}
                     </div>
-                    <div class="card-text">{{ post.body|striptags|truncatewords:30|linebreaks }}</div>
+                    <div class="card-text">{{ post.body|striptags|add_space_after_period|truncatewords:30|linebreaks }}</div>
                     <div class="text-end mt-auto">
                         <a href="{{ post.get_absolute_url }}" class="btn btn-light shadow-sm">
                             Читать далее
