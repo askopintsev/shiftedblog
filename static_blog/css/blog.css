@@ -431,10 +431,21 @@ a.btn.btn-light.shadow-sm{
     color: #212529;
 }
 
-/* Post List Cards */
+/* Post List Cards - Responsive Image Sizing */
 .row .card {
     display: flex;
     flex-direction: column;
+    height: 100%;
+}
+
+/* Base: Mobile (< 576px) - 1 column, full width */
+.row .card > a {
+    display: block;
+    width: 100%;
+    height: 180px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background-color: #f8f9fa;
 }
 
 .row .card .card-body {
@@ -444,9 +455,49 @@ a.btn.btn-light.shadow-sm{
 }
 
 .row .card .card-img-top {
-    height: 200px;
-    object-fit: cover;
     width: 100%;
+    max-width: 100%;
+    height: 180px;
+    max-height: 180px;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+}
+
+/* Small screens (≥ 576px) - 2 columns (col-sm-6) */
+@media (min-width: 576px) {
+    .row .card > a {
+        height: 200px;
+    }
+    
+    .row .card .card-img-top {
+        height: 200px;
+        max-height: 200px;
+    }
+}
+
+/* Large screens (≥ 992px) - 3 columns (col-lg-4) */
+@media (min-width: 992px) {
+    .row .card > a {
+        height: 220px;
+    }
+    
+    .row .card .card-img-top {
+        height: 220px;
+        max-height: 220px;
+    }
+}
+
+/* Extra large screens (≥ 1200px) - 3 columns, larger images */
+@media (min-width: 1200px) {
+    .row .card > a {
+        height: 240px;
+    }
+    
+    .row .card .card-img-top {
+        height: 240px;
+        max-height: 240px;
+    }
 }
 
 .card-body blockquote {

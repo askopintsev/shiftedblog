@@ -8,7 +8,9 @@
 <div class="container mt-2">
     {% if tag %}
     <div class="row my-2">
-        <h4>Посты с тегом <i>#{{ tag.name }}</i></h4>
+        <div class="col-12">
+            <h4>Посты с тегом <i>#{{ tag.name }}</i></h4>
+        </div>
     </div>
     {% endif %}
     <div class="row">
@@ -37,7 +39,7 @@
                         {% if not forloop.last %}{% endif %}
                         {% endfor %}
                     </div>
-                    <p class="card-text">{{ post.body|safe|truncatewords:30|linebreaks }}</p>
+                    <div class="card-text">{{ post.body|striptags|truncatewords:30|linebreaks }}</div>
                     <div class="text-end mt-auto">
                         <a href="{{ post.get_absolute_url }}" class="btn btn-light shadow-sm">
                             Читать далее
