@@ -28,6 +28,14 @@ class SeriesAdmin(admin.ModelAdmin):
     ordering = ('name',)
 
 
+@admin.register(models.PostSeries)
+class PostSeriesAdmin(admin.ModelAdmin):
+    list_display = ('post', 'series', 'order_position')
+    list_filter = ('series',)
+    search_fields = ('post__title', 'series__name')
+    ordering = ('series', 'order_position')
+
+
 @admin.register(models.SkillGroup)
 class SkillGroupAdmin(admin.ModelAdmin):
     list_display = ('name',)

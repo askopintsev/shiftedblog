@@ -39,6 +39,34 @@ class Series(models.Model):
         return self.name
 
 
+class PostSeries(models.Model):
+    """Through model for Post and Series with order position"""
+    post = models.ForeignKey(
+        'Post',
+        on_delete=models.CASCADE,
+        related_name='post_series',
+    )
+    series = models.ForeignKey(
+        Series,
+        on_delete=models.CASCADE,
+        related_name='series_posts',
+    )
+    order_position = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        default=None,
+        verbose_name='Order position in series',
+    )
+
+    class Meta:
+        app_label = 'blog'
+        unique_together = [['series', 'order_position']]
+        ordering = ['series', 'order_position']
+
+    def __str__(self):
+        return f'{self.series.name} - {self.post.title} (Position: {self.order_position})'
+
+
 class Post(models.Model):
     """Model for post objects"""
 
@@ -88,19 +116,21 @@ class Post(models.Model):
         on_delete=models.CASCADE,
         related_name='blog_category',
     )
-    series = models.ForeignKey(
+    series = models.ManyToManyField(
         Series,
-        on_delete=models.CASCADE,
+        through='PostSeries',
         related_name='blog_series',
-        null=True,
         blank=True,
-        default=None,
     )
     short_description = models.CharField(
         max_length=300,
         null=True,
         blank=True,
         default=None,
+    )
+    views = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Views count',
     )
 
     class Meta:
@@ -118,3 +148,47 @@ class Post(models.Model):
 
     def get_image_url(self):
         return str(self.cover_image)
+
+    def get_series_position(self, series):
+        """Get the order position of this post in a given series"""
+        try:
+            post_series = PostSeries.objects.get(post=self, series=series)
+            return post_series.order_position
+        except PostSeries.DoesNotExist:
+            return None
+
+    def get_previous_post_in_series(self, series):
+        """Get the previous post in the series based on order position"""
+        try:
+            current_position = self.get_series_position(series)
+            if current_position is None:
+                return None
+            
+            previous_post_series = PostSeries.objects.filter(
+                series=series,
+                order_position__lt=current_position,
+            ).order_by('-order_position').first()
+            
+            if previous_post_series:
+                return previous_post_series.post
+            return None
+        except Exception:
+            return None
+
+    def get_next_post_in_series(self, series):
+        """Get the next post in the series based on order position"""
+        try:
+            current_position = self.get_series_position(series)
+            if current_position is None:
+                return None
+            
+            next_post_series = PostSeries.objects.filter(
+                series=series,
+                order_position__gt=current_position,
+            ).order_by('order_position').first()
+            
+            if next_post_series:
+                return next_post_series.post
+            return None
+        except Exception:
+            return None

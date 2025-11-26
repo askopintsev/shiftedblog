@@ -78,3 +78,39 @@ def truncatewords_preserve_newlines(value, arg):
     
     return '\n\n'.join(result_paragraphs)
 
+
+@register.filter
+def reading_time(value):
+    """
+    Calculate approximate reading time in minutes based on word count.
+    Assumes average reading speed of 200 words per minute.
+    """
+    if not value:
+        return 1
+    
+    from django.utils.html import strip_tags
+    # Strip HTML tags to get plain text
+    text = strip_tags(str(value))
+    # Count words
+    word_count = len(text.split())
+    # Calculate minutes (200 words per minute)
+    minutes = max(1, round(word_count / 200))
+    return minutes
+
+
+@register.filter
+def add_space_after_period(value):
+    """
+    Add a space after each period (.) when followed by a letter (character).
+    Supports both Latin and Cyrillic letters.
+    """
+    if not value:
+        return ''
+    
+    value = str(value)
+    # Add space after period if followed by a letter (both Latin and Cyrillic)
+    # Pattern: period followed by a letter (a-z, A-Z, а-я, А-Я, ё, Ё, etc.)
+    result = re.sub(r'\.([a-zA-Zа-яА-ЯёЁ])', r'. \1', value)
+    
+    return result
+

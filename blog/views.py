@@ -61,6 +61,26 @@ def post_detail(request, slug):
         slug=slug,
         status='published',
     )
+    
+    # Increment views count
+    post.views += 1
+    post.save(update_fields=['views'])
+
+    # Get series navigation (previous/next posts)
+    previous_post = None
+    next_post = None
+    current_series = None
+    
+    # Get the first series this post belongs to (if any)
+    post_series = post.post_series.filter(order_position__isnull=False).first()
+    if post_series:
+        current_series = post_series.series
+        previous_post = post.get_previous_post_in_series(current_series)
+        if previous_post and previous_post.status != 'published':
+            previous_post = None
+        next_post = post.get_next_post_in_series(current_series)
+        if next_post and next_post.status != 'published':
+            next_post = None
 
     # List of similar posts
     post_tags_ids = post.tags.values_list('id', flat=True)
@@ -91,6 +111,9 @@ def post_detail(request, slug):
             'post': post,
             'similar_posts': similar_posts,
             'newest_posts': newest_posts,
+            'previous_post': previous_post,
+            'next_post': next_post,
+            'current_series': current_series,
         },
     )
 

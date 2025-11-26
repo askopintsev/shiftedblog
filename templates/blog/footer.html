@@ -14,8 +14,11 @@
                     <a href="/">
                         <img alt="logo" src="{% static 'img/template/' %}new_logo_1.png" width="42%">
                     </a>
-                    <div class="footer-copyright pt-3">© <a class="text-reset text-decoration-none" href="/">Shifted Stuff</a>, 2020-{%now "Y" %}.</br>Все права защищены. 
-
+                    <div class="footer-copyright pt-3">
+                        © {% now "Y" %} <a class="text-reset text-decoration-none" href="/">Shifted Stuff</a>.</br>
+                        Автор: Александр Скопинцев</br>
+                        Все материалы лицензированы под <a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ru">CC BY-NC-ND 4.0</a>.</br>
+                        <img alt="CC BY-NC-ND 4.0" src="https://licensebuttons.net/l/by-nc-nd/4.0/80x15.png"/>
                     </div>
                 </div>
                 <!-- Grid column -->
@@ -26,15 +29,25 @@
                     <h6 class="text-uppercase fw-bold mb-4">
                         Разделы
                     </h6>
-                    <p>
-                        <a class="text-reset" href="/category/blog/">Блог</a>
-                    </p>
-                    <p>
-                        <a class="text-reset" href="/category/projects/">Проекты</a>
-                    </p>
-                    <p>
-                        <a class="text-reset" href="/about">Обо мне</a>
-                    </p>
+                    <div class="pb-3">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <a class="text-reset text-decoration-none" href="/category/blog/">
+                                    <i class="fa-solid fa-newspaper me-2"></i>Блог
+                                </a>
+                            </li>
+                            <li class="mb-2">
+                                <a class="text-reset text-decoration-none" href="/category/projects/">
+                                    <i class="fa-solid fa-project-diagram me-2"></i>Проекты
+                                </a>
+                            </li>
+                            <li class="mb-2">
+                                <a class="text-reset text-decoration-none" href="/about">
+                                    <i class="fa-solid fa-user me-2"></i>Обо мне
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
                 <!-- Grid column -->
 
@@ -74,7 +87,7 @@
             <!-- Grid row -->
         </div>
     </section>
-    <section class="text-center">version 0.1.1</section>
+    <section class="text-center">version 0.1.2</section>
 </footer>
 <!-- Footer -->
 {% endblock %}
