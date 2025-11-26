@@ -113,6 +113,12 @@
     color: #212529
 }
 
+/* Post card title hover effect */
+.row .card .card-body a:hover .card-title,
+.row .card .card-body a:hover h5.card-title {
+    text-decoration: underline;
+}
+
 /*Article card*/
 .tag{
     border: 0;
