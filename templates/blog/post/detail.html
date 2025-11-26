@@ -99,9 +99,21 @@
 
     <div class="container">
         <div class="post-content-container">
+            {% if previous_post %}
+            <div class="series-navigation-wrapper series-navigation-top">
+                {% include "blog/post/series_navigation_card.html" with nav_post=previous_post is_previous=True %}
+            </div>
+            {% endif %}
+            
             <div class="post-body-content">
                 {{ post.body|safe|linebreaks }}
             </div>
+
+            {% if next_post %}
+            <div class="series-navigation-wrapper series-navigation-bottom">
+                {% include "blog/post/series_navigation_card.html" with nav_post=next_post is_previous=False %}
+            </div>
+            {% endif %}
 
             <div class="post-share-section">
                 <div class="share-social text-reset text-decoration-none">

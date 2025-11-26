@@ -1120,3 +1120,163 @@ a.btn.btn-light.shadow-sm{
         font-size: 16px;
     }
 }
+
+/* Series Navigation Cards */
+.series-navigation-wrapper {
+    margin: 2rem 0;
+}
+
+.series-navigation-top {
+    margin-top: 0;
+    margin-bottom: 2rem;
+}
+
+.series-navigation-bottom {
+    margin-top: 2rem;
+    margin-bottom: 0;
+}
+
+.series-navigation-card {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.series-navigation-card:hover {
+    background-color: #e9ecef;
+    border-color: #dee2e6;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.series-nav-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.series-nav-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.series-nav-previous .series-nav-label {
+    justify-content: flex-start;
+}
+
+.series-nav-next .series-nav-label {
+    justify-content: flex-end;
+}
+
+.series-nav-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.series-nav-link:hover {
+    text-decoration: none;
+}
+
+.series-nav-card {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.series-nav-image {
+    flex-shrink: 0;
+    width: 120px;
+    height: 80px;
+    border-radius: 6px;
+    overflow: hidden;
+    background-color: #dee2e6;
+}
+
+.series-nav-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.series-nav-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.series-nav-title {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #212529;
+    margin: 0;
+}
+
+.series-nav-description {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: #6c757d;
+    margin: 0;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .series-navigation-wrapper {
+        margin: 1.5rem 0;
+    }
+    
+    .series-navigation-top {
+        margin-bottom: 1.5rem;
+    }
+    
+    .series-navigation-bottom {
+        margin-top: 1.5rem;
+    }
+    
+    .series-navigation-card {
+        padding: 0.875rem;
+    }
+    
+    .series-nav-card {
+        gap: 0.75rem;
+    }
+    
+    .series-nav-image {
+        width: 100px;
+        height: 70px;
+    }
+    
+    .series-nav-title {
+        font-size: 0.9375rem;
+    }
+    
+    .series-nav-description {
+        font-size: 0.8125rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .series-nav-card {
+        flex-direction: column;
+    }
+    
+    .series-nav-image {
+        width: 100%;
+        height: 150px;
+    }
+    
+    .series-nav-label {
+        font-size: 0.8125rem;
+    }
+}
