@@ -1280,3 +1280,516 @@ a.btn.btn-light.shadow-sm{
         font-size: 0.8125rem;
     }
 }
+
+/* Two-Factor Authentication Pages */
+.two-factor-body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    background: #ffffff;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    color: #212529;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.two-factor-wrapper {
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.two-factor-container {
+    display: grid;
+    flex-direction: column;
+    gap: 2.5rem;
+}
+
+/* Logo Section */
+.two-factor-logo {
+    text-align: center;
+    margin-bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.two-factor-logo a {
+    display: inline-block;
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+}
+
+.two-factor-logo a:hover {
+    opacity: 0.8;
+}
+
+.two-factor-logo-img {
+    max-width: 80px;
+    width: 80px;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+
+/* Content Card */
+.two-factor-content {
+    width: 100%;
+    padding-left: 0;
+    margin-left: 0;
+}
+
+/* Remove left padding and margin on large screens */
+@media (min-width: 768px) {
+    .two-factor-content {
+        padding-left: 0 !important;
+        margin-left: 0 !important;
+    }
+    
+    .two-factor-content .container {
+        padding-left: 0 !important;
+        margin-left: 0 !important;
+    }
+    
+    .two-factor-content .row {
+        margin-left: 0 !important;
+    }
+    
+    .two-factor-content .col-md-5,
+    .two-factor-content .col-md-5.offset-md-3 {
+        padding-left: 0 !important;
+        margin-left: 0 !important;
+    }
+}
+
+.two-factor-card {
+    background: transparent;
+    border: none;
+    padding: 0;
+    box-shadow: none;
+    width: 100%;
+}
+
+/* Form Styling */
+.two-factor-card h1,
+.two-factor-card h2,
+.two-factor-card h3,
+.two-factor-card h4 {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #212529;
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.03em;
+}
+
+.two-factor-card h1 {
+    font-size: 2rem;
+    text-align: left;
+    margin-bottom: 0.75rem;
+}
+
+.two-factor-card h2 {
+    font-size: 1.75rem;
+    margin-bottom: 1rem;
+}
+
+.two-factor-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.two-factor-card p {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: #6c757d;
+    margin-bottom: 1.5rem;
+}
+
+/* Ensure "Enter your credentials" stays on one line */
+.two-factor-card p:first-of-type,
+.two-factor-content .container .row .col-md-5 p:first-of-type,
+.two-factor-content p:first-of-type {
+    white-space: nowrap;
+    overflow: visible;
+    margin-bottom: 2rem;
+    color: #495057;
+}
+
+/* Ensure it stays on one line specifically for large screens */
+@media (min-width: 768px) {
+    .two-factor-card p:first-of-type,
+    .two-factor-content .container .row .col-md-5 p:first-of-type,
+    .two-factor-content p:first-of-type {
+        white-space: nowrap !important;
+        overflow: visible;
+    }
+}
+
+.two-factor-card .form-label,
+.two-factor-card label {
+    font-weight: 500;
+    color: #212529;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    display: block;
+    width: 100%;
+}
+
+.two-factor-card .form-control,
+.two-factor-card input[type="text"],
+.two-factor-card input[type="email"],
+.two-factor-card input[type="password"],
+.two-factor-card input[type="tel"] {
+    border: 1.5px solid #e9ecef;
+    border-radius: 4px;
+    padding: 0.75rem 0.875rem;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: #212529;
+    background-color: #fff;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    width: 100%;
+    display: block;
+    font-family: inherit;
+}
+
+.two-factor-card .form-control:focus,
+.two-factor-card input:focus {
+    border-color: #212529;
+    box-shadow: 0 0 0 2px rgba(33, 37, 41, 0.1);
+    outline: 0;
+}
+
+.two-factor-card .form-control::placeholder {
+    color: #adb5bd;
+    opacity: 1;
+}
+
+.two-factor-card .form-text {
+    font-size: 0.8125rem;
+    color: #6c757d;
+    margin-top: 0.5rem;
+}
+
+.two-factor-card .btn {
+    border-radius: 4px;
+    padding: 0.75rem 1.25rem;
+    font-weight: 500;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    transition: all 0.2s ease;
+    border: none;
+    font-family: inherit;
+}
+
+.two-factor-card .btn-primary {
+    background-color: #212529;
+    color: #fff;
+    width: 100%;
+    margin-top: 1.5rem;
+    margin-bottom: 0;
+}
+
+.two-factor-card .btn-primary:hover {
+    background-color: #000;
+    color: #fff;
+}
+
+.two-factor-card .btn-secondary {
+    background-color: #6c757d;
+    color: #fff;
+}
+
+.two-factor-card .btn-secondary:hover {
+    background-color: #5a6268;
+    color: #fff;
+}
+
+.two-factor-card .btn-link {
+    color: #212529;
+    text-decoration: none;
+    padding: 0;
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+
+.two-factor-card .btn-link:hover {
+    color: #000;
+    text-decoration: underline;
+}
+
+/* Alert Messages */
+.two-factor-card .alert {
+    border-radius: 4px;
+    border: none;
+    padding: 0.875rem 1rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.two-factor-card .alert-success {
+    background-color: #d1e7dd;
+    color: #0f5132;
+}
+
+.two-factor-card .alert-danger {
+    background-color: #f8d7da;
+    color: #842029;
+}
+
+.two-factor-card .alert-info {
+    background-color: #cff4fc;
+    color: #055160;
+}
+
+.two-factor-card .alert-warning {
+    background-color: #fff3cd;
+    color: #664d03;
+}
+
+/* Form Groups */
+.two-factor-card .form-group,
+.two-factor-card .mb-3 {
+    margin-bottom: 1.5rem;
+    width: 100%;
+}
+
+.two-factor-card .form-group:last-child,
+.two-factor-card .mb-3:last-child {
+    margin-bottom: 0;
+}
+
+/* Form Layout - Single Column with 4 rows (label, input, label, input) */
+.two-factor-card form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.two-factor-card .form-group,
+.two-factor-card .mb-3,
+.two-factor-card .form-row {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    margin-bottom: 1.5rem;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.two-factor-card .form-group:last-child,
+.two-factor-card .mb-3:last-child {
+    margin-bottom: 0;
+}
+
+/* Ensure labels and inputs stack vertically in single column */
+.two-factor-card .form-group label,
+.two-factor-card .form-label,
+.two-factor-card label {
+    display: block;
+    width: 100%;
+    margin-bottom: 0.5rem;
+    margin-right: 0;
+    font-weight: 500;
+}
+
+.two-factor-card .form-group input,
+.two-factor-card .form-group .form-control,
+.two-factor-card .form-control,
+.two-factor-card input[type="text"],
+.two-factor-card input[type="email"],
+.two-factor-card input[type="password"],
+.two-factor-card input[type="tel"] {
+    display: block;
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+/* Override Bootstrap row/col if present */
+.two-factor-card .row {
+    display: flex;
+    flex-direction: column;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.two-factor-card .row > * {
+    max-width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+/* Checkbox styling */
+.two-factor-card .form-check {
+    margin-top: 1rem;
+    margin-bottom: 0;
+    padding-left: 0;
+}
+
+.two-factor-card .form-check-input {
+    margin-top: 0.25rem;
+    margin-right: 0.5rem;
+    border: 1.5px solid #e9ecef;
+}
+
+.two-factor-card .form-check-label {
+    font-weight: 400;
+    color: #495057;
+    font-size: 0.875rem;
+}
+
+/* Links */
+.two-factor-card a {
+    color: #212529;
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+    font-size: 0.875rem;
+}
+
+.two-factor-card a:hover {
+    opacity: 0.7;
+    text-decoration: underline;
+}
+
+/* QR Code and Backup Tokens */
+.two-factor-card .qr-code {
+    text-align: center;
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.two-factor-card .qr-code img {
+    max-width: 100%;
+    height: auto;
+}
+
+.two-factor-card .backup-tokens {
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+}
+
+.two-factor-card .backup-tokens code {
+    display: block;
+    padding: 0.5rem;
+    margin: 0.25rem 0;
+    background-color: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    color: #212529;
+}
+
+/* List Styling */
+.two-factor-card ul,
+.two-factor-card ol {
+    margin-bottom: 1.5rem;
+    padding-left: 2rem;
+    line-height: 1.6;
+}
+
+.two-factor-card li {
+    margin-bottom: 0.5rem;
+    color: #495057;
+}
+
+/* Error List Styling */
+.two-factor-card .errorlist {
+    list-style: none;
+    padding-left: 0;
+    margin-bottom: 1rem;
+    color: #842029;
+    font-size: 0.875rem;
+}
+
+.two-factor-card .errorlist li {
+    background-color: #f8d7da;
+    border: 1px solid #f5c2c7;
+    border-radius: 4px;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Field Errors */
+.two-factor-card .form-control.is-invalid {
+    border-color: #dc3545;
+}
+
+.two-factor-card .invalid-feedback {
+    display: block;
+    width: 100%;
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+    color: #842029;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .two-factor-body {
+        padding: 1.5rem 1rem;
+    }
+    
+    .two-factor-card {
+        padding: 0;
+    }
+    
+    .two-factor-card h1 {
+        font-size: 1.75rem;
+    }
+    
+    .two-factor-logo-img {
+        max-width: 70px;
+        width: 70px;
+    }
+    
+    .two-factor-container {
+        gap: 2rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .two-factor-body {
+        padding: 1rem 0.75rem;
+    }
+    
+    .two-factor-card h1 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .two-factor-card h2 {
+        font-size: 1.375rem;
+    }
+    
+    .two-factor-card h3 {
+        font-size: 1.25rem;
+    }
+    
+    .two-factor-logo-img {
+        max-width: 60px;
+        width: 60px;
+    }
+    
+    .two-factor-container {
+        gap: 1.5rem;
+    }
+    
+    .two-factor-card .form-control,
+    .two-factor-card input[type="text"],
+    .two-factor-card input[type="email"],
+    .two-factor-card input[type="password"],
+    .two-factor-card input[type="tel"] {
+        padding: 0.6875rem 0.75rem;
+        font-size: 0.9375rem;
+    }
+}
