@@ -16,6 +16,20 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Helper function for boolean environment variables
+def get_bool_env(key, default=False):
+    """Convert environment variable to boolean."""
+    value = os.environ.get(key, str(default))
+    return value.lower() in ('true', '1', 'yes', 'on')
+
+# Helper function for integer environment variables
+def get_int_env(key, default=0):
+    """Convert environment variable to integer."""
+    try:
+        return int(os.environ.get(key, default))
+    except (ValueError, TypeError):
+        return default
+
 # Django settings
 
 # DB settings
@@ -35,9 +49,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable must be set. Use Doppler or set it in your environment.")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEBUG", "false").lower() in ('true', '1', 'yes', 'on')
+DEBUG = get_bool_env("DEBUG", "false")
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS','localhost,127.0.0.1').split(',')
 
@@ -75,7 +91,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django_otp.middleware.OTPMiddleware',
     # AxesMiddleware should be the last middleware in the MIDDLEWARE list.
     'axes.middleware.AxesMiddleware',
@@ -127,6 +142,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 12,  # Enforce minimum 12 character passwords
+        }
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -177,29 +195,49 @@ MEDIA_URL = 'media/'
 
 
 # Security settings
+# Determine if we're in production (not DEBUG mode)
+IS_PRODUCTION = not DEBUG
+
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', False)
-SESSION_COOKIE_HTTPONLY = os.environ.get('SESSION_COOKIE_HTTPONLY', False)
-SESSION_EXPIRE_AT_BROWSER_CLOSE = os.environ.get('SESSION_EXPIRE_AT_BROWSER_CLOSE', False)
 
-SECURE_SSL_REDIRECT = False
+# Session security - production-safe defaults
+SESSION_COOKIE_SECURE = get_bool_env('SESSION_COOKIE_SECURE', IS_PRODUCTION)
+SESSION_COOKIE_HTTPONLY = get_bool_env('SESSION_COOKIE_HTTPONLY', True)
+SESSION_COOKIE_AGE = get_int_env('SESSION_COOKIE_AGE', 3600)  # 1 hour default
+SESSION_EXPIRE_AT_BROWSER_CLOSE = get_bool_env('SESSION_EXPIRE_AT_BROWSER_CLOSE', False)
+SESSION_COOKIE_SAMESITE = 'Lax'  # Protection against CSRF attacks
 
-CSRF_COOKIE_SECURE = os.environ.get('CSRF_COOKIE_SECURE', False)
-### CSRF_COOKIE_HTTPONLY need to be False for CKEditor
+# SSL/TLS settings
+SECURE_SSL_REDIRECT = get_bool_env('SECURE_SSL_REDIRECT', IS_PRODUCTION)
+
+# CSRF protection
+CSRF_COOKIE_SECURE = get_bool_env('CSRF_COOKIE_SECURE', IS_PRODUCTION)
+# CSRF_COOKIE_HTTPONLY need to be False for CKEditor
 CSRF_COOKIE_HTTPONLY = False
-CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS','http://localhost:8000,http://127.0.0.1:8000,http://0.0.0.0:8000').split(',')
+CSRF_COOKIE_SAMESITE = 'Lax'
+# Get CSRF trusted origins from environment, default to empty list in production
+csrf_origins = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+if csrf_origins:
+    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_origins.split(',')]
+else:
+    CSRF_TRUSTED_ORIGINS = [] if IS_PRODUCTION else ['http://localhost:8000', 'http://127.0.0.1:8000']
 
-SECURE_HSTS_SECONDS = os.environ.get('SECURE_HSTS_SECONDS', 0)
-SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', False)
-SECURE_HSTS_PRELOAD = os.environ.get('SECURE_HSTS_PRELOAD', False)
+# HSTS (HTTP Strict Transport Security)
+SECURE_HSTS_SECONDS = get_int_env('SECURE_HSTS_SECONDS', 86400 if IS_PRODUCTION else 0)  # 1 year in production
+SECURE_HSTS_INCLUDE_SUBDOMAINS = get_bool_env('SECURE_HSTS_INCLUDE_SUBDOMAINS', IS_PRODUCTION)
+SECURE_HSTS_PRELOAD = get_bool_env('SECURE_HSTS_PRELOAD', IS_PRODUCTION)
 
-SECURE_REFERRER_POLICY = os.environ.get('SECURE_BROWSER_XSS_FILTER','no-referrer-when-downgrade')
-SECURE_BROWSER_XSS_FILTER = os.environ.get('SECURE_BROWSER_XSS_FILTER', False)
-SECURE_CONTENT_TYPE_NOSNIFF = os.environ.get('SECURE_CONTENT_TYPE_NOSNIFF', False)
+# Security headers
+SECURE_REFERRER_POLICY = os.environ.get('SECURE_REFERRER_POLICY', 'strict-origin-when-cross-origin')
+SECURE_BROWSER_XSS_FILTER = get_bool_env('SECURE_BROWSER_XSS_FILTER', True)
+SECURE_CONTENT_TYPE_NOSNIFF = get_bool_env('SECURE_CONTENT_TYPE_NOSNIFF', True)
 
 X_FRAME_OPTIONS = 'DENY'
 
-PREPEND_WWW = os.environ.get('PREPEND_WWW', False)
+PREPEND_WWW = get_bool_env('PREPEND_WWW', False)
+
+# Additional security headers (set via middleware or nginx)
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 
 # CKEditor Settings
 CKEDITOR_5_CONFIGS = {
@@ -246,3 +284,70 @@ CK_EDITOR_5_UPLOAD_FILE_VIEW_NAME = "custom_image_upload"
 
 
 DZEN_VERIFICATION_FILE = os.environ.get('DZEN_VERIFICATION_FILE', False)
+
+# django-axes configuration for brute force protection
+AXES_ENABLED = get_bool_env('AXES_ENABLED', True)
+AXES_FAILURE_LIMIT = get_int_env('AXES_FAILURE_LIMIT', 5)  # Lock after 5 failed attempts
+AXES_COOLOFF_TIME = get_int_env('AXES_COOLOFF_TIME', 1)  # 1 hour lockout
+AXES_LOCKOUT_CALLABLE = 'axes.lockout.database_lockout'
+AXES_RESET_ON_SUCCESS = get_bool_env('AXES_RESET_ON_SUCCESS', True)
+AXES_VERBOSE = get_bool_env('AXES_VERBOSE', True)
+AXES_LOGIN_FAILURE_LIMIT = get_int_env('AXES_LOGIN_FAILURE_LIMIT', 5)
+AXES_LOCKOUT_PARAMETERS = ['ip_address', 'username']
+AXES_ONLY_USER_FAILURES = get_bool_env('AXES_ONLY_USER_FAILURES', False)
+AXES_LOCKOUT_TEMPLATE = 'two_factor/lockout.html'  # Optional: create custom lockout template
+AXES_LOCKOUT_URL = None  # Use default lockout view
+
+# Logging configuration for security events
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'security': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'security_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'security.log'),
+            'maxBytes': 1024 * 1024 * 10,  # 10 MB
+            'backupCount': 5,
+            'formatter': 'security',
+        },
+    },
+    'loggers': {
+        'django.security': {
+            'handlers': ['console', 'security_file'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'axes': {
+            'handlers': ['console', 'security_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
+
+# Ensure logs directory exists
+logs_dir = os.path.join(BASE_DIR, 'logs')
+os.makedirs(logs_dir, exist_ok=True)
