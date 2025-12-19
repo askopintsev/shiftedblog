@@ -23,6 +23,11 @@ from django.conf.urls.static import static
 from django.views.generic import TemplateView
 
 from blog.views import custom_image_upload
+from shiftedblog.rate_limited_views import (
+    RateLimitedLoginView,
+    RateLimitedSetupView,
+    RateLimitedQRGeneratorView,
+)
 
 import two_factor.urls
 
@@ -46,6 +51,12 @@ urlpatterns = [
         {'sitemaps': sitemaps},
         name='django.contrib.sitemaps.views.sitemap',
     ),
+    # Rate-limited authentication endpoints (override two_factor URLs)
+    path('login/', RateLimitedLoginView.as_view(), name='login'),
+    path('account/login/', RateLimitedLoginView.as_view(), name='account_login'),
+    path('account/two_factor/setup/', RateLimitedSetupView.as_view(), name='setup'),
+    path('account/two_factor/qrcode/', RateLimitedQRGeneratorView.as_view(), name='qr'),
+    # Include other two-factor URLs (backup, disable, etc.)
     path('', include((two_factor.urls.urlpatterns), namespace='two_factor')),
     path('robots.txt', TemplateView.as_view(template_name='static_html/robots.txt', content_type='text/plain')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT,)

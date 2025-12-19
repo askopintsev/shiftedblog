@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     'django_otp',
     'django_otp.plugins.otp_totp',  # TOTP: Google Authenticator, Authy, etc.
     'django_otp.plugins.otp_static',  # Backup tokens
+    'django_ratelimit',
     'two_factor',
     'taggit',
     'django_ckeditor_5',
@@ -132,6 +133,13 @@ DATABASES = {
 }
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Cache configuration (required for django-ratelimit)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators
@@ -284,6 +292,12 @@ CK_EDITOR_5_UPLOAD_FILE_VIEW_NAME = "custom_image_upload"
 
 
 DZEN_VERIFICATION_FILE = os.environ.get('DZEN_VERIFICATION_FILE', False)
+
+# django-ratelimit configuration for application-level rate limiting
+# Works alongside nginx rate limiting for defense in depth
+# Uses default cache backend (database cache or memory cache)
+RATELIMIT_ENABLE = get_bool_env('RATELIMIT_ENABLE', IS_PRODUCTION)
+RATELIMIT_USE_CACHE = 'default'  # Use Django's default cache backend
 
 # django-axes configuration for brute force protection
 AXES_ENABLED = get_bool_env('AXES_ENABLED', True)
