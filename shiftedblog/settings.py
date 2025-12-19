@@ -289,12 +289,12 @@ DZEN_VERIFICATION_FILE = os.environ.get('DZEN_VERIFICATION_FILE', False)
 AXES_ENABLED = get_bool_env('AXES_ENABLED', True)
 AXES_FAILURE_LIMIT = get_int_env('AXES_FAILURE_LIMIT', 5)  # Lock after 5 failed attempts
 AXES_COOLOFF_TIME = get_int_env('AXES_COOLOFF_TIME', 1)  # 1 hour lockout
-AXES_LOCKOUT_CALLABLE = 'axes.lockout.database_lockout'
+# AXES_LOCKOUT_CALLABLE: Use default database lockout (None = default behavior)
 AXES_RESET_ON_SUCCESS = get_bool_env('AXES_RESET_ON_SUCCESS', True)
 AXES_VERBOSE = get_bool_env('AXES_VERBOSE', True)
 AXES_LOGIN_FAILURE_LIMIT = get_int_env('AXES_LOGIN_FAILURE_LIMIT', 5)
+# Lockout by both IP address and username (replaces deprecated AXES_ONLY_USER_FAILURES)
 AXES_LOCKOUT_PARAMETERS = ['ip_address', 'username']
-AXES_ONLY_USER_FAILURES = get_bool_env('AXES_ONLY_USER_FAILURES', False)
 AXES_LOCKOUT_TEMPLATE = 'two_factor/lockout.html'  # Optional: create custom lockout template
 AXES_LOCKOUT_URL = None  # Use default lockout view
 
