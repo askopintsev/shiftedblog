@@ -86,6 +86,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'shiftedblog.security_headers_middleware.SecurityHeadersMiddleware',  # Custom security headers
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -246,6 +247,36 @@ PREPEND_WWW = get_bool_env('PREPEND_WWW', False)
 
 # Additional security headers (set via middleware or nginx)
 SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
+
+# Content-Security-Policy (can be overridden via environment variable)
+# Default policy allows: self, Bootstrap CDN, inline scripts/styles for CKEditor
+CONTENT_SECURITY_POLICY = os.environ.get(
+    'CONTENT_SECURITY_POLICY',
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "img-src 'self' data: https:; "
+    "font-src 'self' https://cdn.jsdelivr.net data:; "
+    "connect-src 'self'; "
+    "frame-ancestors 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'"
+)
+
+# Permissions-Policy (formerly Feature-Policy)
+# Restrict access to browser features for enhanced privacy
+PERMISSIONS_POLICY = os.environ.get(
+    'PERMISSIONS_POLICY',
+    "geolocation=(), "
+    "microphone=(), "
+    "camera=(), "
+    "magnetometer=(), "
+    "gyroscope=(), "
+    "speaker=(), "
+    "vibrate=(), "
+    "fullscreen=(self), "
+    "payment=()"
+)
 
 # CKEditor Settings
 CKEDITOR_5_CONFIGS = {
