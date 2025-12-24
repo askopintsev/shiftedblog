@@ -40,10 +40,14 @@ sitemaps = {
 
 zen_html_file = settings.DZEN_VERIFICATION_FILE
 
+# Admin URL path (configurable via ADMIN_URL environment variable)
+# Defaults to 'mellon' for backward compatibility
+admin_url = getattr(settings, 'ADMIN_URL', 'mellon')
+
 urlpatterns = [
     path("custom-image-upload/", custom_image_upload, name="custom_image_upload"),
     # path("ckeditor5/", include('django_ckeditor_5.urls')),
-    path('mellon/', admin.site.urls),
+    path(f'{admin_url}/', admin.site.urls),
     path('', include('blog.urls', namespace='blog')),
     path(
         'sitemap.xml',

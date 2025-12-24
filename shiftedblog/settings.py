@@ -174,7 +174,11 @@ AUTH_PASSWORD_VALIDATORS = [
 
 AUTH_USER_MODEL = 'blog.User'
 LOGIN_URL = 'two_factor:login'
-LOGIN_REDIRECT_URL = '/mellon'
+
+# Admin URL path (configurable for security through obscurity)
+# Default to 'mellon' but can be changed via ADMIN_URL environment variable
+ADMIN_URL = os.environ.get('ADMIN_URL', 'mellon').strip('/')  # Remove leading/trailing slashes
+LOGIN_REDIRECT_URL = f'/{ADMIN_URL}/'
 
 AUTHENTICATION_BACKENDS = [
     # AxesStandaloneBackend should be the first backend in the AUTHENTICATION_BACKENDS list.
@@ -237,7 +241,16 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 csrf_origins = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
 if csrf_origins:
     CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_origins.split(',')]
+    # Validate: In production, all CSRF trusted origins must use HTTPS
+    if IS_PRODUCTION:
+        http_origins = [origin for origin in CSRF_TRUSTED_ORIGINS if origin.startswith('http://')]
+        if http_origins:
+            raise ValueError(
+                f"Security Error: CSRF_TRUSTED_ORIGINS contains HTTP URLs in production: {http_origins}. "
+                f"All origins must use HTTPS in production. Current origins: {CSRF_TRUSTED_ORIGINS}"
+            )
 else:
+    # Development defaults: allow HTTP for localhost only
     CSRF_TRUSTED_ORIGINS = [] if IS_PRODUCTION else ['http://localhost:8000', 'http://127.0.0.1:8000']
 
 # HSTS (HTTP Strict Transport Security)
