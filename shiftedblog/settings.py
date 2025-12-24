@@ -18,8 +18,17 @@ load_dotenv()
 
 # Helper function for boolean environment variables
 def get_bool_env(key, default=False):
-    """Convert environment variable to boolean."""
-    value = os.environ.get(key, str(default))
+    """
+    Convert environment variable to boolean.
+    
+    Handles string values: 'true', '1', 'yes', 'on' -> True
+                          'false', '0', 'no', 'off', '' -> False
+    If env var is not set, returns the default (boolean).
+    """
+    value = os.environ.get(key)
+    if value is None:
+        return default
+    # Convert string to boolean
     return value.lower() in ('true', '1', 'yes', 'on')
 
 # Helper function for integer environment variables
@@ -53,7 +62,7 @@ if not SECRET_KEY:
     raise ValueError("SECRET_KEY environment variable must be set. Use Doppler or set it in your environment.")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = get_bool_env("DEBUG", "false")
+DEBUG = get_bool_env("DEBUG", False)
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS','localhost,127.0.0.1').split(',')
 
@@ -322,7 +331,8 @@ CKEDITOR_5_FILE_UPLOAD_PERMISSION = "staff"  # Possible values: "staff", "authen
 CK_EDITOR_5_UPLOAD_FILE_VIEW_NAME = "custom_image_upload"
 
 
-DZEN_VERIFICATION_FILE = os.environ.get('DZEN_VERIFICATION_FILE', False)
+# Dzen verification file (optional) - returns string or None
+DZEN_VERIFICATION_FILE = os.environ.get('DZEN_VERIFICATION_FILE') or None
 
 # django-ratelimit configuration for application-level rate limiting
 # Works alongside nginx rate limiting for defense in depth
@@ -353,7 +363,11 @@ LOGGING = {
             'style': '{',
         },
         'security': {
-            'format': '{levelname} {asctime} {module} {message}',
+            'format': '{levelname} {asctime} [{module}] {message}',
+            'style': '{',
+        },
+        'security_detailed': {
+            'format': '{levelname} {asctime} [{module}] {message}',
             'style': '{',
         },
     },
@@ -369,19 +383,58 @@ LOGGING = {
             'backupCount': 5,
             'formatter': 'security',
         },
+        'auth_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'authentication.log'),
+            'maxBytes': 1024 * 1024 * 10,  # 10 MB
+            'backupCount': 5,
+            'formatter': 'security_detailed',
+        },
     },
     'loggers': {
+        # Django security events (CSRF, XSS, etc.)
         'django.security': {
             'handlers': ['console', 'security_file'],
             'level': 'WARNING',
             'propagate': False,
         },
+        # django-axes: Failed login attempts, lockouts
         'axes': {
-            'handlers': ['console', 'security_file'],
+            'handlers': ['console', 'security_file', 'auth_file'],
             'level': 'INFO',
             'propagate': False,
         },
+        # django-ratelimit: Rate limiting events
+        'django_ratelimit': {
+            'handlers': ['console', 'security_file'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        # Two-factor authentication events
+        'django_otp': {
+            'handlers': ['console', 'auth_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'two_factor': {
+            'handlers': ['console', 'auth_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Authentication events (login, logout, etc.)
+        'django.contrib.auth': {
+            'handlers': ['console', 'auth_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Request errors (4xx, 5xx)
         'django.request': {
+            'handlers': ['console', 'security_file'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        # Server errors
+        'django.server': {
             'handlers': ['console'],
             'level': 'ERROR',
             'propagate': False,
