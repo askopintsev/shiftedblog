@@ -254,7 +254,8 @@ else:
     CSRF_TRUSTED_ORIGINS = [] if IS_PRODUCTION else ['http://localhost:8000', 'http://127.0.0.1:8000']
 
 # HSTS (HTTP Strict Transport Security)
-SECURE_HSTS_SECONDS = get_int_env('SECURE_HSTS_SECONDS', 86400 if IS_PRODUCTION else 0)  # 1 year in production
+# Default: 1 year (31536000 seconds) in production, 0 in development
+SECURE_HSTS_SECONDS = get_int_env('SECURE_HSTS_SECONDS', 31536000 if IS_PRODUCTION else 0)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = get_bool_env('SECURE_HSTS_INCLUDE_SUBDOMAINS', IS_PRODUCTION)
 SECURE_HSTS_PRELOAD = get_bool_env('SECURE_HSTS_PRELOAD', IS_PRODUCTION)
 
