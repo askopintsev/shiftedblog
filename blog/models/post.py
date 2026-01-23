@@ -102,7 +102,7 @@ class Post(models.Model):
         default=None,
     )
     body = models.TextField()
-    published = models.DateTimeField(default=timezone.now)
+    published = models.DateTimeField(null=True, blank=True, default=None)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
     status = models.CharField(
@@ -135,10 +135,19 @@ class Post(models.Model):
 
     class Meta:
         app_label = 'blog'
-        ordering = ('-published',)
+        ordering = ('-published', '-created')  # Order by published date, then created date for drafts
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        """Automatically set published date when status changes to 'published'."""
+        # If status is being set to 'published' and published is None, set it to now
+        if self.status == 'published' and self.published is None:
+            self.published = timezone.now()
+        # If status is being changed back to 'draft', keep the published date
+        # (don't reset it to None, as we want to preserve when it was first published)
+        super().save(*args, **kwargs)
 
     def get_absolute_url(self):
         return reverse(
