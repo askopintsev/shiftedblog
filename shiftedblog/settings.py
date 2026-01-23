@@ -144,10 +144,17 @@ DATABASES = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Cache configuration (required for django-ratelimit)
+# Using Redis cache backend for atomic increment support
+# Redis is required for django-ratelimit to work properly with multiple workers
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'unique-snowflake',
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': os.environ.get('REDIS_URL', 'redis://redis:6379/1'),
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
+        'KEY_PREFIX': 'shiftedblog',
+        'TIMEOUT': 300,  # Default timeout: 5 minutes
     }
 }
 

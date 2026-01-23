@@ -9,6 +9,15 @@ services:
     networks:
       - nginx-network
 
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - nginx-network
+    command: redis-server --appendonly yes
+
   web:
     build: .
     volumes:
@@ -22,6 +31,7 @@ services:
       - nginx-network
     depends_on:
       - db
+      - redis
     restart: unless-stopped
 
   nginx:
@@ -46,6 +56,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
   static:
   media: 
 
