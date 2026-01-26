@@ -127,10 +127,34 @@ a:hover {
     line-height: 1.5;
     color: #212529;
     transition: opacity 0.2s ease;
+    position: relative;
+    border-bottom: none; /* No border on mobile, using pseudo-element instead */
 }
 
 .navbar-nav .nav-link:hover {
     opacity: 0.7;
+}
+
+/* Aesthetic underline for active/current page */
+.navbar-nav .nav-link.active:not(.search-nav-button) {
+    color: #212529 !important;
+    font-weight: 500 !important;
+    opacity: 1 !important;
+    position: relative;
+    border-bottom: none !important; /* Remove full-width border */
+}
+
+/* Mobile: Underline spans 30% of screen width, aligned to the left */
+.navbar-nav .nav-link.active:not(.search-nav-button)::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 1rem; /* Align with padding of nav-link */
+    width: 30vw; /* 30% of viewport width */
+    max-width: 120px; /* Limit maximum width */
+    height: 2px;
+    background-color: #212529;
+    display: block;
 }
     
     .navbar-nav .nav-link.search-nav-button {
@@ -138,6 +162,21 @@ a:hover {
         background: none;
         border: none;
         width: 100%;
+        border-bottom: none !important; /* Exclude search button from underline */
+        cursor: pointer;
+    }
+    
+    .navbar-nav .nav-link.search-nav-button:hover {
+        border-bottom: none !important;
+        opacity: 0.7;
+    }
+    
+    /* Ensure icon is visible */
+    .navbar-nav .nav-link.search-nav-button i {
+        display: inline-block !important;
+        margin-right: 0.5rem;
+        visibility: visible !important;
+        opacity: 1 !important;
     }
     
     .navbar-nav.sm-icons {
@@ -155,6 +194,59 @@ a:hover {
         text-align: center;
         width: auto;
         padding: 0.5rem;
+    }
+}
+
+/* Desktop navbar styles (≥ 992px) */
+@media (min-width: 992px) {
+    .navbar-nav {
+        flex-direction: row;
+    }
+    
+    .navbar-nav .nav-link {
+        padding: 0.5rem 1rem;
+        text-align: center;
+        width: auto;
+        display: inline-block;
+    }
+    
+    /* Aesthetic underline for active/current page on desktop */
+    .navbar-nav .nav-link.active:not(.search-nav-button) {
+        border-bottom: 2px solid #212529 !important;
+        font-weight: 500 !important;
+        color: #212529 !important;
+    }
+    
+    /* Desktop: Remove pseudo-element underline, use border-bottom instead */
+    .navbar-nav .nav-link.active:not(.search-nav-button)::after {
+        display: none;
+    }
+    
+    .navbar-nav .nav-link {
+        border-bottom: 2px solid transparent; /* Add border for desktop hover effect */
+    }
+    
+    .navbar-nav .nav-link:hover:not(.search-nav-button) {
+        border-bottom-color: rgba(33, 37, 41, 0.3);
+    }
+    
+    /* Exclude search button from underline on desktop */
+    .navbar-nav .nav-link.search-nav-button {
+        border-bottom: none !important;
+        cursor: pointer;
+    }
+    
+    .navbar-nav .nav-link.search-nav-button:hover {
+        border-bottom: none !important;
+        opacity: 0.7;
+    }
+    
+    /* Ensure icon is visible on desktop */
+    .navbar-nav .nav-link.search-nav-button i {
+        display: inline-block !important;
+        margin-right: 0.5rem;
+        visibility: visible !important;
+        opacity: 1 !important;
     }
 }
 
@@ -998,11 +1090,13 @@ a.btn.btn-light.shadow-sm{
     cursor: pointer;
     font-size: inherit;
     line-height: inherit;
+    border-bottom: none !important; /* Exclude from underline */
 }
 
 .nav-item .search-nav-button:hover {
     color: inherit;
     opacity: 0.8;
+    border-bottom: none !important;
 }
 
 .nav-item .search-nav-button:focus {
@@ -1013,6 +1107,16 @@ a.btn.btn-light.shadow-sm{
 .nav-item .search-nav-button:active {
     background: none;
     border: none;
+}
+
+/* Ensure search icon is visible */
+.nav-item .search-nav-button i,
+.navbar-nav .nav-link.search-nav-button i {
+    display: inline-block !important;
+    margin-right: 0.5rem;
+    visibility: visible !important;
+    opacity: 1 !important;
+    font-size: inherit !important;
 }
 
 /* Pagination - Yandex style */
