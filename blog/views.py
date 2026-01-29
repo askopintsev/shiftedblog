@@ -121,24 +121,59 @@ def post_detail(request, slug):
 def post_search(request):
     form = SearchForm()
     query = None
-    results = []
+    results = None
+    query_string = ''
 
     if 'query' in request.GET:
         form = SearchForm(request.GET)
         if form.is_valid():
-            query = form.cleaned_data['query']
-            search_vector = SearchVector('title', weight='A') + SearchVector('body', weight='B')
+            query = form.cleaned_data['query'].strip()
+            
+            # Early return for empty queries
+            if not query:
+                return render(request,
+                            'blog/post/search.html',
+                            {'form': form,
+                             'query': None,
+                             'results': None,
+                             'query_string': ''})
+            
+            # Limit query length to prevent abuse
+            if len(query) > 200:
+                query = query[:200]
+            
+            # Build search query and vector
             search_query = SearchQuery(query)
-            results = Post.objects.filter(status='published')\
-                                  .annotate(rank=SearchRank(search_vector, search_query))\
-                                  .filter(rank__gte=0.3)\
-                                  .order_by('-rank')
+            search_vector = SearchVector('title', weight='A') + SearchVector('body', weight='B')
+            
+            # Optimized query: filter published posts, annotate rank, filter by minimum rank
+            queryset = Post.objects.filter(status='published')\
+                                   .annotate(rank=SearchRank(search_vector, search_query))\
+                                   .filter(rank__gte=0.3)\
+                                   .order_by('-rank', '-published')
+            
+            # Add pagination (12 results per page, same as post_list)
+            paginator = Paginator(queryset, 12)
+            page = request.GET.get('page')
+            try:
+                results = paginator.page(page)
+            except PageNotAnInteger:
+                results = paginator.page(1)
+            except EmptyPage:
+                results = paginator.page(paginator.num_pages)
+            
+            # Build query string for pagination (preserve search query, exclude page)
+            query_params = request.GET.copy()
+            if 'page' in query_params:
+                del query_params['page']
+            query_string = query_params.urlencode()
 
     return render(request,
                   'blog/post/search.html',
                   {'form': form,
                    'query': query,
-                   'results': results})
+                   'results': results,
+                   'query_string': query_string})
 
 
 def about(request):

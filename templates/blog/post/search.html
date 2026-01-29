@@ -12,11 +12,17 @@
             <h3>Посты по запросу: <i>"{{ query }}"</i></h3>
         </div>
         <div class="search-results">
-            {% for post in results %}
-                {% include "blog/post_horizontal_card.html" with post=post %}
-            {% empty %}
+            {% if results %}
+                {% for post in results %}
+                    {% include "blog/post_horizontal_card.html" with post=post %}
+                {% endfor %}
+                
+                {% if results.paginator.num_pages > 1 %}
+                    {% include "blog/pagination.html" with page=results %}
+                {% endif %}
+            {% else %}
                 <p class="no-results">Ничего не нашлось</p>
-            {% endfor %}
+            {% endif %}
         </div>
         <div class="search-again-section">
             <h5 class="mt-4 mb-3">Искать снова:</h5>

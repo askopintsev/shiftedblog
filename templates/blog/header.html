@@ -14,19 +14,19 @@
             <div class="collapse navbar-collapse" id="navbarNavDropdown">
                 <ul class="navbar-nav mx-auto">
                     <li class="nav-item">
-                        <a aria-current="page" class="nav-link {% if request.path == '/' %} active {% endif %}"
+                        <a aria-current="page" class="nav-link {% if request.path == '/' %}active{% endif %}"
                            href="/">Главная</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/category/blog/' %} active {% endif %}"
+                        <a class="nav-link {% if '/category/blog' in request.path %}active{% endif %}"
                            href="/category/blog/">Блог</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/category/projects/' %} active {% endif %}"
+                        <a class="nav-link {% if '/category/projects' in request.path %}active{% endif %}"
                            href="/category/projects/">Проекты</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/about' %} active {% endif %}" href="/about">Обо
+                        <a class="nav-link {% if request.path == '/about' or request.path == '/about/' %}active{% endif %}" href="/about">Обо
                             мне</a>
                     </li>
                     <li class="nav-item">

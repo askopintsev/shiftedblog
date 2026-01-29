@@ -8,6 +8,19 @@ services:
     env_file:
       - .env
     restart: unless-stopped
+    networks:
+      - nginx-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6378:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    networks:
+      - nginx-network
 
   web:
     build: .
@@ -28,6 +41,7 @@ services:
       - .env
     depends_on:
       - db
+      - redis
     restart: unless-stopped
     command: >
       bash -c "
@@ -39,8 +53,16 @@ services:
     environment:
       # Enable Django autoreload (default, but explicit)
       - DJANGO_SETTINGS_MODULE=shiftedblog.settings
+    networks:
+      - nginx-network
 
 volumes:
   postgres_data:
+  redis_data:
   static:
   media:
+
+networks:
+  nginx-network:
+    driver: bridge
+    attachable: true

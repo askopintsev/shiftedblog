@@ -29,9 +29,16 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Stage 2
 FROM python:3.13-slim
 
+# Install PostgreSQL client tools (needed for pg_dump in backup command)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN useradd -m -r appuser && \
    mkdir /app && \
-   chown -R appuser /app
+   mkdir -p /backups && \
+   chown -R appuser /app /backups
 
 # Copy the Python dependencies from the builder stage
 COPY --from=builder /usr/local/lib/python3.13/site-packages/ /usr/local/lib/python3.13/site-packages/
