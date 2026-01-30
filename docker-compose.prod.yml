@@ -25,6 +25,7 @@ services:
       - ./static_blog:/app/static_blog
       - ./media:/app/media
       - ./templates:/app/templates
+      - ./backups:/backups
     env_file:
       - .env
     networks:

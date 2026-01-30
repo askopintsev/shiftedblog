@@ -66,6 +66,16 @@ DEBUG = get_bool_env("DEBUG", False)
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS','localhost,127.0.0.1').split(',')
 
+# Site URL for sitemap and robots.txt (defaults to first ALLOWED_HOST with https://)
+SITE_URL = os.environ.get('SITE_URL')
+if not SITE_URL and ALLOWED_HOSTS:
+    # Auto-detect from first allowed host (use https in production, http in dev)
+    first_host = ALLOWED_HOSTS[0].strip()
+    if first_host and first_host not in ('localhost', '127.0.0.1'):
+        SITE_URL = f'https://{first_host}'
+    else:
+        SITE_URL = f'http://{first_host}'
+
 SITE_ID = 1
 
 # Application definition
@@ -283,11 +293,11 @@ SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 CONTENT_SECURITY_POLICY = os.environ.get(
     'CONTENT_SECURITY_POLICY',
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://kit.fontawesome.com; "
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
     "img-src 'self' data: https:; "
-    "font-src 'self' https://cdn.jsdelivr.net data:; "
-    "connect-src 'self'; "
+    "font-src 'self' https://cdn.jsdelivr.net https://kit.fontawesome.com data:; "
+    "connect-src 'self' https://kit.fontawesome.com; "
     "frame-ancestors 'none'; "
     "base-uri 'self'; "
     "form-action 'self'"
