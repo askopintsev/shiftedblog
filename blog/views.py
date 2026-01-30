@@ -4,7 +4,7 @@ import os
 from django.conf import settings
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.db.models import Count
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
 from django.core.files.base import ContentFile
@@ -238,3 +238,21 @@ def custom_image_upload(request):
         })
 
     return JsonResponse({'error': 'Invalid request'}, status=400)
+
+
+def robots_txt(request):
+    """Dynamic robots.txt view that uses settings for admin URL and site URL."""
+    admin_url = getattr(settings, 'ADMIN_URL', 'mellon')
+    site_url = getattr(settings, 'SITE_URL', 'http://localhost')
+    
+    # Build robots.txt content dynamically
+    content = f"""User-agent: *
+Allow: /
+Disallow: /{admin_url}/
+Disallow: /account/
+Disallow: /drafts/
+
+Sitemap: {site_url}/sitemap.xml
+    """
+    
+    return HttpResponse(content, content_type='text/plain')

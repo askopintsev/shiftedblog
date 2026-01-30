@@ -66,6 +66,16 @@ DEBUG = get_bool_env("DEBUG", False)
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS','localhost,127.0.0.1').split(',')
 
+# Site URL for sitemap and robots.txt (defaults to first ALLOWED_HOST with https://)
+SITE_URL = os.environ.get('SITE_URL')
+if not SITE_URL and ALLOWED_HOSTS:
+    # Auto-detect from first allowed host (use https in production, http in dev)
+    first_host = ALLOWED_HOSTS[0].strip()
+    if first_host and first_host not in ('localhost', '127.0.0.1'):
+        SITE_URL = f'https://{first_host}'
+    else:
+        SITE_URL = f'http://{first_host}'
+
 SITE_ID = 1
 
 # Application definition

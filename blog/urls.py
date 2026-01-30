@@ -17,4 +17,5 @@ urlpatterns = [
     path('search/', views.post_search, name='post_search'),
     path('about', views.about, name='about'),
     path('<slug>/', views.post_detail, name='post_detail'),
+    path('robots.txt', views.robots_txt, name='robots_txt'),
 ]
