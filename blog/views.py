@@ -2,19 +2,18 @@ import datetime
 import os
 
 from django.conf import settings
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse, HttpResponse
-from django.db.models import Count
-from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
+from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
+from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
+from django.db.models import Count
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_protect
-
 from taggit.models import Tag
 
 from blog.forms import SearchForm
-from blog.models import Person, Post, Category
+from blog.models import Category, Person, Post
 
 
 def post_list(request, tag_slug=None, category_slug=None):
@@ -31,11 +30,11 @@ def post_list(request, tag_slug=None, category_slug=None):
         object_list = object_list.filter(category=category)
 
         if not object_list:
-            return render(request,
-                  'blog/post/list.html',
-                  {'page': None,
-                   'posts': None,
-                   'tag': tag})
+            return render(
+                request,
+                "blog/post/list.html",
+                {"page": None, "posts": None, "tag": tag},
+            )
 
 
     paginator = Paginator(object_list, 12)  # 12 post on every page
@@ -48,11 +47,11 @@ def post_list(request, tag_slug=None, category_slug=None):
     except EmptyPage:
         # If page number bigger than possible then set last page #
         posts = paginator.page(paginator.num_pages)
-    return render(request,
-                  'blog/post/list.html',
-                  {'page': page,
-                   'posts': posts,
-                   'tag': tag})
+    return render(
+        request,
+        "blog/post/list.html",
+        {"page": page, "posts": posts, "tag": tag},
+    )
 
 
 def post_detail(request, slug):
@@ -106,14 +105,14 @@ def post_detail(request, slug):
 
     return render(
         request,
-        'blog/post/detail.html',
+        "blog/post/detail.html",
         {
-            'post': post,
-            'similar_posts': similar_posts,
-            'newest_posts': newest_posts,
-            'previous_post': previous_post,
-            'next_post': next_post,
-            'current_series': current_series,
+            "post": post,
+            "similar_posts": similar_posts,
+            "newest_posts": newest_posts,
+            "previous_post": previous_post,
+            "next_post": next_post,
+            "current_series": current_series,
         },
     )
 
@@ -131,12 +130,16 @@ def post_search(request):
             
             # Early return for empty queries
             if not query:
-                return render(request,
-                            'blog/post/search.html',
-                            {'form': form,
-                             'query': None,
-                             'results': None,
-                             'query_string': ''})
+                return render(
+                    request,
+                    "blog/post/search.html",
+                    {
+                        "form": form,
+                        "query": None,
+                        "results": None,
+                        "query_string": "",
+                    },
+                )
             
             # Limit query length to prevent abuse
             if len(query) > 200:
@@ -168,23 +171,27 @@ def post_search(request):
                 del query_params['page']
             query_string = query_params.urlencode()
 
-    return render(request,
-                  'blog/post/search.html',
-                  {'form': form,
-                   'query': query,
-                   'results': results,
-                   'query_string': query_string})
+    return render(
+        request,
+        "blog/post/search.html",
+        {
+            "form": form,
+            "query": query,
+            "results": results,
+            "query_string": query_string,
+        },
+    )
 
 
 def about(request):
     person = Person.objects.first()
 
     if not person:
-            return render(request,
-                  'blog/about.html',
-                  {'person': None,
-                   'skills':  None,
-                   'grouped_accounts':  None})
+        return render(
+            request,
+            "blog/about.html",
+            {"person": None, "skills": None, "grouped_accounts": None},
+        )
 
     skills = person.skill_set.all()
     accounts = person.account_set.all()
@@ -195,11 +202,11 @@ def about(request):
         else:
             grouped_accounts[account.group.name] = [account]
 
-    return render(request,
-                  'blog/about.html',
-                  {'person': person,
-                   'skills': skills,
-                   'grouped_accounts': grouped_accounts})
+    return render(
+        request,
+        "blog/about.html",
+        {"person": person, "skills": skills, "grouped_accounts": grouped_accounts},
+    )
 
 
 def custom_page_not_found_view(request, exception):
@@ -217,6 +224,7 @@ def custom_permission_denied_view(request, exception=None):
 def custom_bad_request_view(request, exception=None):
     return render(request, "blog/errors/400.html", {})
 
+
 @csrf_protect
 def custom_image_upload(request):
     if request.method == 'POST' and request.FILES.get('upload'):
@@ -224,20 +232,22 @@ def custom_image_upload(request):
         valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff']
         ext = os.path.splitext(uploaded_file.name)[1].lower()
         if ext not in valid_extensions:
-            return JsonResponse({'error': 'Unsupported file type'}, status=400)
+            return JsonResponse({"error": "Unsupported file type"}, status=400)
 
         filename = f"img/post/{datetime.datetime.now().strftime('%Y/%m/%d')}/{uploaded_file.name}"
         file_path = default_storage.save(filename, ContentFile(uploaded_file.read()))
 
         url = f"{settings.MEDIA_URL}{file_path}"
-        return JsonResponse({
-            'url': url,
-            'uploaded': 1,
-            'fileName': uploaded_file.name,
-            'filePath': file_path
-        })
+        return JsonResponse(
+            {
+                "url": url,
+                "uploaded": 1,
+                "fileName": uploaded_file.name,
+                "filePath": file_path,
+            }
+        )
 
-    return JsonResponse({'error': 'Invalid request'}, status=400)
+    return JsonResponse({"error": "Invalid request"}, status=400)
 
 
 def robots_txt(request):
@@ -255,4 +265,4 @@ Disallow: /drafts/
 Sitemap: {site_url}/sitemap.xml
     """
     
-    return HttpResponse(content, content_type='text/plain')
+    return HttpResponse(content, content_type="text/plain")

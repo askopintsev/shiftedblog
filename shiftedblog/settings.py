@@ -21,7 +21,7 @@ except ImportError:
 
 load_dotenv()
 
-# Helper function for boolean environment variables
+
 def get_bool_env(key, default=False):
     """
     Convert environment variable to boolean.
@@ -34,9 +34,9 @@ def get_bool_env(key, default=False):
     if value is None:
         return default
     # Convert string to boolean
-    return value.lower() in ('true', '1', 'yes', 'on')
+    return value.lower() in ("true", "1", "yes", "on")
 
-# Helper function for integer environment variables
+
 def get_int_env(key, default=0):
     """Convert environment variable to integer."""
     try:
@@ -69,14 +69,14 @@ if not SECRET_KEY:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = get_bool_env("DEBUG", False)
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS','localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 # Site URL for sitemap and robots.txt (defaults to first ALLOWED_HOST with https://)
 SITE_URL = os.environ.get('SITE_URL')
 if not SITE_URL and ALLOWED_HOSTS:
     # Auto-detect from first allowed host (use https in production, http in dev)
     first_host = ALLOWED_HOSTS[0].strip()
-    if first_host and first_host not in ('localhost', '127.0.0.1'):
+    if first_host and first_host not in ("localhost", "127.0.0.1"):
         SITE_URL = f'https://{first_host}'
     else:
         SITE_URL = f'http://{first_host}'

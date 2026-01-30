@@ -9,13 +9,13 @@ from two_factor.views import LoginView, SetupView, QRGeneratorView
 
 # Rate limit: 10 requests per minute per IP (more lenient than nginx's 5/min)
 # This allows for legitimate retries while still providing protection
-RATE_LIMIT = '10/m'
+RATE_LIMIT = "10/m"
 
 
 # Rate-limited login view
 @method_decorator(
-    ratelimit(key='ip', rate=RATE_LIMIT, method=['GET', 'POST'], block=True),
-    name='dispatch'
+    ratelimit(key="ip", rate=RATE_LIMIT, method=["GET", "POST"], block=True),
+    name="dispatch",
 )
 class RateLimitedLoginView(LoginView):
     """Login view with rate limiting applied."""
@@ -24,8 +24,8 @@ class RateLimitedLoginView(LoginView):
 
 # Rate-limited setup view
 @method_decorator(
-    ratelimit(key='ip', rate=RATE_LIMIT, method=['GET', 'POST'], block=True),
-    name='dispatch'
+    ratelimit(key="ip", rate=RATE_LIMIT, method=["GET", "POST"], block=True),
+    name="dispatch",
 )
 class RateLimitedSetupView(SetupView):
     """2FA setup view with rate limiting applied."""
@@ -34,8 +34,8 @@ class RateLimitedSetupView(SetupView):
 
 # Rate-limited QR generator view
 @method_decorator(
-    ratelimit(key='ip', rate=RATE_LIMIT, method=['GET'], block=True),
-    name='dispatch'
+    ratelimit(key="ip", rate=RATE_LIMIT, method=["GET"], block=True),
+    name="dispatch",
 )
 class RateLimitedQRGeneratorView(QRGeneratorView):
     """QR code generator view with rate limiting applied."""
