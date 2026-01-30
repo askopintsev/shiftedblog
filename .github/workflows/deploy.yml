@@ -48,7 +48,7 @@ jobs:
           command: secrets download --no-file --format=env > .env
 
     - name: Deploy to VPS
-      uses: appleboy/ssh-action@v1.0.3
+      uses: appleboy/ssh-action@v1.2.5
       with:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USERNAME }}
@@ -103,7 +103,7 @@ jobs:
           docker compose -f docker-compose.prod.yml logs --tail=20
 
     - name: Verify Deployment
-      uses: appleboy/ssh-action@v1.0.3
+      uses: appleboy/ssh-action@v1.2.5
       with:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USERNAME }}
