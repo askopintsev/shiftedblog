@@ -3,12 +3,14 @@
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/6.0/topics/http/urls/
 """
+
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.sitemaps.views import sitemap
 from django.urls import include, path
 from django.views.generic import TemplateView
+from two_factor.urls import urlpatterns as tf_urlpatterns
 
 from blog.sitemap import PostSitemap
 from blog.views import custom_image_upload, robots_txt
@@ -17,8 +19,6 @@ from shiftedblog.rate_limited_views import (
     RateLimitedQRGeneratorView,
     RateLimitedSetupView,
 )
-from two_factor.urls import urlpatterns as tf_urlpatterns
-
 
 app_name = "blog"
 
@@ -46,10 +46,11 @@ urlpatterns = [
     path("account/login/", RateLimitedLoginView.as_view(), name="account_login"),
     path("account/two_factor/setup/", RateLimitedSetupView.as_view(), name="setup"),
     path("account/two_factor/qrcode/", RateLimitedQRGeneratorView.as_view(), name="qr"),
-    # two_factor.urls exports (pattern_list, 'two_factor'); pass 2-tuple (list, app_name) as required by include()
+    # two_factor.urls: (pattern_list, 'two_factor'); include() needs 2-tuple
     path("", include((tf_urlpatterns[0], tf_urlpatterns[1]))),
     path("robots.txt", robots_txt),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT,)
+    *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
+]
 
 if settings.DZEN_VERIFICATION_FILE:
     urlpatterns.append(

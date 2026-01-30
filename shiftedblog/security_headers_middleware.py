@@ -3,8 +3,9 @@ Custom middleware for security headers.
 - Django 6: PermissionsPolicyMiddleware only (CSP via ContentSecurityPolicyMiddleware).
 - Django < 6: SecurityHeadersMiddleware sets both CSP and Permissions-Policy.
 """
-from django.utils.deprecation import MiddlewareMixin
+
 from django.conf import settings
+from django.utils.deprecation import MiddlewareMixin
 
 
 class SecurityHeadersMiddleware(MiddlewareMixin):
@@ -16,10 +17,10 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
     def process_response(self, request, response):
         csp = getattr(settings, "CONTENT_SECURITY_POLICY", None)
         if csp:
-            response['Content-Security-Policy'] = csp
+            response["Content-Security-Policy"] = csp
         pp = getattr(settings, "PERMISSIONS_POLICY", None)
         if pp:
-            response['Permissions-Policy'] = pp
+            response["Permissions-Policy"] = pp
         return response
 
 
@@ -43,5 +44,5 @@ class PermissionsPolicyMiddleware(MiddlewareMixin):
         )
         pp = getattr(settings, "PERMISSIONS_POLICY", permissions_policy)
         if pp:
-            response['Permissions-Policy'] = pp
+            response["Permissions-Policy"] = pp
         return response

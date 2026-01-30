@@ -65,7 +65,7 @@ ruff format blog shiftedblog manage.py templates
 ruff check blog shiftedblog manage.py templates --fix
 ```
 
-Or in Docker: `docker compose run --no-deps web sh -c 'pip install ruff && ruff format . && ruff check . --fix'`
+Or in Docker (run as host user so ruff can write to mounted files; `HOME` and `RUFF_CACHE_DIR` set so pip and ruff can write): `docker compose run --no-deps --user "$(id -u):$(id -g)" -e HOME=/tmp/ruff-home -e RUFF_CACHE_DIR=/tmp/ruff-home/.ruff_cache web sh -c 'pip install ruff && python -m ruff format . && python -m ruff check . --fix'`
 
 ### Type checking (Pyright)
 

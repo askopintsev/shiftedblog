@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from django.contrib import admin
 
 from blog import models
@@ -11,7 +13,7 @@ class PostAdmin(admin.ModelAdmin):
     list_display = ("title", "slug", "author", "published", "status")
     list_filter = ("status", "created", "published", "author")
     search_fields = ("title", "body")
-    prepopulated_fields = {"slug": ("title",)}
+    prepopulated_fields: ClassVar[dict] = {"slug": ("title",)}
     readonly_fields = ("views",)
     date_hierarchy = "published"
     ordering = ("status", "published")

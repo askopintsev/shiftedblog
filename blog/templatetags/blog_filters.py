@@ -29,13 +29,13 @@ def striptags_preserve_paragraphs(value):
 
     # Now strip all remaining HTML tags
     value = strip_tags(value)
-    
+
     # Clean up excessive newlines (more than 2 consecutive)
     value = re.sub(r"\n{3,}", "\n\n", value)
-    
+
     # Strip leading/trailing whitespace but preserve internal structure
     value = value.strip()
-    
+
     return value
 
 
@@ -49,7 +49,7 @@ def truncatewords_preserve_newlines(value, arg):
         num_words = int(arg)
     except (ValueError, TypeError):
         return value
-    
+
     if not value:
         return ""
 
@@ -57,14 +57,14 @@ def truncatewords_preserve_newlines(value, arg):
     paragraphs = value.split("\n\n")
     result_paragraphs = []
     word_count = 0
-    
+
     for para in paragraphs:
         if not para.strip():
             continue
-        
+
         words = para.split()
         para_word_count = len(words)
-        
+
         if word_count + para_word_count <= num_words:
             # Include the whole paragraph
             result_paragraphs.append(para)
@@ -109,8 +109,7 @@ def add_space_after_period(value):
 
     value = str(value)
     # Add space after period if followed by a letter (both Latin and Cyrillic)
-    # Pattern: period followed by a letter (a-z, A-Z, а-я, А-Я, ё, Ё, etc.)
-    result = re.sub(r"\.([a-zA-Zа-яА-ЯёЁ])", r". \1", value)
-    
-    return result
+    # Pattern: period followed by a letter (a-z, A-Z, а-я, А-Я, ё, Ё, etc.)  # noqa: RUF003
+    result = re.sub(r"\.([a-zA-Zа-яА-ЯёЁ])", r". \1", value)  # noqa: RUF001
 
+    return result
