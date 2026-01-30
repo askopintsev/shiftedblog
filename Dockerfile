@@ -34,11 +34,17 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Stage 2
 FROM python:3.14-slim
 
-# Install PostgreSQL client tools (needed for pg_dump in backup command)
+# PostgreSQL client + runtime libs for Pillow (PIL/django_ckeditor_5)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
+        libjpeg62-turbo \
+        zlib1g \
+        libwebp7 \
+        libtiff6 \
+        libopenjp2-7 \
+    && rm -rf /var/lib/apt/lists/* \
+    && ldconfig
 
 RUN useradd -m -r appuser && \
    mkdir /app && \
@@ -51,6 +57,9 @@ COPY --from=builder /usr/local/bin/ /usr/local/bin/
 
 # Set work directory
 WORKDIR /app
+
+# Ensure loader finds Pillow's libjpeg (libjpeg.so.62)
+ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu
 
 # Copy project files
 COPY --chown=appuser:appuser . .

@@ -1,6 +1,7 @@
 """
-Custom middleware for adding security headers.
-Adds Content-Security-Policy and Permissions-Policy headers.
+Custom middleware for security headers.
+- Django 6: PermissionsPolicyMiddleware only (CSP via ContentSecurityPolicyMiddleware).
+- Django < 6: SecurityHeadersMiddleware sets both CSP and Permissions-Policy.
 """
 from django.utils.deprecation import MiddlewareMixin
 from django.conf import settings
@@ -8,34 +9,25 @@ from django.conf import settings
 
 class SecurityHeadersMiddleware(MiddlewareMixin):
     """
-    Middleware to add Content-Security-Policy and Permissions-Policy headers.
-    Works alongside nginx headers for comprehensive security.
+    For Django < 6: sets Content-Security-Policy and Permissions-Policy.
+    Used when django.utils.csp is not available.
     """
-    
     def process_response(self, request, response):
-        """Add security headers to response."""
-        # Content-Security-Policy
-        # Allow: self, Bootstrap CDN, inline scripts/styles for CKEditor
-        # Note: 'unsafe-inline' is needed for CKEditor, consider using nonces in future
-        csp_policy = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://kit.fontawesome.com; "
-            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-            "img-src 'self' data: https:; "
-            "font-src 'self' https://cdn.jsdelivr.net data:; "
-            "connect-src 'self' https://kit.fontawesome.com; "
-            "frame-ancestors 'none'; "
-            "base-uri 'self'; "
-            "form-action 'self'"
-        )
-        
-        # Allow CSP to be overridden via environment variable
-        csp = getattr(settings, 'CONTENT_SECURITY_POLICY', csp_policy)
+        csp = getattr(settings, 'CONTENT_SECURITY_POLICY', None)
         if csp:
             response['Content-Security-Policy'] = csp
-        
-        # Permissions-Policy (formerly Feature-Policy)
-        # Restrict access to browser features
+        pp = getattr(settings, 'PERMISSIONS_POLICY', None)
+        if pp:
+            response['Permissions-Policy'] = pp
+        return response
+
+
+class PermissionsPolicyMiddleware(MiddlewareMixin):
+    """
+    Middleware to add Permissions-Policy (formerly Feature-Policy) header.
+    Restricts access to browser features for enhanced privacy.
+    """
+    def process_response(self, request, response):
         permissions_policy = (
             "geolocation=(), "
             "microphone=(), "
@@ -47,11 +39,7 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             "fullscreen=(self), "
             "payment=()"
         )
-        
-        # Allow Permissions-Policy to be overridden via environment variable
         pp = getattr(settings, 'PERMISSIONS_POLICY', permissions_policy)
         if pp:
             response['Permissions-Policy'] = pp
-        
         return response
-

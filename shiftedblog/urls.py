@@ -1,7 +1,7 @@
 """shiftedblog URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/3.1/topics/http/urls/
+    https://docs.djangoproject.com/en/6.0/topics/http/urls/
 Examples:
 Function views
     1. Add an import:  from my_app import views
@@ -22,7 +22,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import TemplateView
 
-from blog.views import custom_image_upload
+from blog.views import custom_image_upload, robots_txt
 from shiftedblog.rate_limited_views import (
     RateLimitedLoginView,
     RateLimitedSetupView,
@@ -62,7 +62,7 @@ urlpatterns = [
     path('account/two_factor/qrcode/', RateLimitedQRGeneratorView.as_view(), name='qr'),
     # Include other two-factor URLs (backup, disable, etc.)
     path('', include((two_factor.urls.urlpatterns), namespace='two_factor')),
-    path('robots.txt', TemplateView.as_view(template_name='static_html/robots.txt', content_type='text/plain')),
+    path('robots.txt', robots_txt),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT,)
 
 if settings.DZEN_VERIFICATION_FILE:

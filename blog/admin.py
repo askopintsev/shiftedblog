@@ -62,9 +62,15 @@ class AccountAdmin(admin.ModelAdmin):
 
 @admin.register(models.Person)
 class PersonAdmin(admin.ModelAdmin):
-    pass
+    list_display = ('name',)
+    search_fields = ('name', 'greeting', 'biography')
+    ordering = ('name',)
 
 
 @admin.register(models.User)
 class UserAdmin(admin.ModelAdmin):
-    pass
+    list_display = ('email', 'first_name', 'last_name', 'is_staff', 'is_active', 'date_joined')
+    list_filter = ('is_staff', 'is_active', 'is_superuser')
+    search_fields = ('email', 'first_name', 'last_name')
+    ordering = ('-date_joined',)
+    readonly_fields = ('date_joined',)
