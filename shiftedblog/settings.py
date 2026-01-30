@@ -312,15 +312,17 @@ if DJANGO_CSP_AVAILABLE:
             CSP.SELF,
             "'unsafe-inline'",
             "https://cdn.jsdelivr.net",
+            "https://ka-f.fontawesome.com",
         ],
         "img-src": [CSP.SELF, "data:", "https:"],
         "font-src": [
             CSP.SELF,
             "https://cdn.jsdelivr.net",
             "https://kit.fontawesome.com",
+            "https://ka-f.fontawesome.com",
             "data:",
         ],
-        "connect-src": [CSP.SELF, "https://kit.fontawesome.com"],
+        "connect-src": [CSP.SELF, "https://kit.fontawesome.com", "https://ka-f.fontawesome.com"],
         "frame-ancestors": [CSP.NONE],
         "base-uri": [CSP.SELF],
         "form-action": [CSP.SELF],
@@ -330,10 +332,10 @@ else:
         'CONTENT_SECURITY_POLICY',
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://kit.fontawesome.com; "
-        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://ka-f.fontawesome.com; "
         "img-src 'self' data: https:; "
-        "font-src 'self' https://cdn.jsdelivr.net https://kit.fontawesome.com data:; "
-        "connect-src 'self' https://kit.fontawesome.com; "
+        "font-src 'self' https://cdn.jsdelivr.net https://kit.fontawesome.com https://ka-f.fontawesome.com data:; "
+        "connect-src 'self' https://kit.fontawesome.com https://ka-f.fontawesome.com; "
         "frame-ancestors 'none'; "
         "base-uri 'self'; "
         "form-action 'self'"
