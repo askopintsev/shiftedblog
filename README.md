@@ -67,6 +67,17 @@ ruff check blog shiftedblog manage.py templates --fix
 
 Or in Docker: `docker compose run --no-deps web sh -c 'pip install ruff && ruff format . && ruff check . --fix'`
 
+### Type checking (Pyright)
+
+The project uses [Pyright](https://microsoft.github.io/pyright/) for static type checking. Run with the project venv active so Django and other deps resolve:
+
+```bash
+pip install -e ".[dev]"
+pyright blog shiftedblog manage.py
+```
+
+Or with uv: `uv sync && uv run pyright blog shiftedblog manage.py`. Config lives in `pyproject.toml` under `[tool.pyright]` (Python 3.14, `basic` mode, migrations excluded).
+
 ### Docker Development
 
 1. Build and start containers:

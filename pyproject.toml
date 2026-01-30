@@ -24,6 +24,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "pyright>=1.1.0",
     "ruff>=0.8.0",
 ]
 
@@ -66,3 +67,29 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[tool.pyright]
+pythonVersion = "3.14"
+typeCheckingMode = "basic"
+include = ["blog", "shiftedblog", "manage.py", "templates"]
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "**/__pycache__",
+    "**/*.egg-info",
+    "blog/migrations",
+]
+# Use project venv for import resolution (run with venv active or set venvPath/venv)
+venvPath = "."
+venv = ".venv"
+# "warning" so type check can run without venv (e.g. CI); set "true" with venv for strict import checking
+reportMissingImports = "warning"
+reportMissingTypeStubs = false
+reportUnnecessaryTypeIgnoreComment = true
+reportUnnecessaryCast = true
+reportUnnecessaryComparison = true
+# Django: resolve from project root
+extraPaths = ["."]
