@@ -293,11 +293,11 @@ SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 CONTENT_SECURITY_POLICY = os.environ.get(
     'CONTENT_SECURITY_POLICY',
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://kit.fontawesome.com; "
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
     "img-src 'self' data: https:; "
-    "font-src 'self' https://cdn.jsdelivr.net data:; "
-    "connect-src 'self'; "
+    "font-src 'self' https://cdn.jsdelivr.net https://kit.fontawesome.com data:; "
+    "connect-src 'self' https://kit.fontawesome.com; "
     "frame-ancestors 'none'; "
     "base-uri 'self'; "
     "form-action 'self'"
