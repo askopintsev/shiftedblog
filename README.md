@@ -55,6 +55,18 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
+### Linting (Ruff)
+
+The project uses [Ruff](https://docs.astral.sh/ruff/) for formatting and linting. Install dev dependencies and run:
+
+```bash
+pip install -e ".[dev]"
+ruff format blog shiftedblog manage.py templates
+ruff check blog shiftedblog manage.py templates --fix
+```
+
+Or in Docker: `docker compose run --no-deps web sh -c 'pip install ruff && ruff format . && ruff check . --fix'`
+
 ### Docker Development
 
 1. Build and start containers:
