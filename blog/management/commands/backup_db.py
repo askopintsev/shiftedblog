@@ -71,6 +71,7 @@ class Command(BaseCommand):
 
         # Step 1: Database backup
         if not skip_db:
+            assert db_password is not None  # validated above
             backup_file = f"{backup_dir}/{db_name}_{method}_{timestamp}.sql.gz"
             os.environ["PGPASSWORD"] = db_password
             try:

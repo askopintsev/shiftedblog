@@ -298,6 +298,7 @@ SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 # Content-Security-Policy: Django 6 uses SECURE_CSP + ContentSecurityPolicyMiddleware;
 # Django 5 uses CONTENT_SECURITY_POLICY string + SecurityHeadersMiddleware.
 if DJANGO_CSP_AVAILABLE:
+    assert CSP is not None  # narrow for type checker
     SECURE_CSP = {
         "default-src": [CSP.SELF],
         "script-src": [
