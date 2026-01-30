@@ -16,7 +16,7 @@ class Command(BaseCommand):
         db_user = os.environ.get('DB_USER')
         db_password = os.environ.get('DB_PASS')  # Fixed: use DB_PASS to match settings.py
         db_host = os.environ.get('DB_HOST', 'db')
-        backup_dir = os.environ.get('BACKUP_DIR', '/backups')
+        backup_dir = os.environ.get('BACKUP_DIR', 'backups')
         yandex_token = os.environ.get('YADISK_TOKEN')  # Optional for upload
         
         # Validate required environment variables

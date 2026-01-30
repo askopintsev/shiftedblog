@@ -33,6 +33,7 @@ services:
       - ./static:/app/staticfiles
       - ./static_blog:/app/static_blog
       - ./media:/app/media
+      - ./backups:/backups
       # Mount requirements for dependency changes
       - ./requirements.txt:/app/requirements.txt
       # Mount entrypoint script (make it executable)
