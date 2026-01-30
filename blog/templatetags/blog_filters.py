@@ -109,7 +109,7 @@ def add_space_after_period(value):
 
     value = str(value)
     # Add space after period if followed by a letter (both Latin and Cyrillic)
-    # Pattern: period followed by a letter (a-z, A-Z, а-я, А-Я, ё, Ё, etc.)  # noqa: RUF003
+    # Pattern: period followed by a letter (a-z, A-Z, а-я, А-Я, ё, Ё, etc.)  # noqa: E501 RUF003
     result = re.sub(r"\.([a-zA-Zа-яА-ЯёЁ])", r". \1", value)  # noqa: RUF001
 
     return result

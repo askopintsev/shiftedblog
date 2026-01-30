@@ -17,7 +17,7 @@ class PostAdminForm(forms.ModelForm):
 
     class Meta:
         model = models.Post
-        fields = [
+        fields: ClassVar[list] = [
             "title",
             "slug",
             "author",
