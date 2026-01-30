@@ -55,6 +55,29 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
+### Linting (Ruff)
+
+The project uses [Ruff](https://docs.astral.sh/ruff/) for formatting and linting. Install dev dependencies and run:
+
+```bash
+pip install -e ".[dev]"
+ruff format blog shiftedblog manage.py templates
+ruff check blog shiftedblog manage.py templates --fix
+```
+
+Or in Docker (run as host user so ruff can write to mounted files; `HOME` and `RUFF_CACHE_DIR` set so pip and ruff can write): `docker compose run --no-deps --user "$(id -u):$(id -g)" -e HOME=/tmp/ruff-home -e RUFF_CACHE_DIR=/tmp/ruff-home/.ruff_cache web sh -c 'pip install ruff && python -m ruff format . && python -m ruff check . --fix'`
+
+### Type checking (Pyright)
+
+The project uses [Pyright](https://microsoft.github.io/pyright/) for static type checking. Run with the project venv active so Django and other deps resolve:
+
+```bash
+pip install -e ".[dev]"
+pyright blog shiftedblog manage.py
+```
+
+Or with uv: `uv sync && uv run pyright blog shiftedblog manage.py`. Config lives in `pyproject.toml` under `[tool.pyright]` (Python 3.14, `basic` mode, migrations excluded).
+
 ### Docker Development
 
 1. Build and start containers:

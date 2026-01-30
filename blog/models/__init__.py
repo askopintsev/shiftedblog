@@ -5,14 +5,14 @@ from blog.models.skill import Skill, SkillGroup
 from blog.models.user import User
 
 __all__ = [
-    'Account',
-    'AccountGroup',
-    'Person',
-    'Category',
-    'Post',
-    'PostSeries',
-    'Series',
-    'Skill',
-    'SkillGroup',
-    'User',
+    "Account",
+    "AccountGroup",
+    "Category",
+    "Person",
+    "Post",
+    "PostSeries",
+    "Series",
+    "Skill",
+    "SkillGroup",
+    "User",
 ]

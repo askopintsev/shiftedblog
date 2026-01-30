@@ -1,39 +1,43 @@
 import datetime
 import os
+from typing import ClassVar
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
-
 from taggit.managers import TaggableManager
 
 
 def validate_image_extension(value):
-    valid_extensions = ['.jpg', '.jpeg', '.png']
+    valid_extensions = [".jpg", ".jpeg", ".png"]
     ext = os.path.splitext(value.name.lower())[1]
     if ext not in valid_extensions:
-        raise ValidationError('Unsupported file extension. Only JPG, JPEG, and PNG are allowed.')
+        raise ValidationError(
+            "Unsupported file extension. Only JPG, JPEG, and PNG are allowed."
+        )
 
 
 class Category(models.Model):
     """Model for post categories list"""
+
     name = models.CharField(max_length=250)
 
     class Meta:
-        app_label = 'blog'
+        app_label = "blog"
 
     def __str__(self):
         return self.name
-    
+
 
 class Series(models.Model):
     """Model for post series list"""
+
     name = models.CharField(max_length=250)
 
     class Meta:
-        app_label = 'blog'
+        app_label = "blog"
 
     def __str__(self):
         return self.name
@@ -41,38 +45,41 @@ class Series(models.Model):
 
 class PostSeries(models.Model):
     """Through model for Post and Series with order position"""
+
     post = models.ForeignKey(
-        'Post',
+        "Post",
         on_delete=models.CASCADE,
-        related_name='post_series',
+        related_name="post_series",
     )
     series = models.ForeignKey(
         Series,
         on_delete=models.CASCADE,
-        related_name='series_posts',
+        related_name="series_posts",
     )
     order_position = models.PositiveIntegerField(
         null=True,
         blank=True,
         default=None,
-        verbose_name='Order position in series',
+        verbose_name="Order position in series",
     )
 
     class Meta:
-        app_label = 'blog'
-        unique_together = [['series', 'order_position']]
-        ordering = ['series', 'order_position']
+        app_label = "blog"
+        unique_together: ClassVar[list] = [["series", "order_position"]]
+        ordering: ClassVar[list] = ["series", "order_position"]
 
     def __str__(self):
-        return f'{self.series.name} - {self.post.title} (Position: {self.order_position})'
+        return (
+            f"{self.series.name} - {self.post.title} (Position: {self.order_position})"
+        )
 
 
 class Post(models.Model):
     """Model for post objects"""
 
     STATUS_CHOICES = (
-        ('draft', 'Draft'),
-        ('published', 'Published'),
+        ("draft", "Draft"),
+        ("published", "Published"),
     )
 
     title = models.CharField(max_length=250)
@@ -83,10 +90,10 @@ class Post(models.Model):
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
-        related_name='blog_posts',
+        related_name="blog_posts",
     )
     cover_image = models.ImageField(
-        upload_to='img/post/' + datetime.datetime.today().strftime('%Y/%m/%d'),
+        upload_to="img/post/" + datetime.datetime.today().strftime("%Y/%m/%d"),
         validators=[validate_image_extension],
     )
     cover_image_credits = models.CharField(
@@ -108,18 +115,18 @@ class Post(models.Model):
     status = models.CharField(
         max_length=10,
         choices=STATUS_CHOICES,
-        default='draft',
+        default="draft",
     )
     tags = TaggableManager()
     category = models.ForeignKey(
         Category,
         on_delete=models.CASCADE,
-        related_name='blog_category',
+        related_name="blog_category",
     )
     series = models.ManyToManyField(
         Series,
-        through='PostSeries',
-        related_name='blog_series',
+        through="PostSeries",
+        related_name="blog_series",
         blank=True,
     )
     short_description = models.CharField(
@@ -130,12 +137,15 @@ class Post(models.Model):
     )
     views = models.PositiveIntegerField(
         default=0,
-        verbose_name='Views count',
+        verbose_name="Views count",
     )
 
     class Meta:
-        app_label = 'blog'
-        ordering = ('-published', '-created')  # Order by published date, then created date for drafts
+        app_label = "blog"
+        ordering = (
+            "-published",
+            "-created",
+        )  # Order by published date, then created date for drafts
 
     def __str__(self):
         return self.title
@@ -143,7 +153,7 @@ class Post(models.Model):
     def save(self, *args, **kwargs):
         """Automatically set published date when status changes to 'published'."""
         # If status is being set to 'published' and published is None, set it to now
-        if self.status == 'published' and self.published is None:
+        if self.status == "published" and self.published is None:
             self.published = timezone.now()
         # If status is being changed back to 'draft', keep the published date
         # (don't reset it to None, as we want to preserve when it was first published)
@@ -151,7 +161,7 @@ class Post(models.Model):
 
     def get_absolute_url(self):
         return reverse(
-            'blog:post_detail',
+            "blog:post_detail",
             args=[self.slug],
         )
 
@@ -172,12 +182,16 @@ class Post(models.Model):
             current_position = self.get_series_position(series)
             if current_position is None:
                 return None
-            
-            previous_post_series = PostSeries.objects.filter(
-                series=series,
-                order_position__lt=current_position,
-            ).order_by('-order_position').first()
-            
+
+            previous_post_series = (
+                PostSeries.objects.filter(
+                    series=series,
+                    order_position__lt=current_position,
+                )
+                .order_by("-order_position")
+                .first()
+            )
+
             if previous_post_series:
                 return previous_post_series.post
             return None
@@ -190,12 +204,16 @@ class Post(models.Model):
             current_position = self.get_series_position(series)
             if current_position is None:
                 return None
-            
-            next_post_series = PostSeries.objects.filter(
-                series=series,
-                order_position__gt=current_position,
-            ).order_by('order_position').first()
-            
+
+            next_post_series = (
+                PostSeries.objects.filter(
+                    series=series,
+                    order_position__gt=current_position,
+                )
+                .order_by("order_position")
+                .first()
+            )
+
             if next_post_series:
                 return next_post_series.post
             return None

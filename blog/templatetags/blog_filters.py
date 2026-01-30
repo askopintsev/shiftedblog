@@ -1,5 +1,7 @@
 import re
+
 from django import template
+from django.utils.html import strip_tags
 
 register = template.Library()
 
@@ -12,29 +14,28 @@ def striptags_preserve_paragraphs(value):
     This ensures that linebreaks filter can properly create <p> tags.
     """
     if not value:
-        return ''
-    
+        return ""
+
     # Convert <p> and </p> tags to double newlines to preserve paragraph breaks
     # Handle </p><p> pattern first (adjacent paragraphs)
-    value = re.sub(r'</p>\s*<p[^>]*>', '\n\n', str(value))
+    value = re.sub(r"</p>\s*<p[^>]*>", "\n\n", str(value))
     # Handle opening <p> tags
-    value = re.sub(r'<p[^>]*>', '\n\n', value)
+    value = re.sub(r"<p[^>]*>", "\n\n", value)
     # Handle closing </p> tags
-    value = re.sub(r'</p>', '', value)
-    
+    value = re.sub(r"</p>", "", value)
+
     # Also handle <br> and <br/> tags as single newlines
-    value = re.sub(r'<br\s*/?>', '\n', value, flags=re.IGNORECASE)
-    
+    value = re.sub(r"<br\s*/?>", "\n", value, flags=re.IGNORECASE)
+
     # Now strip all remaining HTML tags
-    from django.utils.html import strip_tags
     value = strip_tags(value)
-    
+
     # Clean up excessive newlines (more than 2 consecutive)
-    value = re.sub(r'\n{3,}', '\n\n', value)
-    
+    value = re.sub(r"\n{3,}", "\n\n", value)
+
     # Strip leading/trailing whitespace but preserve internal structure
     value = value.strip()
-    
+
     return value
 
 
@@ -48,22 +49,22 @@ def truncatewords_preserve_newlines(value, arg):
         num_words = int(arg)
     except (ValueError, TypeError):
         return value
-    
+
     if not value:
-        return ''
-    
+        return ""
+
     # Split by double newlines (paragraphs) to preserve structure
-    paragraphs = value.split('\n\n')
+    paragraphs = value.split("\n\n")
     result_paragraphs = []
     word_count = 0
-    
+
     for para in paragraphs:
         if not para.strip():
             continue
-        
+
         words = para.split()
         para_word_count = len(words)
-        
+
         if word_count + para_word_count <= num_words:
             # Include the whole paragraph
             result_paragraphs.append(para)
@@ -72,11 +73,11 @@ def truncatewords_preserve_newlines(value, arg):
             # Add partial paragraph if there's room
             remaining_words = num_words - word_count
             if remaining_words > 0:
-                truncated_para = ' '.join(words[:remaining_words])
+                truncated_para = " ".join(words[:remaining_words])
                 result_paragraphs.append(truncated_para)
             break
-    
-    return '\n\n'.join(result_paragraphs)
+
+    return "\n\n".join(result_paragraphs)
 
 
 @register.filter
@@ -87,8 +88,7 @@ def reading_time(value):
     """
     if not value:
         return 1
-    
-    from django.utils.html import strip_tags
+
     # Strip HTML tags to get plain text
     text = strip_tags(str(value))
     # Count words
@@ -105,12 +105,11 @@ def add_space_after_period(value):
     Supports both Latin and Cyrillic letters.
     """
     if not value:
-        return ''
-    
+        return ""
+
     value = str(value)
     # Add space after period if followed by a letter (both Latin and Cyrillic)
-    # Pattern: period followed by a letter (a-z, A-Z, а-я, А-Я, ё, Ё, etc.)
-    result = re.sub(r'\.([a-zA-Zа-яА-ЯёЁ])', r'. \1', value)
-    
-    return result
+    # Pattern: period followed by a letter (a-z, A-Z, а-я, А-Я, ё, Ё, etc.)  # noqa: E501 RUF003
+    result = re.sub(r"\.([a-zA-Zа-яА-ЯёЁ])", r". \1", value)  # noqa: RUF001
 
+    return result
