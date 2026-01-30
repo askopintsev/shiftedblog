@@ -3,7 +3,7 @@ name = "shiftedblog"
 version = "0.1.3"
 description = "Automated blogging tool"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = [
     "django>=5.2.2",
     "django-axes>=8.0.0",
