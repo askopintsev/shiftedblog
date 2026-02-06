@@ -43,7 +43,7 @@ def get_int_env(key, default=0):
     """Convert environment variable to integer."""
     try:
         return int(os.environ.get(key, default))
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return default
 
 
