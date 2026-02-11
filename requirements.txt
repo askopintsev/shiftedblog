@@ -47,9 +47,9 @@ django==6.0.2 \
     #   django-taggit
     #   django-two-factor-auth
     #   shiftedblog
-django-axes==8.1.0 \
-    --hash=sha256:50117de17d189497a01d0544a9977b5136764c513085cf15138084de9dd81993 \
-    --hash=sha256:92cae514b6270d4b76c7afa657d5988c28b7c6ac1ce367c368eea2dd976199e7
+django-axes==8.3.0 \
+    --hash=sha256:0bc2c4a748b11cd8e2fbfbfe6c9911b6b02e64c28605105e39cfd79d52d8027d \
+    --hash=sha256:a516064ac30148bf3a61d7d781eb23e14f292cfc902573b7e60041ea23a3ec1d
     # via shiftedblog
 django-ckeditor-5==0.2.18 \
     --hash=sha256:08270b1dd8d1b5c27c5a2023ec8f920e2ec0c7d2afa0113af765f0de53947d35 \
