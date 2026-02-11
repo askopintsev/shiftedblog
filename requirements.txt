@@ -51,9 +51,9 @@ django-axes==8.3.0 \
     --hash=sha256:0bc2c4a748b11cd8e2fbfbfe6c9911b6b02e64c28605105e39cfd79d52d8027d \
     --hash=sha256:a516064ac30148bf3a61d7d781eb23e14f292cfc902573b7e60041ea23a3ec1d
     # via shiftedblog
-django-ckeditor-5==0.2.18 \
-    --hash=sha256:08270b1dd8d1b5c27c5a2023ec8f920e2ec0c7d2afa0113af765f0de53947d35 \
-    --hash=sha256:155d14bed6688791026486c191dd82dbc2937d6a588079989d5bd89708de8463
+django-ckeditor-5==0.2.19 \
+    --hash=sha256:627e0752d15c915665444b34b4d376855187a93660bdc9193d6b10c856ef843b \
+    --hash=sha256:7644e1b147444ee69e3abbfdbd9fb827ad307780abb26055d9ca3dca4e46f668
     # via shiftedblog
 django-formtools==2.5.1 \
     --hash=sha256:47cb34552c6efca088863d693284d04fc36eaaf350eb21e1a1d935e0df523c93 \
