@@ -21,11 +21,14 @@ class PostAdmin(admin.ModelAdmin):
     form = PostAdminForm
     inlines = [PostGalleryImageInline]
 
-    list_display = ("title", "slug", "author", "published", "status")
+    class Media:
+        js = ("editor/js/post_autosave.js",)
+
+    list_display = ("title", "slug", "author", "updated", "published", "status")
     list_filter = ("status", "created", "published", "author")
     search_fields = ("title", "body")
     prepopulated_fields: ClassVar[dict] = {"slug": ("title",)}
-    readonly_fields = ("views", "draft_preview_link")
+    readonly_fields = ("views", "updated", "draft_preview_link")
     date_hierarchy = "published"
     ordering = ("status", "published")
 
