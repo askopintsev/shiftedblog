@@ -13,7 +13,6 @@ def fill_uuids(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("editor", "0005_postgalleryimage_gallery_key"),
     ]

@@ -31,7 +31,7 @@ def truncatewords_preserve_newlines(value, arg):
     """Truncate text to a certain number of words while preserving newlines."""
     try:
         num_words = int(arg)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return value
 
     if not value:

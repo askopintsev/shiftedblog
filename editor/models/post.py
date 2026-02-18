@@ -7,8 +7,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
-from django.utils.safestring import mark_safe
 from django.utils import timezone
+from django.utils.safestring import mark_safe
 from taggit.managers import TaggableManager
 
 
@@ -243,7 +243,8 @@ class Post(models.Model):
 
 class PostGalleryImage(models.Model):
     """Image for a post body carousel gallery. Use gallery_key to group images.
-    Insert [gallery:1], [gallery:2], ... in the post body where the gallery should appear."""
+    Insert [gallery:1], [gallery:2], ... in the post body where the gallery
+    should appear."""
 
     post = models.ForeignKey(
         Post,
@@ -252,7 +253,10 @@ class PostGalleryImage(models.Model):
     )
     gallery_key = models.PositiveIntegerField(
         default=1,
-        help_text="Gallery number. Use [gallery:1] in the body for this gallery, [gallery:2] for the next, etc.",
+        help_text=(
+            "Gallery number. Use [gallery:1] in body for this gallery, "
+            "[gallery:2] for the next, etc."
+        ),
     )
     image = models.ImageField(
         upload_to="img/post/gallery/%Y/%m/%d",
@@ -271,7 +275,7 @@ class PostGalleryImage(models.Model):
     class Meta:
         app_label = "editor"
         db_table = "editor_postgalleryimage"
-        ordering = ["gallery_key", "order", "id"]
+        ordering: ClassVar[list] = ["gallery_key", "order", "id"]
 
     def __str__(self):
         return f"Gallery {self.gallery_key} image {self.order} for {self.post.title}"

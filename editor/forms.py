@@ -9,7 +9,7 @@ from editor import models
 
 
 class OptionalGalleryFormSet(BaseInlineFormSet):
-    """Allow saving the post when gallery formset management data is missing (galleries optional)."""
+    """Allow saving when gallery formset management data is missing."""
 
     def __init__(self, data=None, *args, **kwargs):
         if data is not None:
@@ -28,8 +28,8 @@ class SearchForm(forms.Form):
 class PostAdminForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        User = get_user_model()
-        self.fields["author"].queryset = User.objects.filter(is_active=True)
+        user_model = get_user_model()
+        self.fields["author"].queryset = user_model.objects.filter(is_active=True)
 
     class Meta:
         model = models.Post

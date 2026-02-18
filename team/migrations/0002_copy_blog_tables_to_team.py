@@ -66,7 +66,6 @@ def forwards(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("team", "0001_initial"),
         ("contenttypes", "0002_remove_content_type_name"),
@@ -79,9 +78,7 @@ class Migration(migrations.Migration):
                 migrations.AlterModelTable(
                     name="accountgroup", table="team_accountgroup"
                 ),
-                migrations.AlterModelTable(
-                    name="skillgroup", table="team_skillgroup"
-                ),
+                migrations.AlterModelTable(name="skillgroup", table="team_skillgroup"),
                 migrations.AlterModelTable(name="account", table="team_account"),
                 migrations.AlterModelTable(name="skill", table="team_skill"),
             ],

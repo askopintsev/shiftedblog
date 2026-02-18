@@ -13,17 +13,17 @@ class PostGalleryImageInline(admin.TabularInline):
     ordering = ("gallery_key", "order")
     fields = ("gallery_key", "image", "caption", "order")
     verbose_name = "Gallery image"
-    verbose_name_plural = "Gallery images (insert [gallery:1], [gallery:2], … in body where each gallery should appear)"
+    verbose_name_plural = "Gallery images (insert [gallery:1], [gallery:2], … in body)"
 
 
 @admin.register(models.Post)
 class PostAdmin(admin.ModelAdmin):
     form = PostAdminForm
-    inlines = [PostGalleryImageInline]
+    inlines: ClassVar[list] = [PostGalleryImageInline]
 
     class Media:
-        css = {"all": ("editor/css/post_admin_editor.css",)}
-        js = ("editor/js/post_autosave.js",)
+        css: ClassVar[dict] = {"all": ("editor/css/post_admin_editor.css",)}
+        js: ClassVar[tuple] = ("editor/js/post_autosave.js",)
 
     list_display = ("title", "slug", "author", "updated", "published", "status")
     list_filter = ("status", "created", "published", "author")

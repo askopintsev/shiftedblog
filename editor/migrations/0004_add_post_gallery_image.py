@@ -5,7 +5,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("editor", "0003_copy_blog_tables_to_editor"),
     ]

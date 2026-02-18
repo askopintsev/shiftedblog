@@ -1,5 +1,4 @@
 from django.contrib import admin
-from django.urls import path
 
 # Admin site customization
 admin.site.site_header = "Shifted Blog"

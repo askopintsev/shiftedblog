@@ -47,9 +47,7 @@ def forwards(apps, schema_editor):
 
     # --- 1. Update content type so all references follow automatically ---
     ContentType = apps.get_model("contenttypes", "ContentType")
-    ContentType.objects.filter(app_label="blog", model="user").update(
-        app_label="core"
-    )
+    ContentType.objects.filter(app_label="blog", model="user").update(app_label="core")
 
     # --- 2. Create new tables and copy data ---
     for old, new in [
@@ -95,7 +93,6 @@ def forwards(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("core", "0001_initial"),
         ("auth", "0012_alter_user_first_name_max_length"),

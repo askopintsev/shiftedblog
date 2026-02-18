@@ -22,7 +22,6 @@ def backwards(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("editor", "0001_initial"),
         ("contenttypes", "0002_remove_content_type_name"),

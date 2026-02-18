@@ -62,7 +62,6 @@ def forwards(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("editor", "0002_update_content_types"),
         ("core", "0002_copy_blog_user_to_core_user"),

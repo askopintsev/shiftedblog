@@ -4,8 +4,6 @@ The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/6.0/topics/http/urls/
 """
 
-import core.urls  # noqa: F401 - loads admin site customization
-
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
@@ -14,11 +12,12 @@ from django.urls import include, path
 from django.views.generic import TemplateView
 from two_factor.urls import urlpatterns as tf_urlpatterns
 
-from editor.sitemap import PostSitemap
+import core.urls  # noqa: F401 - loads admin site customization
 from core.views import (
     custom_image_upload,
     robots_txt,
 )
+from editor.sitemap import PostSitemap
 from shiftedblog.rate_limited_views import (
     RateLimitedLoginView,
     RateLimitedQRGeneratorView,

@@ -43,7 +43,7 @@ def get_int_env(key, default=0):
     """Convert environment variable to integer."""
     try:
         return int(os.environ.get(key, default))
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return default
 
 
@@ -459,7 +459,8 @@ CKEDITOR_5_CONFIGS = {
         # Inter as first (and default) choice
         "fontFamily": {
             "options": [
-                "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif",
+                "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, "
+                "Roboto, sans-serif",
                 "default",
                 "Arial, Helvetica, sans-serif",
                 "Georgia, serif",
