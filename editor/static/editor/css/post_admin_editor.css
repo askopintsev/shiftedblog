@@ -1,0 +1,90 @@
+/* CKEditor body field: same width and spacing as post detail (.post-content-container + .post-body-content) */
+
+#content .ck-editor-container {
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 0px;
+    padding-right: 0px;
+    box-sizing: border-box;
+}
+
+#content .ck-editor-container .ck-editor {
+    max-width: 100%;
+}
+
+#content .ck-editor-container .ck-editor__editable,
+#content .ck-editor-container .ck-content {
+    min-height: 300px;
+    /* Same as .post-body-content */
+    font-size: 1.125rem;
+    line-height: 1.85;
+    color: #212529;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+}
+
+/* Paragraphs: same gap between lines and between paragraphs as detail page */
+#content .ck-editor-container .ck-editor__editable p,
+#content .ck-editor-container .ck-content p {
+    margin-bottom: 1.75rem;
+    line-height: 1.85;
+}
+
+/* Headings: same spacing as .post-body-content h1–h6 */
+#content .ck-editor-container .ck-editor__editable h1,
+#content .ck-editor-container .ck-editor__editable h2,
+#content .ck-editor-container .ck-editor__editable h3,
+#content .ck-editor-container .ck-editor__editable h4,
+#content .ck-editor-container .ck-editor__editable h5,
+#content .ck-editor-container .ck-editor__editable h6,
+#content .ck-editor-container .ck-content h1,
+#content .ck-editor-container .ck-content h2,
+#content .ck-editor-container .ck-content h3,
+#content .ck-editor-container .ck-content h4,
+#content .ck-editor-container .ck-content h5,
+#content .ck-editor-container .ck-content h6 {
+    margin-top: 2.75rem;
+    margin-bottom: 1.25rem;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.02em;
+}
+
+#content .ck-editor-container .ck-editor__editable h3,
+#content .ck-editor-container .ck-content h3 {
+    font-size: 1.75rem;
+}
+
+#content .ck-editor-container .ck-editor__editable h4,
+#content .ck-editor-container .ck-content h4 {
+    font-size: 1.5rem;
+}
+
+/* Blockquote: same as detail page */
+#content .ck-editor-container .ck-editor__editable blockquote,
+#content .ck-editor-container .ck-content blockquote {
+    border-left: 4px solid #e2e6e9;
+    padding-left: 1.5rem;
+    margin: 2.5rem 0;
+    font-style: italic;
+    color: #495057;
+    font-size: 1.0625rem;
+    line-height: 1.8;
+}
+
+/* Lists: same spacing as detail page */
+#content .ck-editor-container .ck-editor__editable ul,
+#content .ck-editor-container .ck-editor__editable ol,
+#content .ck-editor-container .ck-content ul,
+#content .ck-editor-container .ck-content ol {
+    margin-bottom: 1.75rem;
+    padding-left: 2rem;
+    line-height: 1.85;
+}
+
+#content .ck-editor-container .ck-editor__editable li,
+#content .ck-editor-container .ck-content li {
+    margin-bottom: 0.75rem;
+    line-height: 1.85;
+}

@@ -1,0 +1,207 @@
+{% extends "editor/base.html" %}
+{% load static %}
+
+{% block title %}Обо мне | Shifted Stuff{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row align-items-start info_block">
+        <div class="col-sm my-2">
+            <img alt="avatar" class="avatar" height="300px" src="{{ person.avatar.url|urlencode }}">
+        </div>
+        <div class="col-sm">
+            <p>
+                {{ person.greeting|linebreaksbr }}
+            </p>
+        </div>
+        <div class="col-sm">
+            {% for group, accounts in grouped_accounts.items %}
+            <p class="fw-normal">{{ group }}</p>
+            <p>
+                {% for account in accounts %}
+                <a class="me-2 text-reset text-decoration-none" href="{{ account.url }}" target="_blank">
+                    <img alt="{{ account.name }}" class="icon" height="50px" src="{% static '/' %}{{ account.icon }}">
+                </a>
+
+                {% endfor %}
+            </p>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="accordion accordion-flush my-3" id="accordionPanelsStayOpenExample">
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="panelsStayOpen-headingOne">
+                <button aria-controls="panelsStayOpen-collapseOne" aria-expanded="false" class="accordion-button collapsed"
+                        data-bs-target="#panelsStayOpen-collapseOne" data-bs-toggle="collapse"
+                        type="button">
+                    Мои навыки
+                </button>
+            </h2>
+            <div aria-labelledby="panelsStayOpen-headingOne" class="accordion-collapse collapse"
+                 id="panelsStayOpen-collapseOne">
+                <div class="accordion-body">
+                    <ol class="list-group list-group">
+                        <li class="list-group-item d-flex justify-content-between align-items-start">
+                            <div class="ms-2 me-auto">
+                                <div class="fw-bold">Языки программирования, разметки и т.д.</div>
+                                <ul>
+                                    <li>Python</li>
+                                    <li>YAML</li>
+                                    <li>Markup</li>
+                                    <li>HTML+CSS</li>
+                                    <li>JSON</li>
+                                    <li>XML</li>
+                                </ul>
+                            </div>
+                            <span class="badge bg-primary rounded-pill">6</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-start">
+                            <div class="ms-2 me-auto">
+                                <div class="fw-bold">Python фреймворки и библиотеки</div>
+                                <ul>
+                                    <li>Django</li>
+                                    <li>Django Rest Framework</li>
+                                    <li>Flask</li>
+                                    <li>Celery</li>
+                                    <li>UnitTest</li>
+                                    <li>FastAPI</li>
+                                    <li>SQL Alchemy</li>
+                                </ul>
+                            </div>
+                            <span class="badge bg-primary rounded-pill">7</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-start">
+                            <div class="ms-2 me-auto">
+                                <div class="fw-bold">SQL</div>
+                                <ul>
+                                    <li>DDL</li>
+                                    <li>DML</li>
+                                    <li>DCL</li>
+                                    <li>TCL</li>
+                                    <li>Stored Procedures</li>
+                                </ul>
+                            </div>
+                            <span class="badge bg-primary rounded-pill">5</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-start">
+                            <div class="ms-2 me-auto">
+                                <div class="fw-bold">DBMS</div>
+                                <ul>
+                                    <li>PostgreSQL</li>
+                                    <li>Oracle DB</li>
+                                    <li>Redis</li>
+                                    <li>MySQL</li>
+                                    <li>ClickHouse</li>
+                                    <li>SQLite</li>
+                                    <li>Apache Hive</li>
+                                    <li>Elasticsearch</li>
+                                </ul>
+                            </div>
+                            <span class="badge bg-primary rounded-pill">8</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-start">
+                            <div class="ms-2 me-auto">
+                                <div class="fw-bold">Брокеры</div>
+                                <ul>
+                                    <li>RabbitMQ</li>
+                                    <li>Kafka</li>
+                                </ul>
+                            </div>
+                            <span class="badge bg-primary rounded-pill">2</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-start">
+                            <div class="ms-2 me-auto">
+                                <div class="fw-bold">Контейнеры</div>
+                                <ul>
+                                    <li>Docker</li>
+                                    <li>Docker Compose</li>
+                                    <li>Kubernetes</li>
+                                </ul>
+                            </div>
+                            <span class="badge bg-primary rounded-pill">3</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-start">
+                            <div class="ms-2 me-auto">
+                                <div class="fw-bold">GIT</div>
+                                <ul>
+                                    <li>GitHub</li>
+                                    <li>GitLab</li>
+                                </ul>
+                            </div>
+                            <span class="badge bg-primary rounded-pill">2</span>
+                        </li>
+                                                <li class="list-group-item d-flex justify-content-between align-items-start">
+                            <div class="ms-2 me-auto">
+                                <div class="fw-bold">CI/CD</div>
+                                <ul>
+                                    <li>Ansible</li>
+                                    <li>Helm</li>
+                                </ul>
+                            </div>
+                            <span class="badge bg-primary rounded-pill">2</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-start">
+                            <div class="ms-2 me-auto">
+                                <div class="fw-bold">Системный и бизнес анализ</div>
+                                <ul>
+                                    <li>Сбор требований</li>
+                                    <li>Интервьюирование заказчика</li>
+                                    <li>Анализ и формализация требований</li>
+                                    <li>Разработка технических заданий</li>
+                                    <li>Разработка документации</li>
+                                    <li>Описание, моделирование, оптимизация бизнес-процессов</li>
+                                    <li>Описание и моделирование систем</li>
+                                    <li>Проектирование структур для хранения данных</li>
+                                    <li>Разработка прототипов интерфейсов</li>
+                                    <li>Построение архитектуры и интеграций систем</li>
+                                    <li>Взаимодействие с разработчиками систем</li>
+                                    <li>Создание и проведение презентаций</li>
+                                    <li>Пользовательское/приемочное тестирование</li>
+                                    <li>Экспертная поддержка и сопровождение систем</li>
+                                    <li>Разработка и внедрение стандартов и рабочих регламентов</li>
+                                    <li>Разработка отчетности</li>
+                                    <li>Обучение пользователей</li>
+                                    <li>Обучение аналитиков</li>
+                                </ul>
+                            </div>
+                            <span class="badge bg-primary rounded-pill">18</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-start">
+                            <div class="ms-2 me-auto">
+                                <div class="fw-bold">OS</div>
+                                <ul>
+                                    <li>Linux</li>
+                                    <li>Windows</li>
+                                </ul>
+                            </div>
+                            <span class="badge bg-primary rounded-pill">2</span>
+                        </li>
+                    </ol>
+                    <!--                    #TODO interactive skills data-->
+                    <!--                    {% for skill in skills %}-->
+                    <!--                    <p>-->
+                    <!--                        {{ skill }} {{ skill.rating }}-->
+                    <!--                    </p>-->
+                    <!--                    {% endfor %}-->
+                </div>
+            </div>
+        </div>
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="panelsStayOpen-headingTwo">
+                <button aria-controls="panelsStayOpen-collapseTwo" aria-expanded="false"
+                        class="accordion-button collapsed"
+                        data-bs-target="#panelsStayOpen-collapseTwo" data-bs-toggle="collapse"
+                        type="button">
+                    Краткая биография
+                </button>
+            </h2>
+            <div aria-labelledby="panelsStayOpen-headingTwo" class="accordion-collapse collapse"
+                 id="panelsStayOpen-collapseTwo">
+                <div class="accordion-body">
+                    {{ person.biography|linebreaksbr }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -109,7 +109,9 @@ INSTALLED_APPS = [
     "two_factor",
     "taggit",
     "django_ckeditor_5",
-    "blog",
+    "core",
+    "team",
+    "editor",
 ]
 
 _MIDDLEWARE = [
@@ -208,7 +210,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-AUTH_USER_MODEL = "blog.User"
+AUTH_USER_MODEL = "core.User"
 LOGIN_URL = "two_factor:login"
 
 # Admin URL path (configurable for security through obscurity)
@@ -452,6 +454,28 @@ CKEDITOR_5_CONFIGS = {
                 "mergeTableCells",
                 "tableProperties",
                 "tableCellProperties",
+            ],
+        },
+        # Inter as first (and default) choice
+        "fontFamily": {
+            "options": [
+                "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, "
+                "Roboto, sans-serif",
+                "default",
+                "Arial, Helvetica, sans-serif",
+                "Georgia, serif",
+                "Times New Roman, Times, serif",
+                "Verdana, Geneva, sans-serif",
+            ],
+        },
+        "fontSize": {
+            "options": [
+                {"title": "Body", "model": "18px"},
+                "default",
+                "tiny",
+                "small",
+                "big",
+                "huge",
             ],
         },
     },

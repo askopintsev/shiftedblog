@@ -1,0 +1,125 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+
+    <!-- Bootstrap CSS -->
+    <link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/css/bootstrap.min.css"
+          integrity="sha384-BmbxuPwQa2lc/FVzBcNJ7UAyJxM6wuqIj61tLrc4wSX0szH/Ev+nYRRuWlolflfl" rel="stylesheet">
+    <link href="{% static 'css/' %}blog.css" rel="stylesheet">
+    <!-- favicon-->
+    <link rel="apple-touch-icon" sizes="57x57" href="{% static 'img/favicons/' %}apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="{% static 'img/favicons/' %}apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="{% static 'img/favicons/' %}apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="{% static 'img/favicons/' %}apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="{% static 'img/favicons/' %}apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="{% static 'img/favicons/' %}apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="{% static 'img/favicons/' %}apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="{% static 'img/favicons/' %}apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'img/favicons/' %}apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192"  href="{% static 'img/favicons/' %}android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/favicons/' %}favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="{% static 'img/favicons/' %}favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'img/favicons/' %}favicon-16x16.png">
+    <link rel="manifest" href="{% static 'img/favicons/' %}manifest.json">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="{% static 'img/favicons/' %}ms-icon-144x144.png">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="copyright" content="© 2025 Shifted Stuff">
+    <!-- CSS tweak for very custom css now for footer-->
+    {% block css %}{% endblock css %}
+
+    <!-- Extra head content (meta tags, etc.) -->
+    {% block extra_head %}{% endblock extra_head %}
+
+    <title>{% block title %}{% endblock %}</title>
+</head>
+<body class="d-flex flex-column min-vh-100">
+<div id="header">
+    {% block header %}
+    {% include "editor/header.html" %}
+    {% endblock %}
+</div>
+<div id="content">
+    {% block content %}
+    {% endblock %}
+</div>
+<div id="footer" class="mt-auto">
+    {% block footer %}
+    {% include "editor/footer.html" %}
+    {% endblock %}
+</div>
+
+
+<!-- Optional JavaScript; choose one of the two! -->
+
+<!-- Option 1: Bootstrap Bundle with Popper -->
+<script crossorigin="anonymous"
+        integrity="sha384-b5kHyXgcpbZJO/tY9Ul7kGkf1S0CWuKcCD38l8YkeH8z8QjE0GmW1gYU5S9FOnJ0"
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Option 2: Separate Popper and Bootstrap JS -->
+<!--
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.6.0/dist/umd/popper.min.js" integrity="sha384-KsvD1yqQ1/1+IA7gi3P0tyJcT3vR+NdBTt13hSJ2lnve8agRGXTTyNaBYmCR/Nwi" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/js/bootstrap.min.js" integrity="sha384-nsg8ua9HAw1y0W1btsyWgBklPnCUAFLuTMS2G72MMONqmOymq585AcH49TLBQObG" crossorigin="anonymous"></script>
+-->
+<script src="https://kit.fontawesome.com/caf8af2354.js" crossorigin="anonymous"></script>
+
+<!-- Search Modal -->
+<div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border: none; background: transparent; box-shadow: none;">
+            <div class="modal-body p-0">
+                <form action="{% url 'editor:post_search' %}" method="get" class="search-form">
+                    <div class="input-group">
+                        <input type="text" 
+                               name="query" 
+                               class="form-control form-control-lg" 
+                               placeholder="Введите запрос..." 
+                               autocomplete="off"
+                               autofocus
+                               style="border-radius: 8px; border: 2px solid rgba(0,0,0,0.1); padding: 1rem 1.5rem; font-size: 1.1rem;">
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-focus search input when modal opens
+document.addEventListener('DOMContentLoaded', function() {
+    const searchModal = document.getElementById('searchModal');
+    const searchInput = searchModal.querySelector('input[name="query"]');
+    
+    searchModal.addEventListener('shown.bs.modal', function () {
+        searchInput.focus();
+    });
+    
+    // Submit form on Enter key
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            this.closest('form').submit();
+        }
+    });
+    
+    // Close modal on Escape key
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modal = bootstrap.Modal.getInstance(searchModal);
+            if (modal) {
+                modal.hide();
+            }
+        }
+    });
+});
+</script>
+
+{% block extra_js %}{% endblock extra_js %}
+</body>
+</html>

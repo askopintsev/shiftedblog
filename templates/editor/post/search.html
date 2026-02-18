@@ -1,0 +1,49 @@
+{% extends "editor/base.html" %}
+{% load static %}
+{% load editor_filters %}
+
+{% block title %}Результаты поиска | Shifted Stuff{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="post-content-container">
+        {% if query %}
+        <div class="search-results-header">
+            <h3>Посты по запросу: <i>"{{ query }}"</i></h3>
+        </div>
+        <div class="search-results">
+            {% if results %}
+                {% for post in results %}
+                    {% include "editor/post_horizontal_card.html" with post=post %}
+                {% endfor %}
+                
+                {% if results.paginator.num_pages > 1 %}
+                    {% include "editor/pagination.html" with page=results %}
+                {% endif %}
+            {% else %}
+                <p class="no-results">Ничего не нашлось</p>
+            {% endif %}
+        </div>
+        <div class="search-again-section">
+            <h5 class="mt-4 mb-3">Искать снова:</h5>
+            <form action="{% url 'editor:post_search' %}" method="get" class="d-flex">
+                <input name="query" type="text" class="form-control me-2" placeholder="Введите запрос..." value="{{ query }}">
+                <button class="btn btn-outline-primary" type="submit">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+            </form>
+        </div>
+        {% else %}
+        <div class="search-results-header">
+            <h3>Поиск по публикациям:</h3>
+        </div>
+        <form action="{% url 'editor:post_search' %}" method="get" class="d-flex mt-3">
+            <input name="query" type="text" class="form-control me-2" placeholder="Введите запрос...">
+            <button class="btn btn-outline-primary" type="submit">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

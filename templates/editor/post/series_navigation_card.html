@@ -1,0 +1,30 @@
+{% load static %}
+{% load editor_filters %}
+
+<div class="series-navigation-card {% if is_previous %}series-nav-previous{% else %}series-nav-next{% endif %}">
+    <div class="series-nav-content">
+        <div class="series-nav-label">
+            {% if is_previous %}
+                <i class="fa-solid fa-arrow-left"></i> Предыдущая часть
+            {% else %}
+                Следующая часть <i class="fa-solid fa-arrow-right"></i>
+            {% endif %}
+        </div>
+        <a href="{{ nav_post.get_absolute_url }}" class="series-nav-link">
+            <div class="series-nav-card">
+                {% if nav_post.cover_image %}
+                <div class="series-nav-image">
+                    <img src="{{ nav_post.cover_image.url|urlencode }}" alt="{{ nav_post.title }}">
+                </div>
+                {% endif %}
+                <div class="series-nav-info">
+                    <div class="series-nav-title">{{ nav_post.title }}</div>
+                    {% if nav_post.short_description %}
+                    <div class="series-nav-description">{{ nav_post.short_description|truncatewords:15 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+

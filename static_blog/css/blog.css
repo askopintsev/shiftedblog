@@ -409,6 +409,57 @@ a.btn.btn-light.shadow-sm{
     margin-right: auto;
 }
 
+/* Post body image carousel gallery - caption below image, centered */
+.post-gallery-carousel {
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f8f9fa;
+}
+
+.post-gallery-carousel .carousel-item {
+    height: 392px;
+    background: #f8f9fa;
+}
+
+.post-gallery-carousel .post-gallery-img-wrap {
+    height: 360px;
+    overflow: hidden;
+    background: #f8f9fa;
+}
+
+.post-gallery-carousel .post-gallery-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.post-gallery-carousel .post-gallery-caption {
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    min-height: 2em;
+    text-align: center;
+    font-size: 0.875rem;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.post-gallery-carousel .post-gallery-caption span[aria-hidden="true"] {
+    visibility: hidden;
+}
+
+.post-gallery-carousel .carousel-control-prev-icon,
+.post-gallery-carousel .carousel-control-next-icon {
+    background-color: rgba(0, 0, 0, 0.4);
+    border-radius: 50%;
+    padding: 0.5rem;
+}
+
 /* Post Body Content - Enhanced Typography */
 .post-body-content {
     font-size: 1.125rem;

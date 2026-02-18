@@ -38,7 +38,7 @@ exclude = [
     "build",
     "dist",
     "*.egg-info",
-    "blog/migrations",
+    "**/migrations",
 ]
 
 [tool.ruff.lint]
@@ -60,7 +60,7 @@ ignore = [
     "DJ001",  # avoid setattr
     "T201",   # print found (allow in manage/scripts if needed)
 ]
-extend-per-file-ignores = { "blog/migrations/*" = ["ALL"], "manage.py" = ["T201"] }
+extend-per-file-ignores = { "manage.py" = ["T201"] }
 
 [tool.ruff.format]
 quote-style = "double"
