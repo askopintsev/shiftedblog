@@ -7,6 +7,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
+from django.utils.safestring import mark_safe
 from django.utils import timezone
 from taggit.managers import TaggableManager
 
@@ -176,8 +177,11 @@ class Post(models.Model):
         return reverse("editor:post_detail_by_uuid", args=[self.uuid])
 
     def draft_preview_link(self):
-        """Path for draft preview (for admin readonly display)."""
-        return self.get_draft_url()
+        """Clickable link to open post as draft (for admin readonly display)."""
+        url = self.get_draft_url()
+        return mark_safe(
+            f'<a href="{url}" target="_blank" rel="noopener">View draft</a>'
+        )
 
     draft_preview_link.short_description = "Draft preview link"
 
