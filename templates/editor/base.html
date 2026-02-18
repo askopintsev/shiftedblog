@@ -41,7 +41,7 @@
 <body class="d-flex flex-column min-vh-100">
 <div id="header">
     {% block header %}
-    {% include "blog/header.html" %}
+    {% include "editor/header.html" %}
     {% endblock %}
 </div>
 <div id="content">
@@ -50,7 +50,7 @@
 </div>
 <div id="footer" class="mt-auto">
     {% block footer %}
-    {% include "blog/footer.html" %}
+    {% include "editor/footer.html" %}
     {% endblock %}
 </div>
 
@@ -74,7 +74,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border: none; background: transparent; box-shadow: none;">
             <div class="modal-body p-0">
-                <form action="{% url 'blog:post_search' %}" method="get" class="search-form">
+                <form action="{% url 'editor:post_search' %}" method="get" class="search-form">
                     <div class="input-group">
                         <input type="text" 
                                name="query" 
