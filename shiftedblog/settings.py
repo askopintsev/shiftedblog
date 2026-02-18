@@ -456,6 +456,27 @@ CKEDITOR_5_CONFIGS = {
                 "tableCellProperties",
             ],
         },
+        # Inter as first (and default) choice
+        "fontFamily": {
+            "options": [
+                "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif",
+                "default",
+                "Arial, Helvetica, sans-serif",
+                "Georgia, serif",
+                "Times New Roman, Times, serif",
+                "Verdana, Geneva, sans-serif",
+            ],
+        },
+        "fontSize": {
+            "options": [
+                {"title": "Body", "model": "18px"},
+                "default",
+                "tiny",
+                "small",
+                "big",
+                "huge",
+            ],
+        },
     },
 }
 

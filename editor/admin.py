@@ -22,6 +22,7 @@ class PostAdmin(admin.ModelAdmin):
     inlines = [PostGalleryImageInline]
 
     class Media:
+        css = {"all": ("editor/css/post_admin_editor.css",)}
         js = ("editor/js/post_autosave.js",)
 
     list_display = ("title", "slug", "author", "updated", "published", "status")
