@@ -217,3 +217,39 @@ class Post(models.Model):
             return None
         except Exception:
             return None
+
+
+class PostGalleryImage(models.Model):
+    """Image for a post body carousel gallery. Use gallery_key to group images.
+    Insert [gallery:1], [gallery:2], ... in the post body where the gallery should appear."""
+
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.CASCADE,
+        related_name="gallery_images",
+    )
+    gallery_key = models.PositiveIntegerField(
+        default=1,
+        help_text="Gallery number. Use [gallery:1] in the body for this gallery, [gallery:2] for the next, etc.",
+    )
+    image = models.ImageField(
+        upload_to="img/post/gallery/%Y/%m/%d",
+        validators=[validate_image_extension],
+    )
+    caption = models.CharField(
+        max_length=250,
+        blank=True,
+        default="",
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        help_text="Order within this gallery (lower first).",
+    )
+
+    class Meta:
+        app_label = "editor"
+        db_table = "editor_postgalleryimage"
+        ordering = ["gallery_key", "order", "id"]
+
+    def __str__(self):
+        return f"Gallery {self.gallery_key} image {self.order} for {self.post.title}"

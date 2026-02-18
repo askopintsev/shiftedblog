@@ -1,6 +1,7 @@
 {% extends "editor/base.html" %}
 {% load static %}
 {% load editor_filters %}
+{% load editor_tags %}
 
 {% block title %}{{ post.title }} | Shifted Stuff{% endblock %}
 
@@ -106,7 +107,16 @@
             {% endif %}
             
             <div class="post-body-content">
-                {{ post.body|safe|linebreaks }}
+                {% get_post_body_segments post as body_segments %}
+                {% for segment in body_segments %}
+                    {% if segment.type == "html" %}
+                        {{ segment.content|safe }}
+                    {% else %}
+                        {% include "editor/post/post_gallery_carousel.html" with gallery_images=segment.gallery_images carousel_id=segment.carousel_id post_title=post.title %}
+                    {% endif %}
+                {% empty %}
+                    {{ post.body|safe }}
+                {% endfor %}
             </div>
 
             {% if next_post %}

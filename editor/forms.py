@@ -2,9 +2,23 @@ from typing import ClassVar
 
 from django import forms
 from django.contrib.auth import get_user_model
+from django.forms import BaseInlineFormSet
 from django_ckeditor_5.widgets import CKEditor5Widget
 
 from editor import models
+
+
+class OptionalGalleryFormSet(BaseInlineFormSet):
+    """Allow saving the post when gallery formset management data is missing (galleries optional)."""
+
+    def __init__(self, data=None, *args, **kwargs):
+        if data is not None:
+            prefix = kwargs.get("prefix") or self.get_default_prefix()
+            total_key = f"{prefix}-TOTAL_FORMS"
+            initial_key = f"{prefix}-INITIAL_FORMS"
+            if total_key not in data or initial_key not in data:
+                data = None
+        super().__init__(data, *args, **kwargs)
 
 
 class SearchForm(forms.Form):

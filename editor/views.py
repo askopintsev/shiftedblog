@@ -45,7 +45,7 @@ def post_list(request, tag_slug=None, category_slug=None):
 
 def post_detail(request, slug):
     post = get_object_or_404(
-        Post,
+        Post.objects.prefetch_related("gallery_images"),
         slug=slug,
         status="published",
     )

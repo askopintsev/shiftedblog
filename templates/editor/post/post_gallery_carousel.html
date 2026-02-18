@@ -1,0 +1,26 @@
+{% load static %}
+<div id="{{ carousel_id }}" class="carousel slide post-gallery-carousel my-4" data-bs-ride="carousel" data-bs-interval="5000">
+    <div class="carousel-indicators">
+        {% for img in gallery_images %}
+        <button type="button" data-bs-target="#{{ carousel_id }}" data-bs-slide-to="{{ forloop.counter0 }}" {% if forloop.first %}class="active" aria-current="true"{% endif %} aria-label="Slide {{ forloop.counter }}"></button>
+        {% endfor %}
+    </div>
+    <div class="carousel-inner">
+        {% for img in gallery_images %}
+        <div class="carousel-item {% if forloop.first %}active{% endif %}">
+            <div class="post-gallery-img-wrap">
+                <img src="{{ img.image.url|urlencode }}" class="d-block w-100 post-gallery-img" alt="{{ img.caption|default:post_title }}">
+            </div>
+            <p class="post-gallery-caption text-muted mb-0">{% if img.caption %}{{ img.caption }}{% else %}<span aria-hidden="true">&nbsp;</span>{% endif %}</p>
+        </div>
+        {% endfor %}
+    </div>
+    <button class="carousel-control-prev" type="button" data-bs-target="#{{ carousel_id }}" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Previous</span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#{{ carousel_id }}" data-bs-slide="next">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Next</span>
+    </button>
+</div>
