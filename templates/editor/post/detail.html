@@ -51,6 +51,13 @@
 {% endblock extra_head %}
 
 {% block content %}
+{% if is_draft_preview %}
+<div class="container mt-2">
+    <div class="alert alert-warning mb-0" role="alert">
+        <i class="fa-solid fa-eye"></i> Draft preview — this post is not published. Share this link to preview.
+    </div>
+</div>
+{% endif %}
 <div class="post-detail-wrapper">
     <div class="container">
         <div class="post-content-container">

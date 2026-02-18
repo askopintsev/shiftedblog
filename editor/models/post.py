@@ -1,5 +1,6 @@
 import datetime
 import os
+import uuid
 from typing import ClassVar
 
 from django.conf import settings
@@ -82,6 +83,7 @@ class Post(models.Model):
 
     STATUS_CHOICES = (
         ("draft", "Draft"),
+        ("ready_to_publish", "Ready to publish"),
         ("published", "Published"),
     )
 
@@ -89,6 +91,12 @@ class Post(models.Model):
     slug = models.SlugField(
         max_length=250,
         unique=True,
+    )
+    uuid = models.UUIDField(
+        unique=True,
+        default=uuid.uuid4,
+        editable=False,
+        help_text="Secret UUID for draft preview URL.",
     )
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -116,7 +124,7 @@ class Post(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
     status = models.CharField(
-        max_length=10,
+        max_length=16,
         choices=STATUS_CHOICES,
         default="draft",
     )
@@ -162,6 +170,16 @@ class Post(models.Model):
 
     def get_absolute_url(self):
         return reverse("editor:post_detail", args=[self.slug])
+
+    def get_draft_url(self):
+        """Secret URL to view this post (including drafts) by UUID."""
+        return reverse("editor:post_detail_by_uuid", args=[self.uuid])
+
+    def draft_preview_link(self):
+        """Path for draft preview (for admin readonly display)."""
+        return self.get_draft_url()
+
+    draft_preview_link.short_description = "Draft preview link"
 
     def get_image_url(self):
         return str(self.cover_image)

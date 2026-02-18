@@ -25,7 +25,7 @@ class PostAdmin(admin.ModelAdmin):
     list_filter = ("status", "created", "published", "author")
     search_fields = ("title", "body")
     prepopulated_fields: ClassVar[dict] = {"slug": ("title",)}
-    readonly_fields = ("views",)
+    readonly_fields = ("views", "draft_preview_link")
     date_hierarchy = "published"
     ordering = ("status", "published")
 

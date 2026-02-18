@@ -97,6 +97,58 @@ def post_detail(request, slug):
     )
 
 
+def post_detail_by_uuid(request, uuid):
+    """View a post by secret UUID (any status, including draft)."""
+    post = get_object_or_404(
+        Post.objects.prefetch_related("gallery_images"),
+        uuid=uuid,
+    )
+    # Don't increment views for draft preview
+
+    previous_post = None
+    next_post = None
+    current_series = None
+    post_series = post.post_series.filter(order_position__isnull=False).first()
+    if post_series:
+        current_series = post_series.series
+        previous_post = post.get_previous_post_in_series(current_series)
+        if previous_post and previous_post.status != "published":
+            previous_post = None
+        next_post = post.get_next_post_in_series(current_series)
+        if next_post and next_post.status != "published":
+            next_post = None
+
+    post_tags_ids = post.tags.values_list("id", flat=True)
+    similar_posts = (
+        Post.objects.filter(status="published")
+        .filter(tags__in=post_tags_ids)
+        .exclude(id=post.id)
+    )
+    similar_posts = similar_posts.annotate(same_tags=Count("tags")).order_by(
+        "-same_tags", "-published"
+    )[:3]
+
+    newest_posts = (
+        Post.objects.exclude(id=post.id)
+        .exclude(id__in=similar_posts)
+        .order_by("-published")[: 5 - len(similar_posts)]
+    )
+
+    return render(
+        request,
+        "editor/post/detail.html",
+        {
+            "post": post,
+            "similar_posts": similar_posts,
+            "newest_posts": newest_posts,
+            "previous_post": previous_post,
+            "next_post": next_post,
+            "current_series": current_series,
+            "is_draft_preview": post.status != "published",
+        },
+    )
+
+
 def post_search(request):
     form = SearchForm()
     query = None
