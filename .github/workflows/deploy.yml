@@ -17,13 +17,13 @@ jobs:
       - name: Install Ruff
         run: uv tool install ruff
       - name: Run Ruff format check
-        run: ruff format --check blog shiftedblog manage.py templates
+        run: ruff format --check core editor shiftedblog team manage.py templates
       - name: Run Ruff lint
-        run: ruff check blog shiftedblog manage.py templates
+        run: ruff check core editor shiftedblog team manage.py templates
       - name: Run Pyright
         run: |
           uv tool install pyright
-          pyright blog shiftedblog manage.py
+          pyright editor shiftedblog manage.py
 
   deploy:
     runs-on: ubuntu-latest

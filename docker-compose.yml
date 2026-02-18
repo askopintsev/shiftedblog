@@ -26,7 +26,9 @@ services:
     build: .
     volumes:
       # Mount source code directories for autoreload
-      - ./blog:/app/blog
+      - ./editor:/app/editor
+      - ./core:/app/core
+      - ./team:/app/team
       - ./shiftedblog:/app/shiftedblog
       - ./manage.py:/app/manage.py
       - ./templates:/app/templates

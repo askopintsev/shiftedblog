@@ -61,8 +61,8 @@ The project uses [Ruff](https://docs.astral.sh/ruff/) for formatting and linting
 
 ```bash
 pip install -e ".[dev]"
-ruff format blog shiftedblog manage.py templates
-ruff check blog shiftedblog manage.py templates --fix
+ruff format core editor shiftedblog team manage.py templates
+ruff check core editor shiftedblog team manage.py templates --fix
 ```
 
 Or in Docker (run as host user so ruff can write to mounted files; `HOME` and `RUFF_CACHE_DIR` set so pip and ruff can write): `docker compose run --no-deps --user "$(id -u):$(id -g)" -e HOME=/tmp/ruff-home -e RUFF_CACHE_DIR=/tmp/ruff-home/.ruff_cache web sh -c 'pip install ruff && python -m ruff format . && python -m ruff check . --fix'`
@@ -73,10 +73,10 @@ The project uses [Pyright](https://microsoft.github.io/pyright/) for static type
 
 ```bash
 pip install -e ".[dev]"
-pyright blog shiftedblog manage.py
+pyright editor shiftedblog manage.py
 ```
 
-Or with uv: `uv sync && uv run pyright blog shiftedblog manage.py`. Config lives in `pyproject.toml` under `[tool.pyright]` (Python 3.14, `basic` mode, migrations excluded).
+Or with uv: `uv sync && uv run pyright editor shiftedblog manage.py`. Config lives in `pyproject.toml` under `[tool.pyright]` (Python 3.14, `basic` mode, migrations excluded).
 
 ### Docker Development
 
@@ -187,7 +187,7 @@ git push origin master
 
 ```
 shiftedblog/
-├── blog/                    # Main Django app
+├── editor/                  # Main Django app (posts, categories, series)
 ├── shiftedblog/            # Django project settings
 ├── templates/              # HTML templates
 ├── static/                 # Static files
