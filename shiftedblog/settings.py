@@ -43,7 +43,7 @@ def get_int_env(key, default=0):
     """Convert environment variable to integer."""
     try:
         return int(os.environ.get(key, default))
-    except ValueError, TypeError:
+    except (ValueError, TypeError):
         return default
 
 
@@ -109,7 +109,9 @@ INSTALLED_APPS = [
     "two_factor",
     "taggit",
     "django_ckeditor_5",
-    "blog",
+    "core",
+    "team",
+    "editor",
 ]
 
 _MIDDLEWARE = [
@@ -208,7 +210,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-AUTH_USER_MODEL = "blog.User"
+AUTH_USER_MODEL = "core.User"
 LOGIN_URL = "two_factor:login"
 
 # Admin URL path (configurable for security through obscurity)

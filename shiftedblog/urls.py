@@ -4,6 +4,8 @@ The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/6.0/topics/http/urls/
 """
 
+import core.urls  # noqa: F401 - loads admin site customization
+
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
@@ -12,15 +14,16 @@ from django.urls import include, path
 from django.views.generic import TemplateView
 from two_factor.urls import urlpatterns as tf_urlpatterns
 
-from blog.sitemap import PostSitemap
-from blog.views import custom_image_upload, robots_txt
+from editor.sitemap import PostSitemap
+from core.views import (
+    custom_image_upload,
+    robots_txt,
+)
 from shiftedblog.rate_limited_views import (
     RateLimitedLoginView,
     RateLimitedQRGeneratorView,
     RateLimitedSetupView,
 )
-
-app_name = "blog"
 
 sitemaps = {"posts": PostSitemap}
 
@@ -34,7 +37,8 @@ urlpatterns = [
     path("custom-image-upload/", custom_image_upload, name="custom_image_upload"),
     # path("ckeditor5/", include('django_ckeditor_5.urls')),
     path(f"{admin_url}/", admin.site.urls),
-    path("", include("blog.urls", namespace="blog")),
+    path("", include("team.urls")),
+    path("", include("editor.urls", namespace="editor")),
     path(
         "sitemap.xml",
         sitemap,
@@ -63,7 +67,7 @@ if settings.DZEN_VERIFICATION_FILE:
         )
     )
 
-handler400 = "blog.views.custom_bad_request_view"
-handler403 = "blog.views.custom_permission_denied_view"
-handler404 = "blog.views.custom_page_not_found_view"
-handler500 = "blog.views.custom_error_view"
+handler400 = "core.views.custom_bad_request_view"
+handler403 = "core.views.custom_permission_denied_view"
+handler404 = "core.views.custom_page_not_found_view"
+handler500 = "core.views.custom_error_view"
