@@ -23,7 +23,10 @@ class PostAdmin(admin.ModelAdmin):
 
     class Media:
         css: ClassVar[dict] = {"all": ("editor/css/post_admin_editor.css",)}
-        js: ClassVar[tuple] = ("editor/js/post_autosave.js",)
+        js: ClassVar[tuple] = (
+            "editor/js/post_body_stats.js",
+            "editor/js/post_autosave.js",
+        )
 
     list_display = ("title", "slug", "author", "updated", "published", "status")
     list_filter = ("status", "created", "published", "author")

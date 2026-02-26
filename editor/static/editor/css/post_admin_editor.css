@@ -1,3 +1,14 @@
+/* Body stats (symbols, words, reading time) above the body field */
+#content .post-body-stats {
+    font-size: 0.8125rem;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+}
+#content .post-body-stats strong {
+    color: #212529;
+    font-weight: 600;
+}
+
 /* CKEditor body field: same width and spacing as post detail (.post-content-container + .post-body-content) */
 
 #content .ck-editor-container {
