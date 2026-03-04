@@ -42,7 +42,7 @@ urlpatterns = [
         "sitemap.xml",
         sitemap,
         {"sitemaps": sitemaps},
-        name="django.contrib.sitemaps.views.sitemap",
+        name="sitemap",
     ),
     # Rate-limited authentication endpoints (override two_factor URLs)
     path("login/", RateLimitedLoginView.as_view(), name="login"),

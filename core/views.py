@@ -54,7 +54,9 @@ def custom_image_upload(request):
 def robots_txt(request):
     """Dynamic robots.txt view that uses settings for admin URL and site URL."""
     admin_url = getattr(settings, "ADMIN_URL", "mellon")
-    site_url = getattr(settings, "SITE_URL", "http://localhost")
+    site_url = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
+    if not site_url:
+        site_url = request.build_absolute_uri("/").rstrip("/")
 
     content = f"""User-agent: *
 Allow: /
@@ -65,4 +67,4 @@ Disallow: /drafts/
 Sitemap: {site_url}/sitemap.xml
     """
 
-    return HttpResponse(content, content_type="text/plain")
+    return HttpResponse(content.encode("utf-8"), content_type="text/plain; charset=utf-8")

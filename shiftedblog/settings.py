@@ -10,6 +10,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -82,10 +83,14 @@ SITE_URL = os.environ.get("SITE_URL")
 if not SITE_URL and ALLOWED_HOSTS:
     # Auto-detect from first allowed host (use https in production, http in dev)
     first_host = ALLOWED_HOSTS[0].strip()
-    if first_host and first_host not in ("localhost", "127.0.0.1"):
+    if first_host in ("", "*"):
+        first_host = "localhost"
+    if first_host and first_host not in ("localhost", "127.0.0.1", "::1"):
         SITE_URL = f"https://{first_host}"
     else:
         SITE_URL = f"http://{first_host}"
+if SITE_URL:
+    SITE_URL = SITE_URL.strip().rstrip("/")
 
 SITE_ID = 1
 
@@ -256,6 +261,28 @@ MEDIA_URL = "media/"
 # Security settings
 # Determine if we're in production (not DEBUG mode)
 IS_PRODUCTION = not DEBUG
+
+if not SITE_URL:
+    raise ValueError(
+        "SITE_URL must be set to an absolute URL (e.g., https://example.com)."
+    )
+
+parsed_site_url = urlparse(SITE_URL)
+if not parsed_site_url.scheme or not parsed_site_url.netloc:
+    raise ValueError(
+        f"SITE_URL must be an absolute URL with scheme and domain. Got: {SITE_URL}"
+    )
+
+if IS_PRODUCTION:
+    hostname = (parsed_site_url.hostname or "").lower()
+    if parsed_site_url.scheme != "https":
+        raise ValueError(
+            f"SITE_URL must use HTTPS in production. Got: {SITE_URL}"
+        )
+    if hostname in {"localhost", "127.0.0.1", "::1"} or hostname.endswith(".local"):
+        raise ValueError(
+            f"SITE_URL cannot point to localhost/local domain in production. Got: {SITE_URL}"
+        )
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
