@@ -14,6 +14,9 @@
 {% endblock canonical %}
 
 {% block extra_head %}
+{% if is_draft_preview %}
+<meta name="robots" content="noindex,nofollow">
+{% endif %}
 <!-- Open Graph -->
 <meta property="og:type" content="article">
 <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{{ post.get_absolute_url }}">

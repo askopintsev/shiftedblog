@@ -134,7 +134,7 @@ def post_detail_by_uuid(request, uuid):
         .order_by("-published")[: 5 - len(similar_posts)]
     )
 
-    return render(
+    response = render(
         request,
         "editor/post/detail.html",
         {
@@ -147,6 +147,8 @@ def post_detail_by_uuid(request, uuid):
             "is_draft_preview": post.status != "published",
         },
     )
+    response["X-Robots-Tag"] = "noindex, nofollow"
+    return response
 
 
 def post_search(request):
