@@ -5,6 +5,14 @@
 
 {% block title %}{{ post.title }} | Shifted Stuff{% endblock %}
 
+{% block canonical %}
+{% if is_draft_preview %}
+<link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
+{% else %}
+<link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}{{ post.get_absolute_url }}">
+{% endif %}
+{% endblock canonical %}
+
 {% block extra_head %}
 <!-- Open Graph -->
 <meta property="og:type" content="article">
