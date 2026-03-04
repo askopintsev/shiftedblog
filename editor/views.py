@@ -1,3 +1,4 @@
+# pyright: reportAttributeAccessIssue=false
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db.models import Count
