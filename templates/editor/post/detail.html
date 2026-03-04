@@ -21,9 +21,11 @@
 {% endwith %}
 {% endif %}
 {% if post.short_description %}
+<meta name="description" content="{{ post.short_description }}">
 <meta property="og:description" content="{{ post.short_description }}">
 {% else %}
 {% with body_text=post.body|striptags|truncatechars:160 %}
+<meta name="description" content="{{ body_text }}">
 <meta property="og:description" content="{{ body_text }}">
 {% endwith %}
 {% endif %}
