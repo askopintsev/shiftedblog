@@ -58,6 +58,35 @@
 <meta name="twitter:image:alt" content="{{ post.title }}">
 {% endwith %}
 {% endif %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "{{ post.title|striptags|escapejs }}",
+  {% if post.short_description %}
+  "description": "{{ post.short_description|striptags|escapejs }}",
+  {% else %}
+  "description": "{{ post.body|striptags|truncatechars:160|escapejs }}",
+  {% endif %}
+  "datePublished": "{{ post.published|default:post.created|date:'c' }}",
+  "dateModified": "{{ post.updated|date:'c' }}",
+  "author": {
+    "@type": "Person",
+    "name": "{{ post.author.get_full_name|default:post.author|striptags|escapejs }}"
+  },
+  {% if post.cover_image %}
+  "image": "{{ request.scheme }}://{{ request.get_host }}{{ post.cover_image.url }}",
+  {% endif %}
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    {% if is_draft_preview %}
+    "@id": "{{ request.scheme }}://{{ request.get_host }}{{ request.path }}"
+    {% else %}
+    "@id": "{{ request.scheme }}://{{ request.get_host }}{{ post.get_absolute_url }}"
+    {% endif %}
+  }
+}
+</script>
 {% endblock extra_head %}
 
 {% block content %}
