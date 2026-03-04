@@ -214,3 +214,36 @@ def post_search(request):
             "query_string": query_string,
         },
     )
+
+
+def html_sitemap(request):
+    posts = list(
+        Post.objects.filter(status="published")
+        .select_related("category")
+        .prefetch_related("tags")
+        .order_by("-published")
+    )
+
+    categories = (
+        Category.objects.filter(blog_category__status="published")
+        .exclude(name__isnull=True)
+        .exclude(name__exact="")
+        .distinct()
+        .order_by("name")
+    )
+
+    tags_by_slug = {}
+    for post in posts:
+        for tag in post.tags.all():
+            tags_by_slug[tag.slug] = tag
+    tags = sorted(tags_by_slug.values(), key=lambda tag: tag.name.lower())
+
+    return render(
+        request,
+        "editor/post/sitemap.html",
+        {
+            "posts": posts,
+            "categories": categories,
+            "tags": tags,
+        },
+    )
