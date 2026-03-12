@@ -37,10 +37,10 @@ jobs:
       uses: docker/setup-buildx-action@v3
 
     - name: Install Doppler CLI
-      uses: dopplerhq/cli-action@v3
+      uses: dopplerhq/cli-action@v4
 
     - name: Fetch Doppler Secrets
-      uses: dopplerhq/cli-action@v3
+      uses: dopplerhq/cli-action@v4
       with:
           token: ${{ secrets.DOPPLER_TOKEN }}
           project: shifted_blog
