@@ -182,9 +182,9 @@ idna==3.11 \
     --hash=sha256:771a87f49d9defaf64091e6e6fe9c18d4833f140bd19464795bc32d966ca37ea \
     --hash=sha256:795dafcc9c04ed0c1fb032c2aa73654d8e8c5023a7df64a53f39190ada629902
     # via requests
-phonenumbers==9.0.25 \
-    --hash=sha256:a5f236fa384c6a77378d7836c8e486ade5f984ad2e8e6cc0dbe5124315cdc81b \
-    --hash=sha256:b1fd6c20d588f5bcd40af3899d727a9f536364211ec6eac554fcd75ca58992a3
+phonenumbers==9.0.26 \
+    --hash=sha256:9e582c827f0f5503cddeebef80099475a52ffa761551d8384099c7ec71298cbf \
+    --hash=sha256:ff473da5712965b6c7f7a31cbff8255864df694eb48243771133ecb761e807c1
     # via shiftedblog
 pillow==12.1.1 \
     --hash=sha256:02f84dfad02693676692746df05b89cf25597560db2857363a208e393429f5e9 \
