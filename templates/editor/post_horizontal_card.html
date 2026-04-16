@@ -5,7 +5,7 @@
     <a class="shb-bookmark-container" href="{{ post.get_absolute_url }}">
         <div class="shb-bookmark-thumbnail">
             {% if post.cover_image %}
-            <img src="{{ post.cover_image.url|urlencode }}" alt="{{ post.title }}">
+            <img src="{{ post.cover_image.url|urlencode }}" alt="{% firstof post.cover_description post.title %}"{% if post.cover_image.width and post.cover_image.height %} width="{{ post.cover_image.width }}" height="{{ post.cover_image.height }}"{% endif %} loading="lazy" decoding="async">
             {% endif %}
         </div>
         <div class="shb-bookmark-content">

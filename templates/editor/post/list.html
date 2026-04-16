@@ -19,7 +19,7 @@
         <div class="col-sm-6 col-lg-4 mb-3">
             <div class="card mb-3 h-100 border rounded overflow-hidden shadow-sm">
                 <a href="{{ post.get_absolute_url }}">
-                    <img class="card-img-top" src="{{ post.cover_image.url|urlencode }}" alt="{{ post.title }}">
+                    <img class="card-img-top" src="{{ post.cover_image.url|urlencode }}" alt="{% firstof post.cover_description post.title %}"{% if post.cover_image.width and post.cover_image.height %} width="{{ post.cover_image.width }}" height="{{ post.cover_image.height }}"{% endif %} loading="lazy" decoding="async">
                 </a>
                 <div class="card-body d-flex flex-column">
                     <a href="{{ post.get_absolute_url }}" class="text-decoration-none text-reset">

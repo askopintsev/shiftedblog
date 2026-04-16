@@ -26,9 +26,14 @@
 <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ image_url }}">
 <meta property="og:image:secure_url" content="{{ request.scheme }}://{{ request.get_host }}{{ image_url }}">
 <meta property="og:image:type" content="image/jpeg">
+{% if post.cover_image.width and post.cover_image.height %}
+<meta property="og:image:width" content="{{ post.cover_image.width }}">
+<meta property="og:image:height" content="{{ post.cover_image.height }}">
+{% else %}
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="{{ post.title }}">
+{% endif %}
+<meta property="og:image:alt" content="{% firstof post.cover_description post.title %}">
 {% endwith %}
 {% endif %}
 {% if post.short_description %}
@@ -58,7 +63,7 @@
 {% with image_url=post.cover_image.url %}
 <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{{ image_url }}">
 <meta name="twitter:image:src" content="{{ request.scheme }}://{{ request.get_host }}{{ image_url }}">
-<meta name="twitter:image:alt" content="{{ post.title }}">
+<meta name="twitter:image:alt" content="{% firstof post.cover_description post.title %}">
 {% endwith %}
 {% endif %}
 <script type="application/ld+json">
@@ -160,7 +165,7 @@
     <div class="post-cover-image-wrapper">
         <div class="container">
             <div class="post-cover-image-container">
-                <img class="post-cover-image" src="{{ post.cover_image.url|urlencode }}" alt="{{ post.title }}">
+                <img class="post-cover-image" src="{{ post.cover_image.url|urlencode }}" alt="{% firstof post.cover_description post.title %}"{% if post.cover_image.width and post.cover_image.height %} width="{{ post.cover_image.width }}" height="{{ post.cover_image.height }}"{% endif %} decoding="async" fetchpriority="high">
                 {% if post.cover_description %}
                     <div class="post-cover-description">
                         <p class="text-muted mb-0">{{ post.cover_description }}</p>

@@ -14,7 +14,7 @@
             <div class="series-nav-card">
                 {% if nav_post.cover_image %}
                 <div class="series-nav-image">
-                    <img src="{{ nav_post.cover_image.url|urlencode }}" alt="{{ nav_post.title }}">
+                    <img src="{{ nav_post.cover_image.url|urlencode }}" alt="{% firstof nav_post.cover_description nav_post.title %}"{% if nav_post.cover_image.width and nav_post.cover_image.height %} width="{{ nav_post.cover_image.width }}" height="{{ nav_post.cover_image.height }}"{% endif %} loading="lazy" decoding="async">
                 </div>
                 {% endif %}
                 <div class="series-nav-info">
