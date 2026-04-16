@@ -1,7 +1,8 @@
+# pyright: reportAttributeAccessIssue=false
 import datetime
 import os
 import uuid
-from typing import ClassVar
+from typing import ClassVar, cast
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -9,6 +10,7 @@ from django.db import models
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.safestring import mark_safe
+from django.utils.text import slugify
 from taggit.managers import TaggableManager
 
 
@@ -63,7 +65,6 @@ class PostSeries(models.Model):
     order_position = models.PositiveIntegerField(
         null=True,
         blank=True,
-        default=None,
         verbose_name="Order position in series",
     )
 
@@ -148,7 +149,7 @@ class Post(models.Model):
         default=None,
     )
     views = models.PositiveIntegerField(
-        default=0,
+        default=0,  # pyright: ignore[reportArgumentType]
         verbose_name="Views count",
     )
 
@@ -163,10 +164,54 @@ class Post(models.Model):
     def __str__(self):
         return self.title
 
+    @staticmethod
+    def _slugify_segment(value: str) -> str:
+        """Normalize to URL-safe slug; allow Unicode letters (e.g. Cyrillic)."""
+        if not value or not value.strip():
+            return ""
+        cleaned = value.strip()
+        s = slugify(cleaned, allow_unicode=True)
+        if not s:
+            s = slugify(cleaned)
+        return s
+
+    def _ensure_unique_slug(self) -> None:
+        """Set slug from title or normalized input; append -2, -3, … if needed."""
+        raw = (self.slug or "").strip()
+        if raw:
+            base = self._slugify_segment(raw)
+        else:
+            base = self._slugify_segment(str(self.title))
+        if not base:
+            base = "post"
+
+        max_len = self._meta.get_field("slug").max_length
+        reserve = 8  # room for suffix like "-999999"
+        base = base[: max(1, max_len - reserve)]
+
+        candidate = base
+        n = 2
+        while True:
+            qs = Post.objects.filter(slug=candidate)
+            if self.pk is not None:
+                qs = qs.exclude(pk=self.pk)
+            if not qs.exists():
+                self.slug = candidate
+                return
+            suffix = f"-{n}"
+            candidate = base[: max_len - len(suffix)] + suffix
+            n += 1
+            if n > 10**6:
+                raise ValidationError(
+                    "Could not assign a unique slug; try a more distinct title or slug."
+                )
+
     def save(self, *args, **kwargs):
         """Automatically set published date when status changes to 'published'."""
-        if self.status == "published" and self.published is None:
+        published_at = cast(datetime.datetime | None, self.published)
+        if self.status == "published" and published_at is None:
             self.published = timezone.now()
+        self._ensure_unique_slug()
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
@@ -252,7 +297,7 @@ class PostGalleryImage(models.Model):
         related_name="gallery_images",
     )
     gallery_key = models.PositiveIntegerField(
-        default=1,
+        default=1,  # pyright: ignore[reportArgumentType]
         help_text=(
             "Gallery number. Use [gallery:1] in body for this gallery, "
             "[gallery:2] for the next, etc."
@@ -268,7 +313,7 @@ class PostGalleryImage(models.Model):
         default="",
     )
     order = models.PositiveIntegerField(
-        default=0,
+        default=0,  # pyright: ignore[reportArgumentType]
         help_text="Order within this gallery (lower first).",
     )
 
