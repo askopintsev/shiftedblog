@@ -2,11 +2,12 @@
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db.models import Count
+from django.http import Http404, HttpResponsePermanentRedirect
 from django.shortcuts import get_object_or_404, render
 from taggit.models import Tag
 
 from editor.forms import SearchForm
-from editor.models import Category, Post
+from editor.models import Category, Post, PostSlugRedirect
 
 
 def post_list(request, tag_slug=None, category_slug=None):
@@ -45,11 +46,22 @@ def post_list(request, tag_slug=None, category_slug=None):
 
 
 def post_detail(request, slug):
-    post = get_object_or_404(
-        Post.objects.prefetch_related("gallery_images"),
-        slug=slug,
-        status="published",
+    post = (
+        Post.objects.prefetch_related("gallery_images")
+        .filter(slug=slug, status="published")
+        .first()
     )
+    if post is None:
+        redirect_row = (
+            PostSlugRedirect.objects.select_related("post")
+            .filter(old_slug=slug)
+            .first()
+        )
+        if redirect_row and redirect_row.post.status == "published":
+            return HttpResponsePermanentRedirect(
+                redirect_row.post.get_absolute_url()
+            )
+        raise Http404("No published post matches this URL.")
 
     post.views += 1
     post.save(update_fields=["views"])

@@ -208,11 +208,24 @@ class Post(models.Model):
 
     def save(self, *args, **kwargs):
         """Automatically set published date when status changes to 'published'."""
+        update_fields = kwargs.get("update_fields")
+        slug_persisted = update_fields is None or "slug" in set(update_fields)
+
+        old_slug: str | None = None
+        if self.pk and slug_persisted:
+            try:
+                old_slug = Post.objects.only("slug").get(pk=self.pk).slug
+            except Post.DoesNotExist:
+                old_slug = None
+
         published_at = cast(datetime.datetime | None, self.published)
         if self.status == "published" and published_at is None:
             self.published = timezone.now()
         self._ensure_unique_slug()
         super().save(*args, **kwargs)
+
+        if slug_persisted:
+            self._record_slug_redirect_if_changed(old_slug)
 
     def get_absolute_url(self):
         return reverse("editor:post_detail", args=[self.slug])
@@ -284,6 +297,41 @@ class Post(models.Model):
             return None
         except Exception:
             return None
+
+    def _record_slug_redirect_if_changed(self, old_slug: str | None) -> None:
+        """Keep old URL → 301 to current slug for SEO when slug is edited."""
+        if not old_slug or old_slug == self.slug:
+            return
+        PostSlugRedirect.objects.update_or_create(
+            old_slug=old_slug,
+            defaults={"post": self},
+        )
+        # New canonical slug must not also be a redirect key.
+        PostSlugRedirect.objects.filter(old_slug=self.slug).delete()
+
+
+class PostSlugRedirect(models.Model):
+    """Maps a retired post slug to the post so we can 301 to the current URL."""
+
+    old_slug = models.SlugField(
+        max_length=250,
+        unique=True,
+        db_index=True,
+    )
+    post = models.ForeignKey(
+        "Post",
+        on_delete=models.CASCADE,
+        related_name="slug_redirects",
+    )
+
+    class Meta:
+        app_label = "editor"
+        db_table = "editor_postslugredirect"
+        verbose_name = "Post slug redirect (301)"
+        verbose_name_plural = "Post slug redirects (301)"
+
+    def __str__(self) -> str:
+        return f"{self.old_slug} → {self.post.slug}"
 
 
 class PostGalleryImage(models.Model):

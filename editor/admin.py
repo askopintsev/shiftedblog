@@ -6,6 +6,13 @@ from editor import models
 from editor.forms import OptionalGalleryFormSet, PostAdminForm
 
 
+@admin.register(models.PostSlugRedirect)
+class PostSlugRedirectAdmin(admin.ModelAdmin):
+    list_display = ("old_slug", "post")
+    search_fields = ("old_slug", "post__title")
+    autocomplete_fields = ("post",)
+
+
 class PostGalleryImageInline(admin.TabularInline):
     model = models.PostGalleryImage
     formset = OptionalGalleryFormSet
