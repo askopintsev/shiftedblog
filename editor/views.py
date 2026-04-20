@@ -1,15 +1,29 @@
 # pyright: reportAttributeAccessIssue=false
+from django.conf import settings
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db.models import Count
 from django.http import Http404, HttpResponsePermanentRedirect
 from django.shortcuts import get_object_or_404, render
+from django.views.decorators.cache import cache_page
 from taggit.models import Tag
 
 from editor.forms import SearchForm
 from editor.models import Category, Post, PostSlugRedirect
 
 
+def _public_page_cache(key_prefix: str):
+    timeout = getattr(settings, "POST_PAGE_CACHE_TIMEOUT", 0)
+    if timeout <= 0:
+
+        def _noop(view):
+            return view
+
+        return _noop
+    return cache_page(timeout, key_prefix=key_prefix)
+
+
+@_public_page_cache("editor.post_list")
 def post_list(request, tag_slug=None, category_slug=None):
     object_list = Post.objects.filter(status="published")
     tag = None
@@ -57,6 +71,7 @@ def post_list(request, tag_slug=None, category_slug=None):
     )
 
 
+@_public_page_cache("editor.post_detail")
 def post_detail(request, slug):
     post = (
         Post.objects.prefetch_related("gallery_images")
@@ -74,9 +89,6 @@ def post_detail(request, slug):
                 redirect_row.post.get_absolute_url()
             )
         raise Http404("No published post matches this URL.")
-
-    post.views += 1
-    post.save(update_fields=["views"])
 
     previous_post = None
     next_post = None

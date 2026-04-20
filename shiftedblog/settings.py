@@ -123,6 +123,7 @@ _MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "editor.middleware.PostDetailViewCountMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -191,6 +192,12 @@ CACHES = {
         "TIMEOUT": 300,  # Default timeout: 5 minutes
     }
 }
+
+# Full-page cache for public post list/detail (Redis + cache_page).
+# Set to 0 to disable. Purged on post/category/gallery/tag/redirect changes (editor.signals).
+# View counts still increment in DB on every GET (middleware), but the number shown in
+# cached HTML may lag until purge or TTL.
+POST_PAGE_CACHE_TIMEOUT = get_int_env("POST_PAGE_CACHE_TIMEOUT", 300)
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators

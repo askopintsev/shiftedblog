@@ -81,6 +81,7 @@ exclude = [
     "**/__pycache__",
     "**/*.egg-info",
     "blog/migrations",
+    "editor/migrations",
 ]
 # Use project venv for import resolution (run with venv active or set venvPath/venv)
 venvPath = "."

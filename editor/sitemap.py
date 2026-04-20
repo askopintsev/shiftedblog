@@ -1,3 +1,5 @@
+# pyright: reportAttributeAccessIssue=false
+
 from django.contrib.sitemaps import Sitemap
 
 from editor.models import Post
