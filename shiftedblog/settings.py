@@ -264,6 +264,14 @@ STATICFILES_DIRS = [
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 MEDIA_URL = "media/"
 
+# Post / gallery uploads: normalize to AVIF (if Pillow has libavif), else WebP, else JPEG.
+# Only runs on new uploads (not when saving an existing stored file).
+IMAGE_UPLOAD_MAX_EDGE = get_int_env("IMAGE_UPLOAD_MAX_EDGE", 2560)
+IMAGE_UPLOAD_AVIF_QUALITY = get_int_env("IMAGE_UPLOAD_AVIF_QUALITY", 72)
+IMAGE_UPLOAD_AVIF_SPEED = get_int_env("IMAGE_UPLOAD_AVIF_SPEED", 6)
+IMAGE_UPLOAD_WEBP_QUALITY = get_int_env("IMAGE_UPLOAD_WEBP_QUALITY", 85)
+IMAGE_UPLOAD_JPEG_QUALITY = get_int_env("IMAGE_UPLOAD_JPEG_QUALITY", 88)
+
 
 # Security settings
 # Determine if we're in production (not DEBUG mode)

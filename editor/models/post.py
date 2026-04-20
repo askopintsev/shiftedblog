@@ -13,13 +13,16 @@ from django.utils.safestring import mark_safe
 from django.utils.text import slugify
 from taggit.managers import TaggableManager
 
+from editor.image_upload import normalize_image_field_file
+
 
 def validate_image_extension(value):
-    valid_extensions = [".jpg", ".jpeg", ".png"]
+    valid_extensions = [".jpg", ".jpeg", ".png", ".webp"]
     ext = os.path.splitext(value.name.lower())[1]
     if ext not in valid_extensions:
         raise ValidationError(
-            "Unsupported file extension. Only JPG, JPEG, and PNG are allowed."
+            "Unsupported file extension. Use JPG, PNG, or WebP "
+            "(stored as AVIF/WebP or JPEG)."
         )
 
 
@@ -224,6 +227,9 @@ class Post(models.Model):
     def save(self, *args, **kwargs):
         """Automatically set published date when status changes to 'published'."""
         update_fields = kwargs.get("update_fields")
+        update_fields_set = set(update_fields) if update_fields is not None else None
+        normalize_image_field_file(self, "cover_image", update_fields_set)
+
         slug_persisted = update_fields is None or "slug" in set(update_fields)
 
         old_slug: str | None = None
@@ -384,6 +390,12 @@ class PostGalleryImage(models.Model):
         app_label = "editor"
         db_table = "editor_postgalleryimage"
         ordering: ClassVar[list] = ["gallery_key", "order", "id"]
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get("update_fields")
+        update_fields_set = set(update_fields) if update_fields is not None else None
+        normalize_image_field_file(self, "image", update_fields_set)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Gallery {self.gallery_key} image {self.order} for {self.post.title}"

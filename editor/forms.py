@@ -56,7 +56,10 @@ class PostAdminForm(forms.ModelForm):
             if self.fields["short_description"].help_text
             else sd_ht
         )
-        cov_ht = "Required before publishing."
+        cov_ht = (
+            "Required before publishing. JPEG/PNG/WebP uploads are stored as "
+            "AVIF or WebP (JPEG if encoding fails)."
+        )
         self.fields["cover_image"].help_text = (
             f"{self.fields['cover_image'].help_text} {cov_ht}".strip()
             if self.fields["cover_image"].help_text
