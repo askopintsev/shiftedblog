@@ -110,7 +110,7 @@
       "@type": "ListItem",
       "position": 2,
       "name": "{{ post.category.name|striptags|escapejs }}",
-      "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'editor:post_list_by_category' post.category.name|slugify %}"
+      "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'editor:post_list_by_category' post.category.list_url_segment %}"
     },
     {
       "@type": "ListItem",

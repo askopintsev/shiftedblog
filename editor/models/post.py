@@ -35,6 +35,21 @@ class Category(models.Model):
     def __str__(self):
         return self.name
 
+    def list_url_segment(self) -> str:
+        """ASCII slug for ``category/<slug:category_slug>/``; never empty for saved rows.
+
+        Django's ``<slug:>`` only allows ``[-a-zA-Z0-9_]+``, so Unicode-only names
+        must fall back to ``cat-{pk}`` (``reverse()`` would fail otherwise).
+        """
+        raw = (self.name or "").strip()
+        if raw:
+            s = slugify(raw)
+            if s:
+                return s
+        if self.pk is not None:
+            return f"cat-{self.pk}"
+        return "cat-unsaved"
+
 
 class Series(models.Model):
     """Model for post series list"""

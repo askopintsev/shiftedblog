@@ -21,7 +21,19 @@ def post_list(request, tag_slug=None, category_slug=None):
 
     if category_slug:
         category = Category.objects.filter(name=category_slug).first()
-        object_list = object_list.filter(category=category)
+        if category is None:
+            category = next(
+                (
+                    c
+                    for c in Category.objects.all()
+                    if c.list_url_segment() == category_slug
+                ),
+                None,
+            )
+        if category is not None:
+            object_list = object_list.filter(category=category)
+        else:
+            object_list = object_list.none()
 
         if not object_list:
             return render(

@@ -14,15 +14,9 @@
         <ul>
             {% for category in categories %}
                 <li>
-                    {% with category_slug=category.name|slugify %}
-                        {% if category_slug %}
-                            <a href="{% url 'editor:post_list_by_category' category_slug %}">
-                                {{ category.name }}
-                            </a>
-                        {% else %}
-                            {{ category.name }}
-                        {% endif %}
-                    {% endwith %}
+                    <a href="{% url 'editor:post_list_by_category' category.list_url_segment %}">
+                        {{ category.name }}
+                    </a>
                 </li>
             {% empty %}
                 <li>Категории не найдены.</li>
