@@ -272,6 +272,13 @@ IMAGE_UPLOAD_AVIF_SPEED = get_int_env("IMAGE_UPLOAD_AVIF_SPEED", 6)
 IMAGE_UPLOAD_WEBP_QUALITY = get_int_env("IMAGE_UPLOAD_WEBP_QUALITY", 85)
 IMAGE_UPLOAD_JPEG_QUALITY = get_int_env("IMAGE_UPLOAD_JPEG_QUALITY", 88)
 
+# Human titles for /category/<slug>/ when slug does not match Category.list_url_segment()
+# (e.g. legacy nav uses English "projects" while DB category is «Проекты» → cat-N).
+CATEGORY_URL_SLUG_LABELS = {
+    "projects": "Проекты",
+    "blog": "Блог",
+}
+
 
 # Security settings
 # Determine if we're in production (not DEBUG mode)

@@ -3,7 +3,7 @@ from django.conf import settings
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db.models import Count
-from django.http import Http404, HttpResponsePermanentRedirect
+from django.http import Http404, HttpRequest, HttpResponsePermanentRedirect
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.cache import cache_page
 from taggit.models import Tag
@@ -21,6 +21,87 @@ def _public_page_cache(key_prefix: str):
 
         return _noop
     return cache_page(timeout, key_prefix=key_prefix)
+
+
+def _label_for_category_slug(category_slug: str | None) -> str:
+    if not category_slug:
+        return "Рубрика"
+    labels = getattr(settings, "CATEGORY_URL_SLUG_LABELS", None) or {}
+    key = category_slug.lower()
+    if key in labels:
+        return labels[key]
+    parts = category_slug.replace("_", "-").split("-")
+    pretty = " ".join(p.capitalize() for p in parts if p)
+    return pretty or category_slug
+
+
+def _post_list_seo(
+    request: HttpRequest,
+    *,
+    tag: Tag | None,
+    category: Category | None,
+    category_slug: str | None,
+    tag_slug: str | None,
+    posts_page,
+    list_empty: bool,
+) -> dict[str, str | None]:
+    """Canonical URL, document title, and meta description for list views."""
+    site = settings.SITE_URL.rstrip("/")
+    site_name = "Shifted Stuff"
+
+    if posts_page is not None:
+        page_num = posts_page.number
+        total_pages = posts_page.paginator.num_pages
+    else:
+        page_num = 1
+        total_pages = 1
+
+    path = request.path
+    if page_num <= 1:
+        canonical_url = f"{site}{path}"
+    else:
+        canonical_url = f"{site}{path}?page={page_num}"
+
+    list_heading: str | None = None
+
+    if category is not None:
+        display_name = (category.name or "").strip() or _label_for_category_slug(
+            category_slug
+        )
+        list_heading = display_name
+        title_base = f"{display_name} — {site_name}"
+        desc_base = f"Статьи и заметки в категории «{display_name}»."
+    elif category_slug:
+        display_name = _label_for_category_slug(category_slug)
+        list_heading = display_name
+        title_base = f"{display_name} — {site_name}"
+        desc_base = f"Публикации в разделе «{display_name}»."
+    elif tag is not None:
+        title_base = f"#{tag.name} — {site_name}"
+        desc_base = f"Все публикации с тегом #{tag.name}."
+    elif tag_slug:
+        title_base = f"Тег — {site_name}"
+        desc_base = "Публикации по выбранному тегу."
+    else:
+        title_base = site_name
+        desc_base = "Блог Shifted Stuff: публикации, заметки и статьи."
+
+    if page_num > 1:
+        title = f"{title_base} — стр. {page_num}"
+        description = f"{desc_base} Страница {page_num} из {total_pages}."
+    else:
+        title = title_base
+        description = desc_base
+
+    if list_empty:
+        description = f"{description} Пока нет опубликованных материалов."
+
+    return {
+        "canonical_url": canonical_url,
+        "title": title,
+        "description": description,
+        "list_heading": list_heading,
+    }
 
 
 @_public_page_cache("editor.post_list")
@@ -49,12 +130,27 @@ def post_list(request, tag_slug=None, category_slug=None):
         else:
             object_list = object_list.none()
 
-        if not object_list:
-            return render(
-                request,
-                "editor/post/list.html",
-                {"page": None, "posts": None, "tag": tag},
-            )
+    if not object_list:
+        list_seo = _post_list_seo(
+            request,
+            tag=tag,
+            category=category,
+            category_slug=category_slug,
+            tag_slug=tag_slug,
+            posts_page=None,
+            list_empty=True,
+        )
+        return render(
+            request,
+            "editor/post/list.html",
+            {
+                "page": None,
+                "posts": None,
+                "tag": tag,
+                "category": category,
+                "list_seo": list_seo,
+            },
+        )
 
     paginator = Paginator(object_list, 12)
     page = request.GET.get("page")
@@ -64,10 +160,25 @@ def post_list(request, tag_slug=None, category_slug=None):
         posts = paginator.page(1)
     except EmptyPage:
         posts = paginator.page(paginator.num_pages)
+    list_seo = _post_list_seo(
+        request,
+        tag=tag,
+        category=category,
+        category_slug=category_slug,
+        tag_slug=tag_slug,
+        posts_page=posts,
+        list_empty=False,
+    )
     return render(
         request,
         "editor/post/list.html",
-        {"page": page, "posts": posts, "tag": tag},
+        {
+            "page": page,
+            "posts": posts,
+            "tag": tag,
+            "category": category,
+            "list_seo": list_seo,
+        },
     )
 
 
