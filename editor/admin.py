@@ -31,6 +31,7 @@ class PostAdmin(admin.ModelAdmin):
     class Media:
         css: ClassVar[dict] = {"all": ("editor/css/post_admin_editor.css",)}
         js: ClassVar[tuple] = (
+            "editor/js/post_admin_session_keepalive.js",
             "editor/js/post_body_stats.js",
             "editor/js/post_autosave.js",
             "editor/js/post_admin_meta_validation.js",

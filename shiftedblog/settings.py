@@ -311,7 +311,10 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # Session security - production-safe defaults
 SESSION_COOKIE_SECURE = get_bool_env("SESSION_COOKIE_SECURE", IS_PRODUCTION)
 SESSION_COOKIE_HTTPONLY = get_bool_env("SESSION_COOKIE_HTTPONLY", True)
-SESSION_COOKIE_AGE = get_int_env("SESSION_COOKIE_AGE", 3600)  # 1 hour default
+# Idle window: with SESSION_SAVE_EVERY_REQUEST, each request slides expiry forward
+# (see session keepalive + autosave on post admin).
+SESSION_COOKIE_AGE = get_int_env("SESSION_COOKIE_AGE", 3600)  # 1 hour idle cap between requests
+SESSION_SAVE_EVERY_REQUEST = get_bool_env("SESSION_SAVE_EVERY_REQUEST", True)
 SESSION_EXPIRE_AT_BROWSER_CLOSE = get_bool_env("SESSION_EXPIRE_AT_BROWSER_CLOSE", False)
 SESSION_COOKIE_SAMESITE = "Lax"  # Protection against CSRF attacks
 

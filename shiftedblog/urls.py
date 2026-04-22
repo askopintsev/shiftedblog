@@ -14,6 +14,7 @@ from two_factor.urls import urlpatterns as tf_urlpatterns
 
 import core.urls  # noqa: F401 - loads admin site customization
 from core.views import (
+    admin_session_keepalive,
     custom_image_upload,
     robots_txt,
 )
@@ -35,6 +36,11 @@ admin_url = getattr(settings, "ADMIN_URL", "mellon")
 urlpatterns = [
     path("custom-image-upload/", custom_image_upload, name="custom_image_upload"),
     # path("ckeditor5/", include('django_ckeditor_5.urls')),
+    path(
+        f"{admin_url}/session-keepalive/",
+        admin_session_keepalive,
+        name="admin_session_keepalive",
+    ),
     path(f"{admin_url}/", admin.site.urls),
     path("", include("team.urls")),
     path("", include("editor.urls", namespace="editor")),

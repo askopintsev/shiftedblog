@@ -2,11 +2,19 @@ import datetime
 import os
 
 from django.conf import settings
+from django.contrib.admin.views.decorators import staff_member_required
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_protect
+
+
+@staff_member_required
+def admin_session_keepalive(request):
+    """GET ping to refresh session while staff stay on long-lived admin pages (e.g. post editor)."""
+    request.session.modified = True
+    return HttpResponse(status=204)
 
 
 def custom_page_not_found_view(request, exception):
