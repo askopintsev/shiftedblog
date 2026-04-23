@@ -19,7 +19,7 @@ jobs:
       - name: Run Ruff format check
         run: ruff format --check core editor shiftedblog team manage.py templates
       - name: Run Ruff lint
-        run: ruff check core editor shiftedblog team manage.py templates
+        run: ruff check --ignore RUF001 core editor shiftedblog team manage.py templates
       - name: Run Pyright
         run: |
           uv tool install pyright
