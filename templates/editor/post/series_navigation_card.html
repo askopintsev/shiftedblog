@@ -23,7 +23,7 @@
                         <span><i class="fa-regular fa-clock"></i> {{ nav_post.body|reading_time }} мин</span>
                         <span><i class="fa-regular fa-eye"></i> {{ nav_post.views }}</span>
                     </div>
-                    <div class="series-nav-description">{{ nav_post.body|first_sentence|truncatechars:101 }}</div>
+                    <div class="series-nav-description">{{ nav_post.body|first_sentence|truncatechars_whole_words:101 }}</div>
                 </div>
             </div>
         </a>

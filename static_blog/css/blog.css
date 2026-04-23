@@ -987,6 +987,7 @@ a.btn.btn-light.shadow-sm{
     --bookmark-meta-color: #6c757d;
     --bookmark-radius: 4px;
     --bookmark-padding: 20px;
+    --bookmark-card-height: 220px;
 }
 
 /* Card container */
@@ -998,7 +999,7 @@ a.btn.btn-light.shadow-sm{
     display: flex;
     flex-direction: row;  /* Left-to-right; image left due to HTML order */
     align-items: stretch;
-    min-height: 160px;
+    height: var(--bookmark-card-height);
     border: 1px solid var(--bookmark-border-color);
     border-radius: var(--bookmark-radius);
     text-decoration: none;
@@ -1046,7 +1047,7 @@ a.btn.btn-light.shadow-sm{
     flex: 1;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
     padding: var(--bookmark-padding);
 }
 
@@ -1062,29 +1063,36 @@ a.btn.btn-light.shadow-sm{
 .shb-bookmark-description {
     font-size: 0.9375rem;
     color: var(--bookmark-desc-color);
-    margin-bottom: 0.875rem;
+    margin-top: 0;
+    margin-bottom: 0;
     line-height: 1.7;
     flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
 }
 
 .shb-bookmark-description p {
-    margin-bottom: 1rem;
+    margin: 0;
 }
 
-.shb-bookmark-description p:first-child {
-    margin-top: 0;
-}
-
-.shb-bookmark-description p:last-child {
-    margin-bottom: 0;
+/* Soft line breaks from linebreaks (single \n) become <br>; add vertical rhythm */
+.shb-bookmark-description br {
+    display: block;
+    margin-bottom: 0.85rem;
+    line-height: 1.7;
 }
 
 .shb-bookmark-metadata {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
     font-size: 0.875rem;
     color: var(--bookmark-meta-color);
-    margin-top: auto;
+    margin-top: 0.25rem;
+    margin-bottom: 0.75rem;
 }
 
 .shb-bookmark-icon {
@@ -1099,11 +1107,18 @@ a.btn.btn-light.shadow-sm{
     margin-right: 12px;
 }
 
+.shb-bookmark-reading-time,
+.shb-bookmark-views {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
 /* Responsive: Stack vertically on small screens */
 @media (max-width: 768px) {
     .shb-bookmark-container {
         flex-direction: column;
-        min-height: auto;
+        height: auto;
     }
     .shb-bookmark-thumbnail {
         min-width: 100%;

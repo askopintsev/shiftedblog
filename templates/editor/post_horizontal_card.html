@@ -10,15 +10,17 @@
         </div>
         <div class="shb-bookmark-content">
             <div class="shb-bookmark-title">{{ post.title }}</div>
-            <div class="shb-bookmark-description">
-                {% if post.short_description %}
-                    {{ post.short_description|linebreaks }}
-                {% else %}
-                    {{ post.body|striptags_preserve_paragraphs|truncatewords_preserve_newlines:30|linebreaks }}
-                {% endif %}
-            </div>
             <div class="shb-bookmark-metadata">
                 <span class="shb-bookmark-publisher">{{ post.published|date:"d.m.Y" }}</span>
+                <span class="shb-bookmark-reading-time"><i class="fa-regular fa-clock"></i> {{ post.body|reading_time }} мин</span>
+                <span class="shb-bookmark-views"><i class="fa-regular fa-eye"></i> {{ post.views }}</span>
+            </div>
+            <div class="shb-bookmark-description">
+                {% if post.short_description %}
+                    {{ post.short_description|striptags_preserve_paragraphs|preview_inline_space|truncatechars_whole_words:152 }}
+                {% else %}
+                    {{ post.body|striptags_preserve_paragraphs|preview_inline_space|truncatechars_whole_words:152 }}
+                {% endif %}
             </div>
         </div>
     </a>

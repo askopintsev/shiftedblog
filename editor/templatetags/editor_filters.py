@@ -19,11 +19,63 @@ def striptags_preserve_paragraphs(value):
     value = re.sub(r"</p>\s*<p[^>]*>", "\n\n", str(value))
     value = re.sub(r"<p[^>]*>", "\n\n", value)
     value = re.sub(r"</p>", "", value)
+    value = re.sub(r"</(?:div|section|article|blockquote|li|h[1-6])>", "\n\n", value, flags=re.IGNORECASE)
     value = re.sub(r"<br\s*/?>", "\n", value, flags=re.IGNORECASE)
     value = strip_tags(value)
     value = re.sub(r"\n{3,}", "\n\n", value)
     value = value.strip()
     return value
+
+
+@register.filter
+def preview_inline_space(value):
+    """Turn paragraph/line breaks into single spaces for one-line card previews."""
+    if not value:
+        return ""
+    return re.sub(r"\s+", " ", str(value)).strip()
+
+
+@register.filter
+def truncatechars_whole_words(value, arg):
+    """
+    Truncate to at most ``arg`` characters; if the cut falls inside a word,
+    include the rest of that word. Appends an ellipsis when text is shortened.
+    """
+    try:
+        max_len = int(arg)
+    except (ValueError, TypeError):
+        return value
+
+    if not value:
+        return ""
+
+    text = str(value).strip()
+    if max_len <= 0:
+        return ""
+
+    if len(text) <= max_len:
+        return text
+
+    # Do not rstrip before extension: a cut like "aaa " + "bbb" must not become
+    # "aaa" + "bbb" glued together (space was only after max_len).
+    truncated = text[:max_len]
+    if max_len < len(text):
+        next_ch = text[max_len]
+        if (
+            next_ch
+            and not next_ch.isspace()
+            and truncated
+            and not truncated[-1].isspace()
+        ):
+            j = max_len
+            while j < len(text) and not text[j].isspace():
+                truncated += text[j]
+                j += 1
+        truncated = truncated.rstrip()
+        if truncated != text:
+            truncated += "\u2026"
+
+    return truncated
 
 
 @register.filter
