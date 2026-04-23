@@ -1367,13 +1367,13 @@ a.btn.btn-light.shadow-sm{
 .series-nav-card {
     display: flex;
     gap: 1rem;
-    align-items: flex-start;
+    align-items: stretch;
 }
 
 .series-nav-image {
     flex-shrink: 0;
     width: 120px;
-    height: 80px;
+    height: auto;
     border-radius: 6px;
     overflow: hidden;
     background-color: #dee2e6;
@@ -1400,6 +1400,20 @@ a.btn.btn-light.shadow-sm{
     line-height: 1.4;
     color: #212529;
     margin: 0;
+}
+
+.series-nav-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    font-size: 0.8125rem;
+    color: #6c757d;
+}
+
+.series-nav-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
 }
 
 .series-nav-description {
@@ -1433,7 +1447,7 @@ a.btn.btn-light.shadow-sm{
     
     .series-nav-image {
         width: 100px;
-        height: 70px;
+        height: auto;
     }
     
     .series-nav-title {

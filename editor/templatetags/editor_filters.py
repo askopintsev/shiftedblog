@@ -78,3 +78,18 @@ def add_space_after_period(value):
     value = str(value)
     result = re.sub(r"\.([a-zA-Zа-яА-ЯёЁ])", r". \1", value)  # noqa: RUF001
     return result
+
+
+@register.filter
+def first_sentence(value):
+    """Return first sentence from HTML/text content."""
+    if not value:
+        return ""
+
+    text = strip_tags(str(value))
+    text = re.sub(r"\s+", " ", text).strip()
+    if not text:
+        return ""
+
+    parts = re.split(r"(?<=[.!?…])\s+", text, maxsplit=1)
+    return parts[0].strip()
