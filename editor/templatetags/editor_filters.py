@@ -133,7 +133,7 @@ def add_space_after_period(value):
     if not value:
         return ""
     value = str(value)
-    result = re.sub(r"\.([a-zA-Zа-яА-ЯёЁ])", r". \1", value)  # noqa: RUF001
+    result = re.sub(r"\.([a-zA-Zа-яА-ЯёЁ])", r". \1", value)
     return result
 
 
