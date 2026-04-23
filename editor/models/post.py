@@ -1,7 +1,8 @@
+# pyright: reportAttributeAccessIssue=false
 import datetime
 import os
 import uuid
-from typing import ClassVar
+from typing import ClassVar, cast
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -9,15 +10,19 @@ from django.db import models
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.safestring import mark_safe
+from django.utils.text import slugify
 from taggit.managers import TaggableManager
+
+from editor.image_upload import normalize_image_field_file
 
 
 def validate_image_extension(value):
-    valid_extensions = [".jpg", ".jpeg", ".png"]
+    valid_extensions = [".jpg", ".jpeg", ".png", ".webp"]
     ext = os.path.splitext(value.name.lower())[1]
     if ext not in valid_extensions:
         raise ValidationError(
-            "Unsupported file extension. Only JPG, JPEG, and PNG are allowed."
+            "Unsupported file extension. Use JPG, PNG, or WebP "
+            "(stored as AVIF/WebP or JPEG)."
         )
 
 
@@ -32,6 +37,21 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
+
+    def list_url_segment(self) -> str:
+        """ASCII slug for ``category/<slug>/``; never empty for saved rows.
+
+        Django's ``<slug:>`` only allows ``[-a-zA-Z0-9_]+``, so Unicode-only names
+        must fall back to ``cat-{pk}`` (``reverse()`` would fail otherwise).
+        """
+        raw = (self.name or "").strip()
+        if raw:
+            s = slugify(raw)
+            if s:
+                return s
+        if self.pk is not None:
+            return f"cat-{self.pk}"
+        return "cat-unsaved"
 
 
 class Series(models.Model):
@@ -63,7 +83,6 @@ class PostSeries(models.Model):
     order_position = models.PositiveIntegerField(
         null=True,
         blank=True,
-        default=None,
         verbose_name="Order position in series",
     )
 
@@ -148,7 +167,7 @@ class Post(models.Model):
         default=None,
     )
     views = models.PositiveIntegerField(
-        default=0,
+        default=0,  # pyright: ignore[reportArgumentType]
         verbose_name="Views count",
     )
 
@@ -165,9 +184,27 @@ class Post(models.Model):
 
     def save(self, *args, **kwargs):
         """Automatically set published date when status changes to 'published'."""
-        if self.status == "published" and self.published is None:
+        update_fields = kwargs.get("update_fields")
+        update_fields_set = set(update_fields) if update_fields is not None else None
+        normalize_image_field_file(self, "cover_image", update_fields_set)
+
+        slug_persisted = update_fields is None or "slug" in set(update_fields)
+
+        old_slug: str | None = None
+        if self.pk and slug_persisted:
+            try:
+                old_slug = Post.objects.only("slug").get(pk=self.pk).slug
+            except Post.DoesNotExist:
+                old_slug = None
+
+        published_at = cast(datetime.datetime | None, self.published)
+        if self.status == "published" and published_at is None:
             self.published = timezone.now()
+        self._ensure_unique_slug()
         super().save(*args, **kwargs)
+
+        if slug_persisted:
+            self._record_slug_redirect_if_changed(old_slug)
 
     def get_absolute_url(self):
         return reverse("editor:post_detail", args=[self.slug])
@@ -240,6 +277,83 @@ class Post(models.Model):
         except Exception:
             return None
 
+    @staticmethod
+    def _slugify_segment(value: str) -> str:
+        """Normalize to URL-safe slug; allow Unicode letters (e.g. Cyrillic)."""
+        if not value or not value.strip():
+            return ""
+        cleaned = value.strip()
+        s = slugify(cleaned, allow_unicode=True)
+        if not s:
+            s = slugify(cleaned)
+        return s
+
+    def _ensure_unique_slug(self) -> None:
+        """Set slug from title or normalized input; append -2, -3, … if needed."""
+        raw = (self.slug or "").strip()
+        if raw:
+            base = self._slugify_segment(raw)
+        else:
+            base = self._slugify_segment(str(self.title))
+        if not base:
+            base = "post"
+
+        max_len = self._meta.get_field("slug").max_length
+        reserve = 8  # room for suffix like "-999999"
+        base = base[: max(1, max_len - reserve)]
+
+        candidate = base
+        n = 2
+        while True:
+            qs = Post.objects.filter(slug=candidate)
+            if self.pk is not None:
+                qs = qs.exclude(pk=self.pk)
+            if not qs.exists():
+                self.slug = candidate
+                return
+            suffix = f"-{n}"
+            candidate = base[: max_len - len(suffix)] + suffix
+            n += 1
+            if n > 10**6:
+                raise ValidationError(
+                    "Could not assign a unique slug; try a more distinct title or slug."
+                )
+
+    def _record_slug_redirect_if_changed(self, old_slug: str | None) -> None:
+        """Keep old URL → 301 to current slug for SEO when slug is edited."""
+        if not old_slug or old_slug == self.slug:
+            return
+        PostSlugRedirect.objects.update_or_create(
+            old_slug=old_slug,
+            defaults={"post": self},
+        )
+        # New canonical slug must not also be a redirect key.
+        PostSlugRedirect.objects.filter(old_slug=self.slug).delete()
+
+
+class PostSlugRedirect(models.Model):
+    """Maps a retired post slug to the post so we can 301 to the current URL."""
+
+    old_slug = models.SlugField(
+        max_length=250,
+        unique=True,
+        db_index=True,
+    )
+    post = models.ForeignKey(
+        "Post",
+        on_delete=models.CASCADE,
+        related_name="slug_redirects",
+    )
+
+    class Meta:
+        app_label = "editor"
+        db_table = "editor_postslugredirect"
+        verbose_name = "Post slug redirect (301)"
+        verbose_name_plural = "Post slug redirects (301)"
+
+    def __str__(self) -> str:
+        return f"{self.old_slug} → {self.post.slug}"
+
 
 class PostGalleryImage(models.Model):
     """Image for a post body carousel gallery. Use gallery_key to group images.
@@ -252,7 +366,7 @@ class PostGalleryImage(models.Model):
         related_name="gallery_images",
     )
     gallery_key = models.PositiveIntegerField(
-        default=1,
+        default=1,  # pyright: ignore[reportArgumentType]
         help_text=(
             "Gallery number. Use [gallery:1] in body for this gallery, "
             "[gallery:2] for the next, etc."
@@ -268,7 +382,7 @@ class PostGalleryImage(models.Model):
         default="",
     )
     order = models.PositiveIntegerField(
-        default=0,
+        default=0,  # pyright: ignore[reportArgumentType]
         help_text="Order within this gallery (lower first).",
     )
 
@@ -279,3 +393,9 @@ class PostGalleryImage(models.Model):
 
     def __str__(self):
         return f"Gallery {self.gallery_key} image {self.order} for {self.post.title}"
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get("update_fields")
+        update_fields_set = set(update_fields) if update_fields is not None else None
+        normalize_image_field_file(self, "image", update_fields_set)
+        super().save(*args, **kwargs)

@@ -1,0 +1,54 @@
+{% extends "editor/base.html" %}
+
+{% block title %}HTML Sitemap | Shifted Stuff{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-4">
+    <h1 class="mb-3">Карта сайта</h1>
+    <p class="text-muted">
+        Быстрый доступ к опубликованным постам, категориям и тегам.
+    </p>
+
+    <section class="mb-4">
+        <h2 class="h4">Категории ({{ categories|length }})</h2>
+        <ul>
+            {% for category in categories %}
+                <li>
+                    <a href="{% url 'editor:post_list_by_category' category.list_url_segment %}">
+                        {{ category.name }}
+                    </a>
+                </li>
+            {% empty %}
+                <li>Категории не найдены.</li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <section class="mb-4">
+        <h2 class="h4">Теги ({{ tags|length }})</h2>
+        <ul>
+            {% for tag in tags %}
+                <li>
+                    <a href="{% url 'editor:post_list_by_tag' tag.slug %}">#{{ tag.name }}</a>
+                </li>
+            {% empty %}
+                <li>Теги не найдены.</li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <section>
+        <h2 class="h4">Посты ({{ posts|length }})</h2>
+        <ul>
+            {% for post in posts %}
+                <li>
+                    <a href="{{ post.get_absolute_url }}">{{ post.title }}</a>
+                    <span class="text-muted">— {{ post.published|date:"d.m.Y" }}</span>
+                </li>
+            {% empty %}
+                <li>Посты не найдены.</li>
+            {% endfor %}
+        </ul>
+    </section>
+</div>
+{% endblock %}

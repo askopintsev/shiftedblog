@@ -1,3 +1,30 @@
+/* SEO / publish: highlight fields required before going live */
+#content .form-row.post-meta-required label,
+#content .form-row.post-meta-required .form-column label {
+    font-weight: 700;
+}
+#content .form-row.post-meta-required {
+    border-left: 4px solid #ffc107;
+    padding-left: 0.75rem;
+    margin-left: -0.25rem;
+    background: rgba(255, 193, 7, 0.06);
+    border-radius: 4px;
+}
+#content .form-row.field-title.post-meta-required,
+#content .form-row.field-cover_image.post-meta-required {
+    margin-bottom: 1rem;
+}
+
+#content .post-body-stats {
+    font-size: 0.8125rem;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+}
+#content .post-body-stats strong {
+    color: #212529;
+    font-weight: 600;
+}
+
 /* CKEditor body field: same width and spacing as post detail (.post-content-container + .post-body-content) */
 
 #content .ck-editor-container {

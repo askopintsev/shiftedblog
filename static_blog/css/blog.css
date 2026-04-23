@@ -271,7 +271,7 @@ a:hover {
     cursor: pointer;
     display: inline-block;
     padding: .4em .5em;
-    margin: 2px 2px 2px 0;
+    margin: 2px 2px 15px 0;
     line-height: 1;
     white-space: nowrap;
     text-decoration: none;
@@ -697,11 +697,42 @@ a.btn.btn-light.shadow-sm{
     letter-spacing: -0.01em;
 }
 
-.row .card .card-text {
+.row .card .card-body > a.text-decoration-none {
+    min-height: 25px;
+    height: auto;
+}
+
+.row .card p.card-text {
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    height: 25px;
+    color: #495057;
+    margin-bottom: 0.75rem;
+}
+
+.row .card .card-body > .tags {
+    margin-top: 0 !important;
+    margin-bottom: 0.75rem;
+}
+
+.row .card .tags .tag {
+    margin-bottom: 0;
+}
+
+.row .card .card-body > div.card-text {
+    /* Match prod: same type scale as .row .card .card-text (excerpt block) */
     font-size: 0.9375rem;
     line-height: 1.7;
     color: #495057;
+    height: auto;
     margin-bottom: 1rem;
+}
+
+.row .card .card-body > div.card-text p {
+    font-size: inherit;
+    line-height: inherit;
+    color: inherit;
+    margin-bottom: 0;
 }
 
 .row .card .card-img-top {
@@ -802,6 +833,11 @@ a.btn.btn-light.shadow-sm{
     }
     
     .row .card .card-text {
+        font-size: 0.875rem;
+        line-height: 1.65;
+    }
+
+    .row .card .card-body > div.card-text {
         font-size: 0.875rem;
         line-height: 1.65;
     }
@@ -963,6 +999,7 @@ a.btn.btn-light.shadow-sm{
     --bookmark-meta-color: #6c757d;
     --bookmark-radius: 4px;
     --bookmark-padding: 20px;
+    --bookmark-card-height: 220px;
 }
 
 /* Card container */
@@ -974,7 +1011,7 @@ a.btn.btn-light.shadow-sm{
     display: flex;
     flex-direction: row;  /* Left-to-right; image left due to HTML order */
     align-items: stretch;
-    min-height: 160px;
+    height: var(--bookmark-card-height);
     border: 1px solid var(--bookmark-border-color);
     border-radius: var(--bookmark-radius);
     text-decoration: none;
@@ -1022,7 +1059,7 @@ a.btn.btn-light.shadow-sm{
     flex: 1;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
     padding: var(--bookmark-padding);
 }
 
@@ -1038,29 +1075,36 @@ a.btn.btn-light.shadow-sm{
 .shb-bookmark-description {
     font-size: 0.9375rem;
     color: var(--bookmark-desc-color);
-    margin-bottom: 0.875rem;
+    margin-top: 0;
+    margin-bottom: 0;
     line-height: 1.7;
     flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
 }
 
 .shb-bookmark-description p {
-    margin-bottom: 1rem;
+    margin: 0;
 }
 
-.shb-bookmark-description p:first-child {
-    margin-top: 0;
-}
-
-.shb-bookmark-description p:last-child {
-    margin-bottom: 0;
+/* Soft line breaks from linebreaks (single \n) become <br>; add vertical rhythm */
+.shb-bookmark-description br {
+    display: block;
+    margin-bottom: 0.85rem;
+    line-height: 1.7;
 }
 
 .shb-bookmark-metadata {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
     font-size: 0.875rem;
     color: var(--bookmark-meta-color);
-    margin-top: auto;
+    margin-top: 0.25rem;
+    margin-bottom: 0.75rem;
 }
 
 .shb-bookmark-icon {
@@ -1075,11 +1119,18 @@ a.btn.btn-light.shadow-sm{
     margin-right: 12px;
 }
 
+.shb-bookmark-reading-time,
+.shb-bookmark-views {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
 /* Responsive: Stack vertically on small screens */
 @media (max-width: 768px) {
     .shb-bookmark-container {
         flex-direction: column;
-        min-height: auto;
+        height: auto;
     }
     .shb-bookmark-thumbnail {
         min-width: 100%;
@@ -1343,13 +1394,13 @@ a.btn.btn-light.shadow-sm{
 .series-nav-card {
     display: flex;
     gap: 1rem;
-    align-items: flex-start;
+    align-items: stretch;
 }
 
 .series-nav-image {
     flex-shrink: 0;
     width: 120px;
-    height: 80px;
+    height: auto;
     border-radius: 6px;
     overflow: hidden;
     background-color: #dee2e6;
@@ -1376,6 +1427,20 @@ a.btn.btn-light.shadow-sm{
     line-height: 1.4;
     color: #212529;
     margin: 0;
+}
+
+.series-nav-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    font-size: 0.8125rem;
+    color: #6c757d;
+}
+
+.series-nav-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
 }
 
 .series-nav-description {
@@ -1409,7 +1474,7 @@ a.btn.btn-light.shadow-sm{
     
     .series-nav-image {
         width: 100px;
-        height: 70px;
+        height: auto;
     }
     
     .series-nav-title {

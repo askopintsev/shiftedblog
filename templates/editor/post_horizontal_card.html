@@ -5,20 +5,22 @@
     <a class="shb-bookmark-container" href="{{ post.get_absolute_url }}">
         <div class="shb-bookmark-thumbnail">
             {% if post.cover_image %}
-            <img src="{{ post.cover_image.url|urlencode }}" alt="{{ post.title }}">
+            <img src="{{ post.cover_image.url|urlencode }}" alt="{% firstof post.cover_description post.title %}"{% if post.cover_image.width and post.cover_image.height %} width="{{ post.cover_image.width }}" height="{{ post.cover_image.height }}"{% endif %} loading="lazy" decoding="async">
             {% endif %}
         </div>
         <div class="shb-bookmark-content">
             <div class="shb-bookmark-title">{{ post.title }}</div>
-            <div class="shb-bookmark-description">
-                {% if post.short_description %}
-                    {{ post.short_description|linebreaks }}
-                {% else %}
-                    {{ post.body|striptags_preserve_paragraphs|truncatewords_preserve_newlines:30|linebreaks }}
-                {% endif %}
-            </div>
             <div class="shb-bookmark-metadata">
                 <span class="shb-bookmark-publisher">{{ post.published|date:"d.m.Y" }}</span>
+                <span class="shb-bookmark-reading-time"><i class="fa-regular fa-clock"></i> {{ post.body|reading_time }} мин</span>
+                <span class="shb-bookmark-views"><i class="fa-regular fa-eye"></i> {{ post.views }}</span>
+            </div>
+            <div class="shb-bookmark-description">
+                {% if post.short_description %}
+                    {{ post.short_description|striptags_preserve_paragraphs|preview_inline_space|truncatechars_whole_words:152 }}
+                {% else %}
+                    {{ post.body|striptags_preserve_paragraphs|preview_inline_space|truncatechars_whole_words:152 }}
+                {% endif %}
             </div>
         </div>
     </a>

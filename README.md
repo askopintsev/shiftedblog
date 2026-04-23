@@ -76,7 +76,7 @@ pip install -e ".[dev]"
 pyright editor shiftedblog manage.py
 ```
 
-Or with uv: `uv sync && uv run pyright editor shiftedblog manage.py`. Config lives in `pyproject.toml` under `[tool.pyright]` (Python 3.14, `basic` mode, migrations excluded).
+Or with uv: `uv sync && uv run pyright editor shiftedblog manage.py`. Config lives in `pyproject.toml` under `[tool.pyright]` (Python 3.13, `basic` mode, migrations excluded).
 
 ### Docker Development
 

@@ -10,6 +10,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -43,7 +44,7 @@ def get_int_env(key, default=0):
     """Convert environment variable to integer."""
     try:
         return int(os.environ.get(key, default))
-    except ValueError, TypeError:
+    except (ValueError, TypeError):
         return default
 
 
@@ -82,10 +83,14 @@ SITE_URL = os.environ.get("SITE_URL")
 if not SITE_URL and ALLOWED_HOSTS:
     # Auto-detect from first allowed host (use https in production, http in dev)
     first_host = ALLOWED_HOSTS[0].strip()
-    if first_host and first_host not in ("localhost", "127.0.0.1"):
+    if first_host in ("", "*"):
+        first_host = "localhost"
+    if first_host and first_host not in ("localhost", "127.0.0.1", "::1"):
         SITE_URL = f"https://{first_host}"
     else:
         SITE_URL = f"http://{first_host}"
+if SITE_URL:
+    SITE_URL = SITE_URL.strip().rstrip("/")
 
 SITE_ID = 1
 
@@ -118,6 +123,7 @@ _MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "editor.middleware.PostDetailViewCountMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -187,6 +193,12 @@ CACHES = {
     }
 }
 
+# Full-page cache for public post list/detail (Redis + cache_page). Set 0 to disable.
+# Purged on post/category/gallery/tag/redirect changes (editor.signals).
+# View counts still increment in DB on every GET (middleware), but the number shown in
+# cached HTML may lag until purge or TTL.
+POST_PAGE_CACHE_TIMEOUT = get_int_env("POST_PAGE_CACHE_TIMEOUT", 300)
+
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
@@ -244,25 +256,66 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static_blog"),  # Project-level static files
+    # Favicons are now stored in app static at editor/static/img/favicons.
 ]
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 MEDIA_URL = "media/"
+
+# Post/gallery uploads: AVIF if Pillow has libavif, else WebP, else JPEG.
+# Only runs on new uploads (not when saving an existing stored file).
+IMAGE_UPLOAD_MAX_EDGE = get_int_env("IMAGE_UPLOAD_MAX_EDGE", 2560)
+IMAGE_UPLOAD_AVIF_QUALITY = get_int_env("IMAGE_UPLOAD_AVIF_QUALITY", 72)
+IMAGE_UPLOAD_AVIF_SPEED = get_int_env("IMAGE_UPLOAD_AVIF_SPEED", 6)
+IMAGE_UPLOAD_WEBP_QUALITY = get_int_env("IMAGE_UPLOAD_WEBP_QUALITY", 85)
+IMAGE_UPLOAD_JPEG_QUALITY = get_int_env("IMAGE_UPLOAD_JPEG_QUALITY", 88)
+
+# Human titles for /category/<slug>/ when slug ≠ Category.list_url_segment()
+# (e.g. legacy nav uses English "projects" while DB category is «Проекты» → cat-N).
+CATEGORY_URL_SLUG_LABELS = {
+    "projects": "Проекты",
+    "blog": "Блог",
+}
 
 
 # Security settings
 # Determine if we're in production (not DEBUG mode)
 IS_PRODUCTION = not DEBUG
 
+if not SITE_URL:
+    raise ValueError(
+        "SITE_URL must be set to an absolute URL (e.g., https://example.com)."
+    )
+
+parsed_site_url = urlparse(SITE_URL)
+if not parsed_site_url.scheme or not parsed_site_url.netloc:
+    raise ValueError(
+        f"SITE_URL must be an absolute URL with scheme and domain. Got: {SITE_URL}"
+    )
+
+if IS_PRODUCTION:
+    hostname = (parsed_site_url.hostname or "").lower()
+    if parsed_site_url.scheme != "https":
+        raise ValueError(f"SITE_URL must use HTTPS in production. Got: {SITE_URL}")
+    if hostname in {"localhost", "127.0.0.1", "::1"} or hostname.endswith(".local"):
+        raise ValueError(
+            f"SITE_URL cannot use localhost/local domain in production. Got: {SITE_URL}"
+        )
+
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Session security - production-safe defaults
 SESSION_COOKIE_SECURE = get_bool_env("SESSION_COOKIE_SECURE", IS_PRODUCTION)
 SESSION_COOKIE_HTTPONLY = get_bool_env("SESSION_COOKIE_HTTPONLY", True)
-SESSION_COOKIE_AGE = get_int_env("SESSION_COOKIE_AGE", 3600)  # 1 hour default
+# Idle window: with SESSION_SAVE_EVERY_REQUEST, each request slides expiry forward
+# (see session keepalive + autosave on post admin).
+SESSION_COOKIE_AGE = get_int_env(
+    "SESSION_COOKIE_AGE", 3600
+)  # 1 hour idle cap between requests
+SESSION_SAVE_EVERY_REQUEST = get_bool_env("SESSION_SAVE_EVERY_REQUEST", True)
 SESSION_EXPIRE_AT_BROWSER_CLOSE = get_bool_env("SESSION_EXPIRE_AT_BROWSER_CLOSE", False)
 SESSION_COOKIE_SAMESITE = "Lax"  # Protection against CSRF attacks
 

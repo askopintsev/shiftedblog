@@ -6,6 +6,7 @@ app_name = "editor"
 
 urlpatterns = [
     path("", views.post_list, name="post_list"),
+    path("sitemap/", views.html_sitemap, name="html_sitemap"),
     path(
         "category/<slug:category_slug>/",
         views.post_list,

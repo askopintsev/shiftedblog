@@ -5,7 +5,18 @@
 
 {% block title %}{{ post.title }} | Shifted Stuff{% endblock %}
 
+{% block canonical %}
+{% if is_draft_preview %}
+<link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
+{% else %}
+<link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}{{ post.get_absolute_url }}">
+{% endif %}
+{% endblock canonical %}
+
 {% block extra_head %}
+{% if is_draft_preview %}
+<meta name="robots" content="noindex,nofollow">
+{% endif %}
 <!-- Open Graph -->
 <meta property="og:type" content="article">
 <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{{ post.get_absolute_url }}">
@@ -15,15 +26,22 @@
 <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ image_url }}">
 <meta property="og:image:secure_url" content="{{ request.scheme }}://{{ request.get_host }}{{ image_url }}">
 <meta property="og:image:type" content="image/jpeg">
+{% if post.cover_image.width and post.cover_image.height %}
+<meta property="og:image:width" content="{{ post.cover_image.width }}">
+<meta property="og:image:height" content="{{ post.cover_image.height }}">
+{% else %}
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="{{ post.title }}">
+{% endif %}
+<meta property="og:image:alt" content="{% firstof post.cover_description post.title %}">
 {% endwith %}
 {% endif %}
 {% if post.short_description %}
+<meta name="description" content="{{ post.short_description }}">
 <meta property="og:description" content="{{ post.short_description }}">
 {% else %}
 {% with body_text=post.body|striptags|truncatechars:160 %}
+<meta name="description" content="{{ body_text }}">
 <meta property="og:description" content="{{ body_text }}">
 {% endwith %}
 {% endif %}
@@ -45,9 +63,68 @@
 {% with image_url=post.cover_image.url %}
 <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{{ image_url }}">
 <meta name="twitter:image:src" content="{{ request.scheme }}://{{ request.get_host }}{{ image_url }}">
-<meta name="twitter:image:alt" content="{{ post.title }}">
+<meta name="twitter:image:alt" content="{% firstof post.cover_description post.title %}">
 {% endwith %}
 {% endif %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "{{ post.title|striptags|escapejs }}",
+  {% if post.short_description %}
+  "description": "{{ post.short_description|striptags|escapejs }}",
+  {% else %}
+  "description": "{{ post.body|striptags|truncatechars:160|escapejs }}",
+  {% endif %}
+  "datePublished": "{{ post.published|default:post.created|date:'c' }}",
+  "dateModified": "{{ post.updated|date:'c' }}",
+  "author": {
+    "@type": "Person",
+    "name": "{{ post.author.get_full_name|default:post.author|striptags|escapejs }}"
+  },
+  {% if post.cover_image %}
+  "image": "{{ request.scheme }}://{{ request.get_host }}{{ post.cover_image.url }}",
+  {% endif %}
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    {% if is_draft_preview %}
+    "@id": "{{ request.scheme }}://{{ request.get_host }}{{ request.path }}"
+    {% else %}
+    "@id": "{{ request.scheme }}://{{ request.get_host }}{{ post.get_absolute_url }}"
+    {% endif %}
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Главная",
+      "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'editor:post_list' %}"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "{{ post.category.name|striptags|escapejs }}",
+      "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'editor:post_list_by_category' post.category.list_url_segment %}"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "{{ post.title|striptags|escapejs }}",
+      {% if is_draft_preview %}
+      "item": "{{ request.scheme }}://{{ request.get_host }}{{ request.path }}"
+      {% else %}
+      "item": "{{ request.scheme }}://{{ request.get_host }}{{ post.get_absolute_url }}"
+      {% endif %}
+    }
+  ]
+}
+</script>
 {% endblock extra_head %}
 
 {% block content %}
@@ -88,7 +165,7 @@
     <div class="post-cover-image-wrapper">
         <div class="container">
             <div class="post-cover-image-container">
-                <img class="post-cover-image" src="{{ post.cover_image.url|urlencode }}" alt="{{ post.title }}">
+                <img class="post-cover-image" src="{{ post.cover_image.url|urlencode }}" alt="{% firstof post.cover_description post.title %}"{% if post.cover_image.width and post.cover_image.height %} width="{{ post.cover_image.width }}" height="{{ post.cover_image.height }}"{% endif %} decoding="async" fetchpriority="high">
                 {% if post.cover_description %}
                     <div class="post-cover-description">
                         <p class="text-muted mb-0">{{ post.cover_description }}</p>
@@ -145,7 +222,7 @@
     <div class="post-content-container">
         {% if similar_posts %}
         <div class="similar-posts">
-            <h3>Рекомендую:</h3>
+            <h3>Похожие посты:</h3>
             {% for post in similar_posts %}
                 {% include "editor/post_horizontal_card.html" with post=post %}
             {% empty %}

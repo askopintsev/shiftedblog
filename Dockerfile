@@ -1,6 +1,6 @@
 # Stage 1
-# Use Python 3.14 slim image
-FROM python:3.14-slim AS builder
+# Debian Bookworm (stable) — reliable mirrors vs. default slim on newer Debian (e.g. trixie).
+FROM python:3.13.12-slim-bookworm AS builder
 
 # Set work directory
 RUN mkdir /app
@@ -10,7 +10,7 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Install system dependencies (incl. Pillow build deps for Python 3.14 source build)
+# Install system dependencies (Pillow / psycopg2 build)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         postgresql-client \
@@ -32,7 +32,7 @@ COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Stage 2
-FROM python:3.14-slim
+FROM python:3.13.12-slim-bookworm
 
 # PostgreSQL client + runtime libs for Pillow (PIL/django_ckeditor_5)
 RUN apt-get update \
@@ -52,7 +52,7 @@ RUN useradd -m -r appuser && \
    chown -R appuser /app /backups
 
 # Copy the Python dependencies from the builder stage
-COPY --from=builder /usr/local/lib/python3.14/site-packages/ /usr/local/lib/python3.14/site-packages/
+COPY --from=builder /usr/local/lib/python3.13/site-packages/ /usr/local/lib/python3.13/site-packages/
 COPY --from=builder /usr/local/bin/ /usr/local/bin/
 
 # Set work directory

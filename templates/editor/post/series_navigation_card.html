@@ -14,14 +14,16 @@
             <div class="series-nav-card">
                 {% if nav_post.cover_image %}
                 <div class="series-nav-image">
-                    <img src="{{ nav_post.cover_image.url|urlencode }}" alt="{{ nav_post.title }}">
+                    <img src="{{ nav_post.cover_image.url|urlencode }}" alt="{% firstof nav_post.cover_description nav_post.title %}"{% if nav_post.cover_image.width and nav_post.cover_image.height %} width="{{ nav_post.cover_image.width }}" height="{{ nav_post.cover_image.height }}"{% endif %} loading="lazy" decoding="async">
                 </div>
                 {% endif %}
                 <div class="series-nav-info">
                     <div class="series-nav-title">{{ nav_post.title }}</div>
-                    {% if nav_post.short_description %}
-                    <div class="series-nav-description">{{ nav_post.short_description|truncatewords:15 }}</div>
-                    {% endif %}
+                    <div class="series-nav-meta">
+                        <span><i class="fa-regular fa-clock"></i> {{ nav_post.body|reading_time }} мин</span>
+                        <span><i class="fa-regular fa-eye"></i> {{ nav_post.views }}</span>
+                    </div>
+                    <div class="series-nav-description">{{ nav_post.body|first_sentence|truncatechars_whole_words:101 }}</div>
                 </div>
             </div>
         </a>

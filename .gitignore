@@ -96,8 +96,11 @@ Control.ca-bundle
 Control.system-ca-bundle
 GitHub.sublime-settings
 
-static_blog/img/favicons/**
+editor/static/img/favicons/*.ico
+editor/static/img/favicons/*.png
 static_blog/img/template/**
 staticfiles/
 
 zen_*
+
+.cursor
