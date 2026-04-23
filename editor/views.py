@@ -215,18 +215,28 @@ def post_detail(request, slug):
         if next_post and next_post.status != "published":
             next_post = None
 
+    excluded_series_post_ids = [
+        series_post.id
+        for series_post in (previous_post, next_post)
+        if series_post is not None
+    ]
+
     post_tags_ids = post.tags.values_list("id", flat=True)
     similar_posts = (
         Post.objects.filter(status="published")
         .filter(tags__in=post_tags_ids)
         .exclude(id=post.id)
     )
+    if excluded_series_post_ids:
+        similar_posts = similar_posts.exclude(id__in=excluded_series_post_ids)
     similar_posts = similar_posts.annotate(same_tags=Count("tags")).order_by(
         "-same_tags", "-published"
     )[:3]
 
     newest_posts = (
-        Post.objects.exclude(id=post.id)
+        Post.objects.filter(status="published")
+        .exclude(id=post.id)
+        .exclude(id__in=excluded_series_post_ids)
         .exclude(id__in=similar_posts)
         .order_by("-published")[: 5 - len(similar_posts)]
     )
@@ -266,18 +276,28 @@ def post_detail_by_uuid(request, uuid):
         if next_post and next_post.status != "published":
             next_post = None
 
+    excluded_series_post_ids = [
+        series_post.id
+        for series_post in (previous_post, next_post)
+        if series_post is not None
+    ]
+
     post_tags_ids = post.tags.values_list("id", flat=True)
     similar_posts = (
         Post.objects.filter(status="published")
         .filter(tags__in=post_tags_ids)
         .exclude(id=post.id)
     )
+    if excluded_series_post_ids:
+        similar_posts = similar_posts.exclude(id__in=excluded_series_post_ids)
     similar_posts = similar_posts.annotate(same_tags=Count("tags")).order_by(
         "-same_tags", "-published"
     )[:3]
 
     newest_posts = (
-        Post.objects.exclude(id=post.id)
+        Post.objects.filter(status="published")
+        .exclude(id=post.id)
+        .exclude(id__in=excluded_series_post_ids)
         .exclude(id__in=similar_posts)
         .order_by("-published")[: 5 - len(similar_posts)]
     )

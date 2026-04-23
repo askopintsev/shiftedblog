@@ -222,7 +222,7 @@
     <div class="post-content-container">
         {% if similar_posts %}
         <div class="similar-posts">
-            <h3>Рекомендую:</h3>
+            <h3>Похожие посты:</h3>
             {% for post in similar_posts %}
                 {% include "editor/post_horizontal_card.html" with post=post %}
             {% empty %}
