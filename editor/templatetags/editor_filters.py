@@ -19,7 +19,12 @@ def striptags_preserve_paragraphs(value):
     value = re.sub(r"</p>\s*<p[^>]*>", "\n\n", str(value))
     value = re.sub(r"<p[^>]*>", "\n\n", value)
     value = re.sub(r"</p>", "", value)
-    value = re.sub(r"</(?:div|section|article|blockquote|li|h[1-6])>", "\n\n", value, flags=re.IGNORECASE)
+    value = re.sub(
+        r"</(?:div|section|article|blockquote|li|h[1-6])>",
+        "\n\n",
+        value,
+        flags=re.IGNORECASE,
+    )
     value = re.sub(r"<br\s*/?>", "\n", value, flags=re.IGNORECASE)
     value = strip_tags(value)
     value = re.sub(r"\n{3,}", "\n\n", value)

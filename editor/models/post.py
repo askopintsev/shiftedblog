@@ -39,7 +39,7 @@ class Category(models.Model):
         return self.name
 
     def list_url_segment(self) -> str:
-        """ASCII slug for ``category/<slug:category_slug>/``; never empty for saved rows.
+        """ASCII slug for ``category/<slug>/``; never empty for saved rows.
 
         Django's ``<slug:>`` only allows ``[-a-zA-Z0-9_]+``, so Unicode-only names
         must fall back to ``cat-{pk}`` (``reverse()`` would fail otherwise).
@@ -182,48 +182,6 @@ class Post(models.Model):
     def __str__(self):
         return self.title
 
-    @staticmethod
-    def _slugify_segment(value: str) -> str:
-        """Normalize to URL-safe slug; allow Unicode letters (e.g. Cyrillic)."""
-        if not value or not value.strip():
-            return ""
-        cleaned = value.strip()
-        s = slugify(cleaned, allow_unicode=True)
-        if not s:
-            s = slugify(cleaned)
-        return s
-
-    def _ensure_unique_slug(self) -> None:
-        """Set slug from title or normalized input; append -2, -3, … if needed."""
-        raw = (self.slug or "").strip()
-        if raw:
-            base = self._slugify_segment(raw)
-        else:
-            base = self._slugify_segment(str(self.title))
-        if not base:
-            base = "post"
-
-        max_len = self._meta.get_field("slug").max_length
-        reserve = 8  # room for suffix like "-999999"
-        base = base[: max(1, max_len - reserve)]
-
-        candidate = base
-        n = 2
-        while True:
-            qs = Post.objects.filter(slug=candidate)
-            if self.pk is not None:
-                qs = qs.exclude(pk=self.pk)
-            if not qs.exists():
-                self.slug = candidate
-                return
-            suffix = f"-{n}"
-            candidate = base[: max_len - len(suffix)] + suffix
-            n += 1
-            if n > 10**6:
-                raise ValidationError(
-                    "Could not assign a unique slug; try a more distinct title or slug."
-                )
-
     def save(self, *args, **kwargs):
         """Automatically set published date when status changes to 'published'."""
         update_fields = kwargs.get("update_fields")
@@ -319,6 +277,48 @@ class Post(models.Model):
         except Exception:
             return None
 
+    @staticmethod
+    def _slugify_segment(value: str) -> str:
+        """Normalize to URL-safe slug; allow Unicode letters (e.g. Cyrillic)."""
+        if not value or not value.strip():
+            return ""
+        cleaned = value.strip()
+        s = slugify(cleaned, allow_unicode=True)
+        if not s:
+            s = slugify(cleaned)
+        return s
+
+    def _ensure_unique_slug(self) -> None:
+        """Set slug from title or normalized input; append -2, -3, … if needed."""
+        raw = (self.slug or "").strip()
+        if raw:
+            base = self._slugify_segment(raw)
+        else:
+            base = self._slugify_segment(str(self.title))
+        if not base:
+            base = "post"
+
+        max_len = self._meta.get_field("slug").max_length
+        reserve = 8  # room for suffix like "-999999"
+        base = base[: max(1, max_len - reserve)]
+
+        candidate = base
+        n = 2
+        while True:
+            qs = Post.objects.filter(slug=candidate)
+            if self.pk is not None:
+                qs = qs.exclude(pk=self.pk)
+            if not qs.exists():
+                self.slug = candidate
+                return
+            suffix = f"-{n}"
+            candidate = base[: max_len - len(suffix)] + suffix
+            n += 1
+            if n > 10**6:
+                raise ValidationError(
+                    "Could not assign a unique slug; try a more distinct title or slug."
+                )
+
     def _record_slug_redirect_if_changed(self, old_slug: str | None) -> None:
         """Keep old URL → 301 to current slug for SEO when slug is edited."""
         if not old_slug or old_slug == self.slug:
@@ -391,11 +391,11 @@ class PostGalleryImage(models.Model):
         db_table = "editor_postgalleryimage"
         ordering: ClassVar[list] = ["gallery_key", "order", "id"]
 
+    def __str__(self):
+        return f"Gallery {self.gallery_key} image {self.order} for {self.post.title}"
+
     def save(self, *args, **kwargs):
         update_fields = kwargs.get("update_fields")
         update_fields_set = set(update_fields) if update_fields is not None else None
         normalize_image_field_file(self, "image", update_fields_set)
         super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"Gallery {self.gallery_key} image {self.order} for {self.post.title}"

@@ -12,7 +12,7 @@ from django.views.decorators.csrf import csrf_protect
 
 @staff_member_required
 def admin_session_keepalive(request):
-    """GET ping to refresh session while staff stay on long-lived admin pages (e.g. post editor)."""
+    """GET ping to refresh session for staff on long-lived admin pages (e.g. editor)."""
     request.session.modified = True
     return HttpResponse(status=204)
 
@@ -75,4 +75,6 @@ Disallow: /drafts/
 Sitemap: {site_url}/sitemap.xml
     """
 
-    return HttpResponse(content.encode("utf-8"), content_type="text/plain; charset=utf-8")
+    return HttpResponse(
+        content.encode("utf-8"), content_type="text/plain; charset=utf-8"
+    )

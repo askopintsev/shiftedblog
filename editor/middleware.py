@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from django.db.models import F
 from django.http import HttpRequest, HttpResponse
@@ -14,7 +14,7 @@ from editor.models import Post
 
 
 class PostDetailViewCountMiddleware:
-    """Increment ``Post.views`` on GET for published detail URLs (runs even when HTML is cached)."""
+    """Bump ``Post.views`` on GET for published posts (even when HTML is cached)."""
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]):
         self.get_response = get_response

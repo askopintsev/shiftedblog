@@ -1,4 +1,4 @@
-"""Normalize uploaded images to AVIF/WebP (JPEG fallback) using Pillow — no external services."""
+"""Normalize uploads to AVIF/WebP (JPEG fallback) via Pillow — no external services."""
 
 from __future__ import annotations
 
@@ -117,7 +117,7 @@ def normalize_image_field_file(
     field_name: str,
     update_fields: set[str] | None,
 ) -> None:
-    """Replace a newly uploaded image with AVIF/WebP/JPEG; no-op for stored files or skipped saves."""
+    """New uploads → AVIF/WebP/JPEG; no-op for stored files or skipped saves."""
     if update_fields is not None and field_name not in update_fields:
         return
     field = getattr(instance, field_name)

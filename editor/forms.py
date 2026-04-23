@@ -106,7 +106,7 @@ class PostAdminForm(forms.ModelForm):
                 "title",
                 ValidationError(
                     "Title is too long for typical search snippets "
-                    f"(recommended max %(max)d characters, current %(n)d).",
+                    "(recommended max %(max)d characters, current %(n)d).",
                     code="title_seo_length",
                     params={"max": _TITLE_MAX_PUBLISH, "n": len(title)},
                 ),
@@ -118,7 +118,7 @@ class PostAdminForm(forms.ModelForm):
                 "short_description",
                 ValidationError(
                     "Short description is longer than recommended for meta / social "
-                    f"previews (max %(max)d characters, current %(n)d).",
+                    "previews (max %(max)d characters, current %(n)d).",
                     code="short_description_seo_length",
                     params={"max": _SHORT_DESC_MAX_PUBLISH, "n": len(sd)},
                 ),

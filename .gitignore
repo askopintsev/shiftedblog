@@ -102,3 +102,5 @@ static_blog/img/template/**
 staticfiles/
 
 zen_*
+
+.cursor

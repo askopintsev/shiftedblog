@@ -193,8 +193,8 @@ CACHES = {
     }
 }
 
-# Full-page cache for public post list/detail (Redis + cache_page).
-# Set to 0 to disable. Purged on post/category/gallery/tag/redirect changes (editor.signals).
+# Full-page cache for public post list/detail (Redis + cache_page). Set 0 to disable.
+# Purged on post/category/gallery/tag/redirect changes (editor.signals).
 # View counts still increment in DB on every GET (middleware), but the number shown in
 # cached HTML may lag until purge or TTL.
 POST_PAGE_CACHE_TIMEOUT = get_int_env("POST_PAGE_CACHE_TIMEOUT", 300)
@@ -265,7 +265,7 @@ STATICFILES_DIRS = [
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 MEDIA_URL = "media/"
 
-# Post / gallery uploads: normalize to AVIF (if Pillow has libavif), else WebP, else JPEG.
+# Post/gallery uploads: AVIF if Pillow has libavif, else WebP, else JPEG.
 # Only runs on new uploads (not when saving an existing stored file).
 IMAGE_UPLOAD_MAX_EDGE = get_int_env("IMAGE_UPLOAD_MAX_EDGE", 2560)
 IMAGE_UPLOAD_AVIF_QUALITY = get_int_env("IMAGE_UPLOAD_AVIF_QUALITY", 72)
@@ -273,7 +273,7 @@ IMAGE_UPLOAD_AVIF_SPEED = get_int_env("IMAGE_UPLOAD_AVIF_SPEED", 6)
 IMAGE_UPLOAD_WEBP_QUALITY = get_int_env("IMAGE_UPLOAD_WEBP_QUALITY", 85)
 IMAGE_UPLOAD_JPEG_QUALITY = get_int_env("IMAGE_UPLOAD_JPEG_QUALITY", 88)
 
-# Human titles for /category/<slug>/ when slug does not match Category.list_url_segment()
+# Human titles for /category/<slug>/ when slug ≠ Category.list_url_segment()
 # (e.g. legacy nav uses English "projects" while DB category is «Проекты» → cat-N).
 CATEGORY_URL_SLUG_LABELS = {
     "projects": "Проекты",
@@ -299,12 +299,10 @@ if not parsed_site_url.scheme or not parsed_site_url.netloc:
 if IS_PRODUCTION:
     hostname = (parsed_site_url.hostname or "").lower()
     if parsed_site_url.scheme != "https":
-        raise ValueError(
-            f"SITE_URL must use HTTPS in production. Got: {SITE_URL}"
-        )
+        raise ValueError(f"SITE_URL must use HTTPS in production. Got: {SITE_URL}")
     if hostname in {"localhost", "127.0.0.1", "::1"} or hostname.endswith(".local"):
         raise ValueError(
-            f"SITE_URL cannot point to localhost/local domain in production. Got: {SITE_URL}"
+            f"SITE_URL cannot use localhost/local domain in production. Got: {SITE_URL}"
         )
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -314,7 +312,9 @@ SESSION_COOKIE_SECURE = get_bool_env("SESSION_COOKIE_SECURE", IS_PRODUCTION)
 SESSION_COOKIE_HTTPONLY = get_bool_env("SESSION_COOKIE_HTTPONLY", True)
 # Idle window: with SESSION_SAVE_EVERY_REQUEST, each request slides expiry forward
 # (see session keepalive + autosave on post admin).
-SESSION_COOKIE_AGE = get_int_env("SESSION_COOKIE_AGE", 3600)  # 1 hour idle cap between requests
+SESSION_COOKIE_AGE = get_int_env(
+    "SESSION_COOKIE_AGE", 3600
+)  # 1 hour idle cap between requests
 SESSION_SAVE_EVERY_REQUEST = get_bool_env("SESSION_SAVE_EVERY_REQUEST", True)
 SESSION_EXPIRE_AT_BROWSER_CLOSE = get_bool_env("SESSION_EXPIRE_AT_BROWSER_CLOSE", False)
 SESSION_COOKIE_SAMESITE = "Lax"  # Protection against CSRF attacks

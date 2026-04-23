@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 # pyright: reportAttributeAccessIssue=false
-
 import json
 import re
 from contextlib import AbstractContextManager
@@ -83,9 +82,9 @@ def _expected_canonical(path: str) -> str:
 class _CommandStyle(Protocol):
     """django.core.management.color.Style (stubs omit WARNING / ERROR / SUCCESS)."""
 
-    def WARNING(self, text: str = "") -> str: ...
-    def ERROR(self, text: str = "") -> str: ...
-    def SUCCESS(self, text: str = "") -> str: ...
+    def WARNING(self, text: str = "") -> str: ...  # noqa: N802
+    def ERROR(self, text: str = "") -> str: ...  # noqa: N802
+    def SUCCESS(self, text: str = "") -> str: ...  # noqa: N802
 
 
 class Command(BaseCommand):
@@ -121,10 +120,7 @@ class Command(BaseCommand):
 
         extra_hosts = {h.strip() for h in settings.ALLOWED_HOSTS if h.strip()}
         extra_hosts.add(host)
-        if "*" not in extra_hosts:
-            extra_hosts_list = sorted(extra_hosts)
-        else:
-            extra_hosts_list = ["*"]
+        extra_hosts_list = sorted(extra_hosts) if "*" not in extra_hosts else ["*"]
 
         qs = Post.objects.filter(status="published").order_by("slug")
         if slug_filter:
@@ -179,7 +175,7 @@ class Command(BaseCommand):
                     if "noindex" in rv or "nofollow" in rv:
                         errors.append(
                             f"{post.slug!r}: published page must not use "
-                            f"noindex/nofollow in <meta name=\"robots\"> "
+                            f'noindex/nofollow in <meta name="robots"> '
                             f"(got content={rv!r})"
                         )
 
@@ -248,8 +244,8 @@ class Command(BaseCommand):
                                 )
                             elif _norm_url(str(last_item)) != _norm_url(expected):
                                 errors.append(
-                                    f"{post.slug!r}: last breadcrumb item {last_item!r} "
-                                    f"!= expected {expected!r}"
+                                    f"{post.slug!r}: last breadcrumb item "
+                                    f"{last_item!r} != expected {expected!r}"
                                 )
 
         if errors:

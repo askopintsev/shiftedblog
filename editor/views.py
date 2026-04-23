@@ -196,9 +196,7 @@ def post_detail(request, slug):
             .first()
         )
         if redirect_row and redirect_row.post.status == "published":
-            return HttpResponsePermanentRedirect(
-                redirect_row.post.get_absolute_url()
-            )
+            return HttpResponsePermanentRedirect(redirect_row.post.get_absolute_url())
         raise Http404("No published post matches this URL.")
 
     previous_post = None
