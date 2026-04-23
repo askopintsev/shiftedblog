@@ -719,13 +719,20 @@ a.btn.btn-light.shadow-sm{
     margin-bottom: 0;
 }
 
-.row .card .card-body > div.card-text p {
-    margin-bottom: 0;
-}
-
 .row .card .card-body > div.card-text {
+    /* Match prod: same type scale as .row .card .card-text (excerpt block) */
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: #495057;
     height: auto;
     margin-bottom: 1rem;
+}
+
+.row .card .card-body > div.card-text p {
+    font-size: inherit;
+    line-height: inherit;
+    color: inherit;
+    margin-bottom: 0;
 }
 
 .row .card .card-img-top {
@@ -826,6 +833,11 @@ a.btn.btn-light.shadow-sm{
     }
     
     .row .card .card-text {
+        font-size: 0.875rem;
+        line-height: 1.65;
+    }
+
+    .row .card .card-body > div.card-text {
         font-size: 0.875rem;
         line-height: 1.65;
     }
