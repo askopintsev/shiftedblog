@@ -78,9 +78,9 @@ def _post_list_seo(
         desc_base = f"Публикации в разделе «{display_name}»."
     elif tag is not None:
         title_base = f"#{tag.name} — {site_name}"
-        desc_base = f"Все публикации с тегом #{tag.name}."
+        desc_base = f"Все публикации с тегом #{tag.name}."  # noqa: RUF001
     elif tag_slug:
-        title_base = f"Тег — {site_name}"
+        title_base = f"Тег — {site_name}"  # noqa: RUF001
         desc_base = "Публикации по выбранному тегу."
     else:
         title_base = site_name
