@@ -273,6 +273,18 @@ IMAGE_UPLOAD_AVIF_SPEED = get_int_env("IMAGE_UPLOAD_AVIF_SPEED", 6)
 IMAGE_UPLOAD_WEBP_QUALITY = get_int_env("IMAGE_UPLOAD_WEBP_QUALITY", 85)
 IMAGE_UPLOAD_JPEG_QUALITY = get_int_env("IMAGE_UPLOAD_JPEG_QUALITY", 88)
 
+# Optional local Python checker integration for post text quality checks in admin.
+# Uses optional python libs (language_tool_python / pyspellchecker) if installed.
+# Keep disabled by default; heuristic scoring works as fallback.
+TEXT_QUALITY_PY_CHECKER_ENABLED = get_bool_env(
+    "TEXT_QUALITY_PY_CHECKER_ENABLED",
+    False,
+)
+TEXT_QUALITY_LANGUAGETOOL_LANGUAGE = os.environ.get(
+    "TEXT_QUALITY_LANGUAGETOOL_LANGUAGE",
+    "ru-RU",
+).strip()
+
 # Human titles for /category/<slug>/ when slug ≠ Category.list_url_segment()
 # (e.g. legacy nav uses English "projects" while DB category is «Проекты» → cat-N).
 CATEGORY_URL_SLUG_LABELS = {

@@ -24,6 +24,10 @@
     color: #212529;
     font-weight: 600;
 }
+#content .post-body-stats__quality {
+    margin-top: 0.35rem;
+    color: #495057;
+}
 
 /* CKEditor body field: same width and spacing as post detail (.post-content-container + .post-body-content) */
 

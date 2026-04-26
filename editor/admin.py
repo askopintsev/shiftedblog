@@ -1,9 +1,14 @@
+import json
 from typing import ClassVar
+from uuid import UUID, uuid4
 
 from django.contrib import admin
+from django.http import HttpRequest, JsonResponse
+from django.urls import path
 
 from editor import models
 from editor.forms import OptionalGalleryFormSet, PostAdminForm
+from editor.text_quality_service import PostTextQualityService, TextQualityRequestDTO
 
 
 @admin.register(models.PostSlugRedirect)
@@ -27,6 +32,7 @@ class PostGalleryImageInline(admin.TabularInline):
 class PostAdmin(admin.ModelAdmin):
     form = PostAdminForm
     inlines: ClassVar[list] = [PostGalleryImageInline]
+    text_quality_service = PostTextQualityService()
 
     class Media:
         css: ClassVar[dict] = {"all": ("editor/css/post_admin_editor.css",)}
@@ -44,6 +50,70 @@ class PostAdmin(admin.ModelAdmin):
     readonly_fields = ("views", "updated", "draft_preview_link")
     date_hierarchy = "published"
     ordering = ("status", "published")
+
+    def get_urls(self):
+        custom_urls = [
+            path(
+                "text-quality/",
+                self.admin_site.admin_view(self.text_quality_view),
+                name="editor_post_text_quality",
+            ),
+        ]
+        return custom_urls + super().get_urls()
+
+    def text_quality_view(self, request: HttpRequest) -> JsonResponse:
+        method = str(request.META.get("REQUEST_METHOD", "GET")).upper()
+        if method != "POST":
+            return JsonResponse(
+                {
+                    "schema_version": "1.0",
+                    "request_id": str(uuid4()),
+                    "ok": False,
+                    "error": {
+                        "code": "METHOD_NOT_ALLOWED",
+                        "message": "Use POST for text quality analysis.",
+                        "details": {},
+                    },
+                },
+                status=405,
+            )
+
+        try:
+            payload = json.loads(request.body.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            payload = {}
+
+        text = str(payload.get("text") or "").strip()
+        if not text:
+            request_id = payload.get("request_id")
+            return JsonResponse(
+                {
+                    "schema_version": "1.0",
+                    "request_id": str(request_id or uuid4()),
+                    "ok": False,
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "Field 'text' is required.",
+                        "details": {"field": "text"},
+                    },
+                },
+                status=422,
+            )
+
+        request_id = payload.get("request_id")
+        try:
+            parsed_request_id = UUID(request_id) if request_id else uuid4()
+        except (TypeError, ValueError):
+            parsed_request_id = uuid4()
+        request_dto = TextQualityRequestDTO(
+            text=text,
+            locale=str(payload.get("locale") or "ru-RU"),
+            content_format=str(payload.get("content_format") or "html"),
+            request_id=parsed_request_id,
+            enable_extra_metrics=bool(payload.get("enable_extra_metrics", True)),
+        )
+        report = self.text_quality_service.evaluate(request_dto)
+        return JsonResponse(report.to_dict(), status=200)
 
 
 @admin.register(models.Category)
