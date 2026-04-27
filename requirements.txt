@@ -194,9 +194,9 @@ django-two-factor-auth==1.18.1 \
     --hash=sha256:9d624db63123141cd95a6afe3d626105c3c29a7c8e25a3d93411dd1fac0be464 \
     --hash=sha256:ccc9cee10be880037914e572389be6dcae93947709a8a9ff01fb23f7dee254f2
     # via shiftedblog
-idna==3.11 \
-    --hash=sha256:771a87f49d9defaf64091e6e6fe9c18d4833f140bd19464795bc32d966ca37ea \
-    --hash=sha256:795dafcc9c04ed0c1fb032c2aa73654d8e8c5023a7df64a53f39190ada629902
+idna==3.13 \
+    --hash=sha256:585ea8fe5d69b9181ec1afba340451fba6ba764af97026f92a91d4eef164a242 \
+    --hash=sha256:892ea0cde124a99ce773decba204c5552b69c3c67ffd5f232eb7696135bc8bb3
     # via requests
 phonenumbers==9.0.28 \
     --hash=sha256:ee8caabab4fd554efb6119e7b95cb69da40e0f04050611730eed839d93f39920 \
