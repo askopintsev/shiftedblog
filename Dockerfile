@@ -1,6 +1,6 @@
 # Stage 1
 # Debian Bookworm (stable) — reliable mirrors vs. default slim on newer Debian (e.g. trixie).
-FROM python:3.13.12-slim-bookworm AS builder
+FROM python:3.14.0-slim-bookworm AS builder
 
 # Set work directory
 RUN mkdir /app
@@ -32,7 +32,7 @@ COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Stage 2
-FROM python:3.13.12-slim-bookworm
+FROM python:3.14.0-slim-bookworm
 
 # PostgreSQL client + runtime libs for Pillow (PIL/django_ckeditor_5)
 RUN apt-get update \
