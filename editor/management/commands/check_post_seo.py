@@ -16,7 +16,7 @@ from django.http import HttpResponse
 from django.test import Client
 from django.test.utils import override_settings
 
-from editor.models import Post
+from blog.querysets import public_posts_queryset
 
 _LINK_TAG_RE = re.compile(r"<link\s+([^>]+)>", re.IGNORECASE)
 _META_TAG_RE = re.compile(r"<meta\s+([^>]+)>", re.IGNORECASE)
@@ -122,7 +122,7 @@ class Command(BaseCommand):
         extra_hosts.add(host)
         extra_hosts_list = sorted(extra_hosts) if "*" not in extra_hosts else ["*"]
 
-        qs = Post.objects.filter(status="published").order_by("slug")
+        qs = public_posts_queryset().order_by("slug")
         if slug_filter:
             qs = qs.filter(slug=slug_filter)
         if limit > 0:

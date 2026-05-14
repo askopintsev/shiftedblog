@@ -18,7 +18,7 @@ from core.views import (
     custom_image_upload,
     robots_txt,
 )
-from editor.sitemap import PostSitemap
+from blog.sitemap import PostSitemap
 from shiftedblog.rate_limited_views import (
     RateLimitedLoginView,
     RateLimitedQRGeneratorView,
@@ -43,6 +43,7 @@ urlpatterns = [
     ),
     path(f"{admin_url}/", admin.site.urls),
     path("", include("team.urls")),
+    path("", include("blog.urls", namespace="blog")),
     path("", include("editor.urls", namespace="editor")),
     path(
         "sitemap.xml",

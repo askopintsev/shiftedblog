@@ -4,8 +4,10 @@ from uuid import UUID, uuid4
 
 from django.contrib import admin
 from django.http import HttpRequest, JsonResponse
-from django.urls import path
+from django.urls import path, reverse
+from django.utils import timezone
 
+from blog.models import SitePublication
 from editor import models
 from editor.forms import OptionalGalleryFormSet, PostAdminForm
 from editor.text_quality_service import PostTextQualityService, TextQualityRequestDTO
@@ -28,11 +30,37 @@ class PostGalleryImageInline(admin.TabularInline):
     verbose_name_plural = "Gallery images (insert [gallery:1], [gallery:2], … in body)"
 
 
+class SitePublicationInline(admin.StackedInline):
+    model = SitePublication
+    extra = 0
+    max_num = 1
+    can_delete = True
+    fields = ("published_at",)
+
+
+@admin.action(description="Publish selected posts to site")
+def publish_selected_posts_to_site(modeladmin, request, queryset):
+    for post in queryset:
+        if post.status != "published":
+            continue
+        SitePublication.objects.update_or_create(
+            post=post,
+            defaults={"published_at": post.published or timezone.now()},
+        )
+
+
+@admin.action(description="Unpublish selected posts from site")
+def unpublish_selected_posts_from_site(modeladmin, request, queryset):
+    SitePublication.objects.filter(post__in=queryset).delete()
+
+
 @admin.register(models.Post)
 class PostAdmin(admin.ModelAdmin):
     form = PostAdminForm
-    inlines: ClassVar[list] = [PostGalleryImageInline]
+    change_form_template = "admin/editor/post/change_form.html"
+    inlines: ClassVar[list] = [PostGalleryImageInline, SitePublicationInline]
     text_quality_service = PostTextQualityService()
+    actions = (publish_selected_posts_to_site, unpublish_selected_posts_from_site)
 
     class Media:
         css: ClassVar[dict] = {"all": ("editor/css/post_admin_editor.css",)}
@@ -50,6 +78,19 @@ class PostAdmin(admin.ModelAdmin):
     readonly_fields = ("views", "updated", "draft_preview_link")
     date_hierarchy = "published"
     ordering = ("status", "published")
+
+    def changeform_view(
+        self,
+        request: HttpRequest,
+        object_id: str | None = None,
+        form_url: str = "",
+        extra_context: dict[str, object] | None = None,
+    ):
+        merged = dict(extra_context) if extra_context else {}
+        merged["post_admin_text_quality_url"] = reverse(
+            "admin:editor_post_text_quality",
+        )
+        return super().changeform_view(request, object_id, form_url, merged)
 
     def get_urls(self):
         custom_urls = [

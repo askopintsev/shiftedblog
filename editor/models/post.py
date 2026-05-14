@@ -207,7 +207,7 @@ class Post(models.Model):
             self._record_slug_redirect_if_changed(old_slug)
 
     def get_absolute_url(self):
-        return reverse("editor:post_detail", args=[self.slug])
+        return reverse("blog:post_detail", args=[self.slug])
 
     def get_draft_url(self):
         """Secret URL to view this post (including drafts) by UUID."""

@@ -8,8 +8,9 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.cache import cache_page
 from taggit.models import Tag
 
+from blog.querysets import public_posts_queryset
 from editor.forms import SearchForm
-from editor.models import Category, Post, PostSlugRedirect
+from editor.models import Category, PostSlugRedirect
 
 
 def _public_page_cache(key_prefix: str):
@@ -45,7 +46,6 @@ def _post_list_seo(
     posts_page,
     list_empty: bool,
 ) -> dict[str, str | None]:
-    """Canonical URL, document title, and meta description for list views."""
     site = settings.SITE_URL.rstrip("/")
     site_name = "Shifted Stuff"
 
@@ -104,9 +104,9 @@ def _post_list_seo(
     }
 
 
-@_public_page_cache("editor.post_list")
+@_public_page_cache("blog.post_list")
 def post_list(request, tag_slug=None, category_slug=None):
-    object_list = Post.objects.filter(status="published")
+    object_list = public_posts_queryset()
     tag = None
     category = None
 
@@ -182,20 +182,16 @@ def post_list(request, tag_slug=None, category_slug=None):
     )
 
 
-@_public_page_cache("editor.post_detail")
+@_public_page_cache("blog.post_detail")
 def post_detail(request, slug):
-    post = (
-        Post.objects.prefetch_related("gallery_images")
-        .filter(slug=slug, status="published")
-        .first()
-    )
+    post = public_posts_queryset().prefetch_related("gallery_images").filter(slug=slug).first()
     if post is None:
-        redirect_row = (
-            PostSlugRedirect.objects.select_related("post")
-            .filter(old_slug=slug)
-            .first()
-        )
-        if redirect_row and redirect_row.post.status == "published":
+        redirect_row = PostSlugRedirect.objects.select_related("post").filter(old_slug=slug).first()
+        if (
+            redirect_row
+            and redirect_row.post.status == "published"
+            and hasattr(redirect_row.post, "site_publication")
+        ):
             return HttpResponsePermanentRedirect(redirect_row.post.get_absolute_url())
         raise Http404("No published post matches this URL.")
 
@@ -207,10 +203,14 @@ def post_detail(request, slug):
     if post_series:
         current_series = post_series.series
         previous_post = post.get_previous_post_in_series(current_series)
-        if previous_post and previous_post.status != "published":
+        if previous_post and (
+            previous_post.status != "published" or not hasattr(previous_post, "site_publication")
+        ):
             previous_post = None
         next_post = post.get_next_post_in_series(current_series)
-        if next_post and next_post.status != "published":
+        if next_post and (
+            next_post.status != "published" or not hasattr(next_post, "site_publication")
+        ):
             next_post = None
 
     excluded_series_post_ids = [
@@ -221,7 +221,7 @@ def post_detail(request, slug):
 
     post_tags_ids = post.tags.values_list("id", flat=True)
     similar_posts = (
-        Post.objects.filter(status="published")
+        public_posts_queryset()
         .filter(tags__in=post_tags_ids)
         .exclude(id=post.id)
     )
@@ -232,7 +232,7 @@ def post_detail(request, slug):
     )[:3]
 
     newest_posts = (
-        Post.objects.filter(status="published")
+        public_posts_queryset()
         .exclude(id=post.id)
         .exclude(id__in=excluded_series_post_ids)
         .exclude(id__in=similar_posts)
@@ -251,70 +251,6 @@ def post_detail(request, slug):
             "current_series": current_series,
         },
     )
-
-
-def post_detail_by_uuid(request, uuid):
-    """View a post by secret UUID (any status, including draft)."""
-    post = get_object_or_404(
-        Post.objects.prefetch_related("gallery_images"),
-        uuid=uuid,
-    )
-    # Don't increment views for draft preview
-
-    previous_post = None
-    next_post = None
-    current_series = None
-    post_series = post.post_series.filter(order_position__isnull=False).first()
-    if post_series:
-        current_series = post_series.series
-        previous_post = post.get_previous_post_in_series(current_series)
-        if previous_post and previous_post.status != "published":
-            previous_post = None
-        next_post = post.get_next_post_in_series(current_series)
-        if next_post and next_post.status != "published":
-            next_post = None
-
-    excluded_series_post_ids = [
-        series_post.id
-        for series_post in (previous_post, next_post)
-        if series_post is not None
-    ]
-
-    post_tags_ids = post.tags.values_list("id", flat=True)
-    similar_posts = (
-        Post.objects.filter(status="published")
-        .filter(tags__in=post_tags_ids)
-        .exclude(id=post.id)
-    )
-    if excluded_series_post_ids:
-        similar_posts = similar_posts.exclude(id__in=excluded_series_post_ids)
-    similar_posts = similar_posts.annotate(same_tags=Count("tags")).order_by(
-        "-same_tags", "-published"
-    )[:3]
-
-    newest_posts = (
-        Post.objects.filter(status="published")
-        .exclude(id=post.id)
-        .exclude(id__in=excluded_series_post_ids)
-        .exclude(id__in=similar_posts)
-        .order_by("-published")[: 5 - len(similar_posts)]
-    )
-
-    response = render(
-        request,
-        "blog/post/detail.html",
-        {
-            "post": post,
-            "similar_posts": similar_posts,
-            "newest_posts": newest_posts,
-            "previous_post": previous_post,
-            "next_post": next_post,
-            "current_series": current_series,
-            "is_draft_preview": post.status != "published",
-        },
-    )
-    response["X-Robots-Tag"] = "noindex, nofollow"
-    return response
 
 
 def post_search(request):
@@ -349,7 +285,7 @@ def post_search(request):
             )
 
             queryset = (
-                Post.objects.filter(status="published")
+                public_posts_queryset()
                 .annotate(rank=SearchRank(search_vector, search_query))
                 .filter(rank__gte=0.3)
                 .order_by("-rank", "-published")
@@ -383,14 +319,14 @@ def post_search(request):
 
 def html_sitemap(request):
     posts = list(
-        Post.objects.filter(status="published")
+        public_posts_queryset()
         .select_related("category")
         .prefetch_related("tags")
         .order_by("-published")
     )
 
     categories = (
-        Category.objects.filter(blog_category__status="published")
+        Category.objects.filter(blog_category__status="published", blog_category__site_publication__isnull=False)
         .exclude(name__isnull=True)
         .exclude(name__exact="")
         .distinct()

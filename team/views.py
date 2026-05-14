@@ -9,7 +9,7 @@ def about(request):
     if not person:
         return render(
             request,
-            "editor/about.html",
+            "blog/about.html",
             {"person": None, "skills": None, "grouped_accounts": None},
         )
 
@@ -24,6 +24,6 @@ def about(request):
 
     return render(
         request,
-        "editor/about.html",
+        "blog/about.html",
         {"person": person, "skills": skills, "grouped_accounts": grouped_accounts},
     )

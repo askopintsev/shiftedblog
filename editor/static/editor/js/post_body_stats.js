@@ -100,14 +100,31 @@
         statsEl.innerHTML = html;
     }
 
-    function adminQualityUrl(path) {
-        if (/\/editor\/post\/\d+\/change\/$/.test(path)) {
-            return path.replace(/\/\d+\/change\/$/, '/text-quality/');
+    function configuredQualityUrl() {
+        var el = document.getElementById('post-admin-text-quality-url-data');
+        if (!el || !el.textContent) return '';
+        try {
+            var url = JSON.parse(el.textContent);
+            return typeof url === 'string' ? url : '';
+        } catch (e) {
+            return '';
         }
-        if (/\/editor\/post\/add\/$/.test(path)) {
-            return path.replace(/\/add\/$/, '/text-quality/');
+    }
+
+    function adminQualityUrl(path) {
+        var normalized = path.replace(/\/?$/, '/');
+        if (/\/editor\/post\/[^/]+\/change\/$/.test(normalized)) {
+            return normalized.replace(/\/[^/]+\/change\/$/, '/text-quality/');
+        }
+        if (/\/editor\/post\/add\/$/.test(normalized)) {
+            return normalized.replace(/\/add\/$/, '/text-quality/');
         }
         return '';
+    }
+
+    function ensureTrailingSlash(url) {
+        if (!url) return url;
+        return url.charAt(url.length - 1) === '/' ? url : url + '/';
     }
 
     function getCookie(name) {
@@ -123,7 +140,9 @@
 
     function requestQuality(statsEl, html) {
         if (qualityState.inFlight) return;
-        var url = adminQualityUrl(window.location.pathname);
+        var url = ensureTrailingSlash(
+            configuredQualityUrl() || adminQualityUrl(window.location.pathname)
+        );
         if (!url) return;
         qualityState.inFlight = true;
         fetch(url, {
