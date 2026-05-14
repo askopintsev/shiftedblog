@@ -68,6 +68,7 @@ class PostAdmin(admin.ModelAdmin):
             "editor/js/post_admin_session_keepalive.js",
             "editor/js/post_body_stats.js",
             "editor/js/post_autosave.js",
+            "editor/js/post_editor_emoji.js",
             "editor/js/post_admin_meta_validation.js",
         )
 

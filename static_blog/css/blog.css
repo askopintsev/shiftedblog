@@ -462,6 +462,9 @@ a.btn.btn-light.shadow-sm{
 
 /* Post Body Content - Enhanced Typography */
 .post-body-content {
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+        "Noto Color Emoji";
     font-size: 1.125rem;
     line-height: 1.85;
     color: #212529;
