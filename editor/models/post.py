@@ -6,7 +6,7 @@ from typing import ClassVar, cast
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import IntegrityError, models
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.safestring import mark_safe
@@ -17,13 +17,26 @@ from editor.image_upload import normalize_image_field_file
 
 
 def validate_image_extension(value):
-    valid_extensions = [".jpg", ".jpeg", ".png", ".webp"]
+    """Allow upload types and delivery types written by ``normalize_image_field_file``."""
+    valid_extensions = [".jpg", ".jpeg", ".png", ".webp", ".avif"]
     ext = os.path.splitext(value.name.lower())[1]
     if ext not in valid_extensions:
         raise ValidationError(
-            "Unsupported file extension. Use JPG, PNG, or WebP "
-            "(stored as AVIF/WebP or JPEG)."
+            "Unsupported file extension. Upload JPG, PNG, or WebP "
+            "(stored on disk as AVIF/WebP or JPEG)."
         )
+
+
+def _looks_like_editor_post_slug_unique_violation(exc: BaseException) -> bool:
+    """Detect duplicate slug on ``Post`` despite ORM uniqueness pre-check."""
+    if not isinstance(exc, IntegrityError):
+        return False
+    msg = str(exc).lower()
+    if "slug" not in msg:
+        return False
+    if ("unique" not in msg) and ("duplicate" not in msg):
+        return False
+    return ("editor_post" in msg) or ("editor.post" in msg)
 
 
 class Category(models.Model):
@@ -201,7 +214,15 @@ class Post(models.Model):
         if self.status == "published" and published_at is None:
             self.published = timezone.now()
         self._ensure_unique_slug()
-        super().save(*args, **kwargs)
+        try:
+            super().save(*args, **kwargs)
+        except IntegrityError as exc:
+            if not _looks_like_editor_post_slug_unique_violation(exc):
+                raise
+            # Rare race: concurrent writers between _ensure_unique_slug() EXISTS and COMMIT,
+            # or overlapping admin POSTs. Re-resolve suffix and persist once more.
+            self._ensure_unique_slug()
+            super().save(*args, **kwargs)
 
         if slug_persisted:
             self._record_slug_redirect_if_changed(old_slug)

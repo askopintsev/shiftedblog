@@ -1,4 +1,4 @@
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from django import forms
 from django.contrib.auth import get_user_model
@@ -70,16 +70,30 @@ class PostAdminForm(forms.ModelForm):
             cls = self.fields[fname].widget.attrs.get("class", "")
             self.fields[fname].widget.attrs["class"] = f"{cls} post-seo-field".strip()
 
-    def _has_cover_image(self, cleaned: dict) -> bool:
-        upload = cleaned.get("cover_image")
-        if upload and upload is not False:
+    def _has_cover_image(self, cleaned: dict[str, Any]) -> bool:
+        val = cleaned.get("cover_image")
+        if val is False:
+            return False
+        field = self.fields["cover_image"]
+        if val not in field.empty_values:
             return True
-        if self.instance.pk and self.instance.cover_image:
-            try:
-                return bool(self.instance.cover_image.name)
-            except ValueError:
-                return False
-        return False
+        pk = getattr(self.instance, "pk", None)
+        if pk is None:
+            return False
+        try:
+            cover = self.instance.cover_image
+            name = getattr(cover, "name", "") if cover else ""
+        except ValueError:
+            name = ""
+        if name and str(name).strip():
+            return True
+        # Stale in-memory Post after AJAX save: field can disagree with DB until reload.
+        stored = (
+            models.Post.objects.filter(pk=pk)
+            .values_list("cover_image", flat=True)
+            .first()
+        )
+        return bool(stored and str(stored).strip())
 
     def clean_title(self) -> str:
         title = (self.cleaned_data.get("title") or "").strip()
