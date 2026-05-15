@@ -29,7 +29,9 @@ class BlogPublicVisibilityTests(TestCase):
             status="published",
             category=self.category,
         )
-        SitePublication.objects.create(post=self.visible_post, published_at=self.visible_post.published)
+        SitePublication.objects.create(
+            post=self.visible_post, published_at=self.visible_post.published
+        )
 
         self.hidden_post = Post.objects.create(
             title="Hidden post",

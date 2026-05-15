@@ -184,9 +184,18 @@ def post_list(request, tag_slug=None, category_slug=None):
 
 @_public_page_cache("blog.post_detail")
 def post_detail(request, slug):
-    post = public_posts_queryset().prefetch_related("gallery_images").filter(slug=slug).first()
+    post = (
+        public_posts_queryset()
+        .prefetch_related("gallery_images")
+        .filter(slug=slug)
+        .first()
+    )
     if post is None:
-        redirect_row = PostSlugRedirect.objects.select_related("post").filter(old_slug=slug).first()
+        redirect_row = (
+            PostSlugRedirect.objects.select_related("post")
+            .filter(old_slug=slug)
+            .first()
+        )
         if (
             redirect_row
             and redirect_row.post.status == "published"
@@ -204,12 +213,14 @@ def post_detail(request, slug):
         current_series = post_series.series
         previous_post = post.get_previous_post_in_series(current_series)
         if previous_post and (
-            previous_post.status != "published" or not hasattr(previous_post, "site_publication")
+            previous_post.status != "published"
+            or not hasattr(previous_post, "site_publication")
         ):
             previous_post = None
         next_post = post.get_next_post_in_series(current_series)
         if next_post and (
-            next_post.status != "published" or not hasattr(next_post, "site_publication")
+            next_post.status != "published"
+            or not hasattr(next_post, "site_publication")
         ):
             next_post = None
 
@@ -221,9 +232,7 @@ def post_detail(request, slug):
 
     post_tags_ids = post.tags.values_list("id", flat=True)
     similar_posts = (
-        public_posts_queryset()
-        .filter(tags__in=post_tags_ids)
-        .exclude(id=post.id)
+        public_posts_queryset().filter(tags__in=post_tags_ids).exclude(id=post.id)
     )
     if excluded_series_post_ids:
         similar_posts = similar_posts.exclude(id__in=excluded_series_post_ids)
@@ -326,7 +335,10 @@ def html_sitemap(request):
     )
 
     categories = (
-        Category.objects.filter(blog_category__status="published", blog_category__site_publication__isnull=False)
+        Category.objects.filter(
+            blog_category__status="published",
+            blog_category__site_publication__isnull=False,
+        )
         .exclude(name__isnull=True)
         .exclude(name__exact="")
         .distinct()

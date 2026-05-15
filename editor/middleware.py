@@ -29,5 +29,7 @@ class PostDetailViewCountMiddleware:
             if match is not None and match.view_name == "blog:post_detail":
                 slug = match.kwargs.get("slug")
                 if slug:
-                    public_posts_queryset().filter(slug=slug).update(views=F("views") + 1)
+                    public_posts_queryset().filter(slug=slug).update(
+                        views=F("views") + 1
+                    )
         return self.get_response(request)

@@ -13,12 +13,12 @@ from django.views.generic import TemplateView
 from two_factor.urls import urlpatterns as tf_urlpatterns
 
 import core.urls  # noqa: F401 - loads admin site customization
+from blog.sitemap import PostSitemap
 from core.views import (
     admin_session_keepalive,
     custom_image_upload,
     robots_txt,
 )
-from blog.sitemap import PostSitemap
 from shiftedblog.rate_limited_views import (
     RateLimitedLoginView,
     RateLimitedQRGeneratorView,
