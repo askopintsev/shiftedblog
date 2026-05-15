@@ -24,6 +24,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "django-stubs>=6.0.4",
     "pyright>=1.1.0",
     "ruff>=0.15.10",
 ]

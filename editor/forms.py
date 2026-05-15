@@ -1,9 +1,9 @@
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 from django import forms
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.forms import BaseInlineFormSet
+from django.forms import BaseInlineFormSet, ModelChoiceField
 from django_ckeditor_5.widgets import CKEditor5Widget
 
 from editor import models
@@ -36,7 +36,8 @@ class PostAdminForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         user_model = get_user_model()
-        self.fields["author"].queryset = user_model.objects.filter(is_active=True)
+        author_field = cast(ModelChoiceField, self.fields["author"])
+        author_field.queryset = user_model.objects.filter(is_active=True)
 
         title_ht = (
             "Required. For search snippets, about "
@@ -108,8 +109,9 @@ class PostAdminForm(forms.ModelForm):
         s = raw.strip()
         return s if s else None
 
-    def clean(self):
-        cleaned = super().clean()
+    def clean(self) -> dict[str, Any]:
+        cleaned_raw = super().clean()
+        cleaned: dict[str, Any] = cleaned_raw if cleaned_raw is not None else {}
         status = cleaned.get("status")
         if status not in _PUBLISH_STATUSES:
             return cleaned

@@ -180,7 +180,7 @@ class Post(models.Model):
         default=None,
     )
     views = models.PositiveIntegerField(
-        default=0,  # pyright: ignore[reportArgumentType]
+        default=0,
         verbose_name="Views count",
     )
 
@@ -318,7 +318,8 @@ class Post(models.Model):
         if not base:
             base = "post"
 
-        max_len = self._meta.get_field("slug").max_length
+        max_len_raw = self._meta.get_field("slug").max_length
+        max_len = max_len_raw if max_len_raw is not None else 250
         reserve = 8  # room for suffix like "-999999"
         base = base[: max(1, max_len - reserve)]
 
@@ -386,7 +387,7 @@ class PostGalleryImage(models.Model):
         related_name="gallery_images",
     )
     gallery_key = models.PositiveIntegerField(
-        default=1,  # pyright: ignore[reportArgumentType]
+        default=1,
         help_text=(
             "Gallery number. Use [gallery:1] in body for this gallery, "
             "[gallery:2] for the next, etc."
@@ -402,7 +403,7 @@ class PostGalleryImage(models.Model):
         default="",
     )
     order = models.PositiveIntegerField(
-        default=0,  # pyright: ignore[reportArgumentType]
+        default=0,
         help_text="Order within this gallery (lower first).",
     )
 

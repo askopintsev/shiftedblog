@@ -1,12 +1,12 @@
 import json
 from typing import cast
 
-from django.contrib.auth import get_user_model
 from django.http import HttpResponse
 from django.test import Client, TestCase
 from django.test.utils import override_settings
 from django.urls import reverse
 
+from core.models.user import User, UserManager
 from editor.text_quality_service import PostTextQualityService, TextQualityRequestDTO
 
 
@@ -116,8 +116,7 @@ class PostTextQualityServiceTests(TestCase):
 
 class PostAdminTextQualityEndpointTests(TestCase):
     def setUp(self):
-        user_model = get_user_model()
-        self.admin_user = user_model.objects.create_superuser(
+        self.admin_user = cast(UserManager, User.objects).create_superuser(
             email="admin@example.com",
             password="example-pass-123",
         )

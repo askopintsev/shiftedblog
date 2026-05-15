@@ -1,16 +1,17 @@
-from django.contrib.auth import get_user_model
+from typing import cast
+
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
 from blog.models import SitePublication
+from core.models.user import User, UserManager
 from editor.models import Category, Post
 
 
 class BlogPublicVisibilityTests(TestCase):
     def setUp(self):
-        user_model = get_user_model()
-        self.author = user_model.objects.create_user(
+        self.author = cast(UserManager, User.objects).create_user(
             email="author@example.com",
             password="example-pass-123",
         )

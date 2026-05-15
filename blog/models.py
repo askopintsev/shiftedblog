@@ -16,4 +16,5 @@ class SitePublication(models.Model):
         indexes = (models.Index(fields=["published_at"]),)
 
     def __str__(self) -> str:
-        return f"Site publication for {self.post_id}"
+        rid = getattr(self, "post_id", None)
+        return f"Site publication for post_id={rid}"
