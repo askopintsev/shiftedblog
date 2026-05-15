@@ -16,7 +16,11 @@ class Skill(models.Model):
     name = models.CharField(max_length=250)
     rating = models.IntegerField(default=0)
     person = models.ForeignKey(
-        "Person", on_delete=models.CASCADE, null=True, blank=True
+        "Person",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="skills",
     )
     group = models.ForeignKey(
         "SkillGroup", on_delete=models.CASCADE, null=True, blank=True

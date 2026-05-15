@@ -6,7 +6,7 @@ from typing import ClassVar, cast
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import IntegrityError, models
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.safestring import mark_safe
@@ -17,13 +17,26 @@ from editor.image_upload import normalize_image_field_file
 
 
 def validate_image_extension(value):
-    valid_extensions = [".jpg", ".jpeg", ".png", ".webp"]
+    """Allowed upload extensions; ``normalize_image_field_file`` writes stored paths."""
+    valid_extensions = [".jpg", ".jpeg", ".png", ".webp", ".avif"]
     ext = os.path.splitext(value.name.lower())[1]
     if ext not in valid_extensions:
         raise ValidationError(
-            "Unsupported file extension. Use JPG, PNG, or WebP "
-            "(stored as AVIF/WebP or JPEG)."
+            "Unsupported file extension. Upload JPG, PNG, or WebP "
+            "(stored on disk as AVIF/WebP or JPEG)."
         )
+
+
+def _looks_like_editor_post_slug_unique_violation(exc: BaseException) -> bool:
+    """Detect duplicate slug on ``Post`` despite ORM uniqueness pre-check."""
+    if not isinstance(exc, IntegrityError):
+        return False
+    msg = str(exc).lower()
+    if "slug" not in msg:
+        return False
+    if ("unique" not in msg) and ("duplicate" not in msg):
+        return False
+    return ("editor_post" in msg) or ("editor.post" in msg)
 
 
 class Category(models.Model):
@@ -167,7 +180,7 @@ class Post(models.Model):
         default=None,
     )
     views = models.PositiveIntegerField(
-        default=0,  # pyright: ignore[reportArgumentType]
+        default=0,
         verbose_name="Views count",
     )
 
@@ -201,13 +214,20 @@ class Post(models.Model):
         if self.status == "published" and published_at is None:
             self.published = timezone.now()
         self._ensure_unique_slug()
-        super().save(*args, **kwargs)
+        try:
+            super().save(*args, **kwargs)
+        except IntegrityError as exc:
+            if not _looks_like_editor_post_slug_unique_violation(exc):
+                raise
+            # Concurrent saves between EXISTS check and COMMIT; suffix retry once more.
+            self._ensure_unique_slug()
+            super().save(*args, **kwargs)
 
         if slug_persisted:
             self._record_slug_redirect_if_changed(old_slug)
 
     def get_absolute_url(self):
-        return reverse("editor:post_detail", args=[self.slug])
+        return reverse("blog:post_detail", args=[self.slug])
 
     def get_draft_url(self):
         """Secret URL to view this post (including drafts) by UUID."""
@@ -298,7 +318,8 @@ class Post(models.Model):
         if not base:
             base = "post"
 
-        max_len = self._meta.get_field("slug").max_length
+        max_len_raw = self._meta.get_field("slug").max_length
+        max_len = max_len_raw if max_len_raw is not None else 250
         reserve = 8  # room for suffix like "-999999"
         base = base[: max(1, max_len - reserve)]
 
@@ -366,7 +387,7 @@ class PostGalleryImage(models.Model):
         related_name="gallery_images",
     )
     gallery_key = models.PositiveIntegerField(
-        default=1,  # pyright: ignore[reportArgumentType]
+        default=1,
         help_text=(
             "Gallery number. Use [gallery:1] in body for this gallery, "
             "[gallery:2] for the next, etc."
@@ -382,7 +403,7 @@ class PostGalleryImage(models.Model):
         default="",
     )
     order = models.PositiveIntegerField(
-        default=0,  # pyright: ignore[reportArgumentType]
+        default=0,
         help_text="Order within this gallery (lower first).",
     )
 

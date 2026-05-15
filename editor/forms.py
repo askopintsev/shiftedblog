@@ -1,9 +1,9 @@
-from typing import ClassVar
+from typing import Any, ClassVar, cast
 
 from django import forms
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.forms import BaseInlineFormSet
+from django.forms import BaseInlineFormSet, ModelChoiceField
 from django_ckeditor_5.widgets import CKEditor5Widget
 
 from editor import models
@@ -36,7 +36,8 @@ class PostAdminForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         user_model = get_user_model()
-        self.fields["author"].queryset = user_model.objects.filter(is_active=True)
+        author_field = cast(ModelChoiceField, self.fields["author"])
+        author_field.queryset = user_model.objects.filter(is_active=True)
 
         title_ht = (
             "Required. For search snippets, about "
@@ -70,16 +71,30 @@ class PostAdminForm(forms.ModelForm):
             cls = self.fields[fname].widget.attrs.get("class", "")
             self.fields[fname].widget.attrs["class"] = f"{cls} post-seo-field".strip()
 
-    def _has_cover_image(self, cleaned: dict) -> bool:
-        upload = cleaned.get("cover_image")
-        if upload and upload is not False:
+    def _has_cover_image(self, cleaned: dict[str, Any]) -> bool:
+        val = cleaned.get("cover_image")
+        if val is False:
+            return False
+        field = self.fields["cover_image"]
+        if val not in field.empty_values:
             return True
-        if self.instance.pk and self.instance.cover_image:
-            try:
-                return bool(self.instance.cover_image.name)
-            except ValueError:
-                return False
-        return False
+        pk = getattr(self.instance, "pk", None)
+        if pk is None:
+            return False
+        try:
+            cover = self.instance.cover_image
+            name = getattr(cover, "name", "") if cover else ""
+        except ValueError:
+            name = ""
+        if name and str(name).strip():
+            return True
+        # Stale in-memory Post after AJAX save: field can disagree with DB until reload.
+        stored = (
+            models.Post.objects.filter(pk=pk)
+            .values_list("cover_image", flat=True)
+            .first()
+        )
+        return bool(stored and str(stored).strip())
 
     def clean_title(self) -> str:
         title = (self.cleaned_data.get("title") or "").strip()
@@ -94,8 +109,9 @@ class PostAdminForm(forms.ModelForm):
         s = raw.strip()
         return s if s else None
 
-    def clean(self):
-        cleaned = super().clean()
+    def clean(self) -> dict[str, Any]:
+        cleaned_raw = super().clean()
+        cleaned: dict[str, Any] = cleaned_raw if cleaned_raw is not None else {}
         status = cleaned.get("status")
         if status not in _PUBLISH_STATUSES:
             return cleaned

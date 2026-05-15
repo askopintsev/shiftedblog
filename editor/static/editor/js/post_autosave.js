@@ -1,6 +1,10 @@
 /**
  * Auto-save Post in admin: on sentence end (.) or after 5 seconds idle in body field.
  * Saves via AJAX; detects session expiry redirects; backs up body to localStorage.
+ *
+ * Runs only on post *change* (existing pk). Disabled on post *add*: concurrent POSTs
+ * there can create duplicate rows / slug unique violations. Saving the form via the
+ * admin buttons aborts any in-flight autosave to avoid overlapping writes.
  */
 (function () {
     'use strict';
@@ -94,6 +98,48 @@
         }, 2500);
     }
 
+    /**
+     * Build POST body omitting empty file inputs. Some browsers serialize them with
+     * filename="", which interacts badly with Django multipart parsing and existing
+     * CoverImage/FileField logic on admin change forms.
+     */
+    function buildAutosaveFormData(form) {
+        var fd = new FormData(form);
+        fd.set('_save', 'Save');
+        var inputs = form.querySelectorAll('input[type="file"]');
+        for (var i = 0; i < inputs.length; i++) {
+            var inp = inputs[i];
+            if (!inp.name) continue;
+            try {
+                if (!inp.files || inp.files.length === 0) {
+                    fd.delete(inp.name);
+                }
+            } catch (e) {}
+        }
+        return fd;
+    }
+
+    /** Django admin renders real errors under p.errornote or ul.errorlist with li items. */
+    function adminHtmlHasErrors(htmlText) {
+        try {
+            var doc = new DOMParser().parseFromString(htmlText, 'text/html');
+            var note = doc.querySelector('p.errornote');
+            if (note && note.textContent && note.textContent.trim()) {
+                return true;
+            }
+            var lists = doc.querySelectorAll('ul.errorlist');
+            var i;
+            for (i = 0; i < lists.length; i++) {
+                if (lists[i].querySelector('li')) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (e) {
+            return false;
+        }
+    }
+
     function showSessionLostBanner() {
         var id = 'post-autosave-session-lost';
         if (document.getElementById(id)) return;
@@ -107,14 +153,36 @@
     }
 
     var saveInProgress = false;
+    /** True once the native admin form begins submit (manual Save / keyboard). */
+    var autosaveSuspended = false;
+    var autosaveAbort = null;
+
+    function attachAutosaveSubmitHook(form) {
+        if (!form || form.dataset.shiftedblogAutosaveSubmitHook === '1') {
+            return;
+        }
+        form.dataset.shiftedblogAutosaveSubmitHook = '1';
+        form.addEventListener(
+            'submit',
+            function () {
+                autosaveSuspended = true;
+                if (autosaveAbort) {
+                    try {
+                        autosaveAbort.abort();
+                    } catch (eAbort) {}
+                    autosaveAbort = null;
+                }
+            },
+            true
+        );
+    }
 
     function triggerSave() {
         var form = getForm();
-        if (!form || saveInProgress) return;
+        if (!form || saveInProgress || autosaveSuspended) return;
         saveInProgress = true;
-        var formData = new FormData(form);
-        formData.set('_save', 'Save');
-        fetch(window.location.href, {
+        var formData = buildAutosaveFormData(form);
+        var fetchOpts = {
             method: 'POST',
             body: formData,
             redirect: 'manual',
@@ -122,8 +190,12 @@
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
             }
-        }).then(function (response) {
-            saveInProgress = false;
+        };
+        if (typeof AbortController !== 'undefined') {
+            autosaveAbort = new AbortController();
+            fetchOpts.signal = autosaveAbort.signal;
+        }
+        fetch(window.location.href, fetchOpts).then(function (response) {
             if (isLikelyAuthRedirect(response)) {
                 showSessionLostBanner();
                 persistDraftToLocal(getBodyContent());
@@ -134,20 +206,34 @@
                 persistDraftToLocal(getBodyContent());
                 return;
             }
-            if (response.type === 'opaqueredirect' || response.status === 302 || response.status === 200) {
-                if (response.status === 200 || response.status === 302) {
-                    showSavedIndicator();
-                    clearDraftLocal();
-                }
+            if (response.type === 'opaqueredirect' ||
+                response.status === 302 || response.status === 303 ||
+                response.status === 307 || response.status === 308) {
+                showSavedIndicator();
+                clearDraftLocal();
+                return;
+            }
+            if (response.status === 200) {
+                return response.text().then(function (html) {
+                    if (!adminHtmlHasErrors(html)) {
+                        showSavedIndicator();
+                        clearDraftLocal();
+                    }
+                });
             }
         }).catch(function () {
+            /* Ignore network failures and aborted autosave requests. */
+        }).finally(function () {
+            autosaveAbort = null;
             saveInProgress = false;
         });
     }
 
     function runAutosave() {
         var bodyEl = document.getElementById('id_body') || document.querySelector('textarea[name="body"]');
-        if (!bodyEl || !getForm()) return;
+        var form = getForm();
+        if (!bodyEl || !form) return;
+        attachAutosaveSubmitHook(form);
 
         var lastContent = getBodyContent();
         var idleTimeout = null;
@@ -206,6 +292,10 @@
             return;
         }
         setTimeout(tryRestoreDraftFromLocal, 500);
+        /* Autosave on "add" can race with Save and create duplicate slug rows — skip until first save. */
+        if (window.location.pathname.indexOf('/post/add/') !== -1) {
+            return;
+        }
         setTimeout(runAutosave, 2000);
     }
 

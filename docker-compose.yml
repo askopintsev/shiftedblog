@@ -27,6 +27,7 @@ services:
     volumes:
       # Mount source code directories for autoreload
       - ./editor:/app/editor
+      - ./blog:/app/blog
       - ./core:/app/core
       - ./team:/app/team
       - ./shiftedblog:/app/shiftedblog

@@ -1,3 +1,6 @@
+# pyright: reportAttributeAccessIssue=false
+"""Team-related views (reverse FK accessors are determined at runtime)."""
+
 from django.shortcuts import render
 
 from team.models import Person
@@ -9,12 +12,12 @@ def about(request):
     if not person:
         return render(
             request,
-            "editor/about.html",
+            "blog/about.html",
             {"person": None, "skills": None, "grouped_accounts": None},
         )
 
-    skills = person.skill_set.all()
-    accounts = person.account_set.all()
+    skills = person.skills.all()
+    accounts = person.accounts.all()
     grouped_accounts = {}
     for account in accounts:
         if account.group.name in grouped_accounts:
@@ -24,6 +27,6 @@ def about(request):
 
     return render(
         request,
-        "editor/about.html",
+        "blog/about.html",
         {"person": person, "skills": skills, "grouped_accounts": grouped_accounts},
     )

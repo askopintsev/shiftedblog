@@ -117,6 +117,7 @@ INSTALLED_APPS = [
     "core",
     "team",
     "editor",
+    "blog",
 ]
 
 _MIDDLEWARE = [

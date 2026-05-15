@@ -17,11 +17,11 @@ jobs:
       - name: Sync dependencies
         run: uv sync --frozen --extra dev --python 3.13
       - name: Run Ruff format check
-        run: uv run ruff format --check core editor shiftedblog team manage.py templates
+        run: uv run ruff format --check blog core editor shiftedblog team manage.py templates
       - name: Run Ruff lint
-        run: uv run ruff check --ignore RUF001 core editor shiftedblog team manage.py templates
+        run: uv run ruff check --ignore RUF001 blog core editor shiftedblog team manage.py templates
       - name: Run Pyright
-        run: uv run pyright editor shiftedblog manage.py
+        run: uv run pyright blog core editor shiftedblog team manage.py
 
   deploy:
     runs-on: ubuntu-latest

@@ -13,12 +13,12 @@ from django.views.generic import TemplateView
 from two_factor.urls import urlpatterns as tf_urlpatterns
 
 import core.urls  # noqa: F401 - loads admin site customization
+from blog.sitemap import PostSitemap
 from core.views import (
     admin_session_keepalive,
     custom_image_upload,
     robots_txt,
 )
-from editor.sitemap import PostSitemap
 from shiftedblog.rate_limited_views import (
     RateLimitedLoginView,
     RateLimitedQRGeneratorView,
@@ -43,6 +43,7 @@ urlpatterns = [
     ),
     path(f"{admin_url}/", admin.site.urls),
     path("", include("team.urls")),
+    path("", include("blog.urls", namespace="blog")),
     path("", include("editor.urls", namespace="editor")),
     path(
         "sitemap.xml",

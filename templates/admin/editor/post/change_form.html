@@ -1,0 +1,5 @@
+{% extends "admin/change_form.html" %}
+{% block extrahead %}
+{{ block.super }}
+{{ post_admin_text_quality_url|json_script:"post-admin-text-quality-url-data" }}
+{% endblock %}

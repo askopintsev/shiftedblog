@@ -10,7 +10,7 @@ from django.db.models import F
 from django.http import HttpRequest, HttpResponse
 from django.urls import Resolver404, resolve
 
-from editor.models import Post
+from blog.querysets import public_posts_queryset
 
 
 class PostDetailViewCountMiddleware:
@@ -26,10 +26,10 @@ class PostDetailViewCountMiddleware:
                 match = resolve(request.path_info)
             except Resolver404:
                 match = None
-            if match is not None and match.view_name == "editor:post_detail":
+            if match is not None and match.view_name == "blog:post_detail":
                 slug = match.kwargs.get("slug")
                 if slug:
-                    Post.objects.filter(slug=slug, status="published").update(
+                    public_posts_queryset().filter(slug=slug).update(
                         views=F("views") + 1
                     )
         return self.get_response(request)

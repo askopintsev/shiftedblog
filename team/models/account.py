@@ -20,7 +20,11 @@ class Account(models.Model):
         "AccountGroup", on_delete=models.CASCADE, null=True, blank=True
     )
     person = models.ForeignKey(
-        "Person", on_delete=models.CASCADE, null=True, blank=True
+        "Person",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="accounts",
     )
 
     class Meta:

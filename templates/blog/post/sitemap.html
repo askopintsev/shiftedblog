@@ -1,4 +1,4 @@
-{% extends "editor/base.html" %}
+{% extends "blog/base.html" %}
 
 {% block title %}HTML Sitemap | Shifted Stuff{% endblock %}
 
@@ -14,7 +14,7 @@
         <ul>
             {% for category in categories %}
                 <li>
-                    <a href="{% url 'editor:post_list_by_category' category.list_url_segment %}">
+                    <a href="{% url 'blog:post_list_by_category' category.list_url_segment %}">
                         {{ category.name }}
                     </a>
                 </li>
@@ -29,7 +29,7 @@
         <ul>
             {% for tag in tags %}
                 <li>
-                    <a href="{% url 'editor:post_list_by_tag' tag.slug %}">#{{ tag.name }}</a>
+                    <a href="{% url 'blog:post_list_by_tag' tag.slug %}">#{{ tag.name }}</a>
                 </li>
             {% empty %}
                 <li>Теги не найдены.</li>

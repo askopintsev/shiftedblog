@@ -1,6 +1,6 @@
 [project]
 name = "shiftedblog"
-version = "0.2.1"
+version = "0.3.0"
 description = "Automated blogging tool"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -24,6 +24,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "django-stubs>=6.0.4",
     "pyright>=1.1.0",
     "ruff>=0.15.10",
 ]
@@ -60,7 +61,11 @@ ignore = [
     "DJ001",  # avoid setattr
     "T201",   # print found (allow in manage/scripts if needed)
 ]
-extend-per-file-ignores = { "manage.py" = ["T201"], "editor/views.py" = ["RUF001"] }
+
+[tool.ruff.lint.extend-per-file-ignores]
+"manage.py" = ["T201"]
+"editor/views.py" = ["RUF001"]
+"blog/views.py" = ["RUF001"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -71,7 +76,7 @@ line-ending = "auto"
 [tool.pyright]
 pythonVersion = "3.13"
 typeCheckingMode = "basic"
-include = ["blog", "shiftedblog", "manage.py", "templates"]
+include = ["blog", "core", "editor", "shiftedblog", "team", "manage.py", "templates"]
 exclude = [
     ".git",
     ".venv",
@@ -81,7 +86,9 @@ exclude = [
     "**/__pycache__",
     "**/*.egg-info",
     "blog/migrations",
+    "core/migrations",
     "editor/migrations",
+    "team/migrations",
 ]
 # Use project venv for import resolution (run with venv active or set venvPath/venv)
 venvPath = "."

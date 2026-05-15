@@ -12,12 +12,12 @@ from uuid import UUID, uuid4
 from django.conf import settings
 
 try:
-    import language_tool_python
+    import language_tool_python  # pyright: ignore[reportMissingImports]
 except ImportError:
     language_tool_python = None
 
 try:
-    from spellchecker import SpellChecker
+    from spellchecker import SpellChecker  # pyright: ignore[reportMissingImports]
 except ImportError:
     SpellChecker = None
 
