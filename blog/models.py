@@ -13,9 +13,7 @@ class SitePublication(models.Model):
 
     class Meta:
         ordering = ("-published_at",)
-        indexes = [
-            models.Index(fields=["published_at"]),
-        ]
+        indexes = (models.Index(fields=["published_at"]),)
 
     def __str__(self) -> str:
         return f"Site publication for {self.post_id}"

@@ -17,7 +17,7 @@ from editor.image_upload import normalize_image_field_file
 
 
 def validate_image_extension(value):
-    """Allow upload types and delivery types written by ``normalize_image_field_file``."""
+    """Allowed upload extensions; ``normalize_image_field_file`` writes stored paths."""
     valid_extensions = [".jpg", ".jpeg", ".png", ".webp", ".avif"]
     ext = os.path.splitext(value.name.lower())[1]
     if ext not in valid_extensions:
@@ -219,8 +219,7 @@ class Post(models.Model):
         except IntegrityError as exc:
             if not _looks_like_editor_post_slug_unique_violation(exc):
                 raise
-            # Rare race: concurrent writers between _ensure_unique_slug() EXISTS and COMMIT,
-            # or overlapping admin POSTs. Re-resolve suffix and persist once more.
+            # Concurrent saves between EXISTS check and COMMIT; suffix retry once more.
             self._ensure_unique_slug()
             super().save(*args, **kwargs)
 
