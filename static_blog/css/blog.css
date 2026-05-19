@@ -653,6 +653,81 @@ a.btn.btn-light.shadow-sm{
     margin-top: 2rem;
 }
 
+/* Authenticated feed (/lenta/): column width matches post detail body (.post-content-container) */
+.feed-lenta-page .feed-lenta-results {
+    width: 100%;
+}
+
+.feed-lenta-page .feed-lenta-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.feed-lenta-page .feed-lenta-card > a {
+    display: block;
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background-color: #f8f9fa;
+}
+
+.feed-lenta-page .feed-lenta-card .card-img-top {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+    filter: brightness(1.02) contrast(1.08) saturate(0.88);
+    transition: filter 0.3s ease;
+}
+
+.feed-lenta-page .feed-lenta-card:hover .card-img-top {
+    filter: brightness(1.05) contrast(1.1) saturate(0.92);
+}
+
+.feed-lenta-page .feed-lenta-card .card-body {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    padding: 1.25rem;
+}
+
+.feed-lenta-page .feed-lenta-card .card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 0.75rem;
+    color: #212529;
+}
+
+.feed-lenta-page .feed-lenta-card p.card-text {
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: #495057;
+    margin-bottom: 0.75rem;
+}
+
+.feed-lenta-page .feed-lenta-card .card-body > div.card-text {
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: #495057;
+    height: auto;
+    margin-bottom: 1rem;
+}
+
+.feed-lenta-page .feed-lenta-card .card-body > div.card-text p {
+    margin-bottom: 0;
+}
+
+.feed-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 .search-again-section {
     margin-top: 3rem;
     padding-top: 2rem;

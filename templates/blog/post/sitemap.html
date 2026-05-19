@@ -42,7 +42,7 @@
         <ul>
             {% for post in posts %}
                 <li>
-                    <a href="{{ post.get_absolute_url }}">{{ post.title }}</a>
+                    <a href="{{ post.get_absolute_url }}">{% firstof post.title post.slug %}</a>
                     <span class="text-muted">— {{ post.published|date:"d.m.Y" }}</span>
                 </li>
             {% empty %}

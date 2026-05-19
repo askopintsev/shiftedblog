@@ -24,11 +24,15 @@ services:
 
   web:
     build: .
+    # Match host UID/GID so bind-mounted source (editor/, core/, …) stays writable:
+    # e.g. makemigrations, formatters. Set HOST_UID/HOST_GID in .env (see env.example).
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     volumes:
       # Mount source code directories for autoreload
       - ./editor:/app/editor
       - ./blog:/app/blog
       - ./core:/app/core
+      - ./sender:/app/sender
       - ./team:/app/team
       - ./shiftedblog:/app/shiftedblog
       - ./manage.py:/app/manage.py
@@ -57,6 +61,8 @@ services:
     environment:
       # Enable Django autoreload (default, but explicit)
       - DJANGO_SETTINGS_MODULE=shiftedblog.settings
+      # Writable by any UID (see SHIFTED_BLOG_LOG_DIR / LOG_DIR in settings)
+      - SHIFTED_BLOG_LOG_DIR=/tmp/shiftedblog_logs
     networks:
       - nginx-network
 

@@ -84,6 +84,20 @@ def truncatechars_whole_words(value, arg):
 
 
 @register.filter
+def needs_read_more_button(post) -> bool:
+    """True when card preview (152 chars, whole words) truncates full preview text."""
+    if post is None:
+        return False
+    if getattr(post, "short_description", None):
+        raw = post.short_description
+    else:
+        raw = getattr(post, "body", None) or ""
+    text = preview_inline_space(striptags_preserve_paragraphs(raw))
+    trunc = truncatechars_whole_words(text, 152)
+    return text != trunc
+
+
+@register.filter
 def truncatewords_preserve_newlines(value, arg):
     """Truncate text to a certain number of words while preserving newlines."""
     try:

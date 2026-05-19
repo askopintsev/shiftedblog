@@ -1,0 +1,33 @@
+{% extends "admin/base_site.html" %}
+{% block title %}Publish to channels{% endblock %}
+{% block content %}
+<h1>Multi-channel publish</h1>
+<p>Select a post in <strong>Ready to publish</strong> and destinations. On full success, status becomes <strong>Published</strong>.</p>
+<form method="post">
+  {% csrf_token %}
+  <div class="form-row">
+    <label for="id_post_id">Post</label>
+    <select name="post_id" id="id_post_id" required>
+      <option value="">— choose —</option>
+      {% for p in posts %}
+        <option value="{{ p.pk }}">{% if p.title %}{{ p.title }}{% else %}#{{ p.pk }}{% endif %} ({{ p.slug }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  <fieldset class="module aligned">
+    <legend>Destinations</legend>
+    <div class="form-row">
+      <label><input type="checkbox" name="dest_site" value="1"> Site (SitePublication + public URL)</label>
+    </div>
+    <div class="form-row">
+      <label><input type="checkbox" name="dest_telegram" value="1"> Telegram</label>
+    </div>
+  </fieldset>
+  <div class="submit-row">
+    <input type="submit" value="Publish" class="default">
+  </div>
+</form>
+{% if not posts %}
+<p class="warning">No posts in “Ready to publish”.</p>
+{% endif %}
+{% endblock %}

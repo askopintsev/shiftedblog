@@ -42,13 +42,19 @@
         <div class="col-sm-6 col-lg-4 mb-3">
             <div class="card mb-3 h-100 border rounded overflow-hidden shadow-sm">
                 <a href="{{ post.get_absolute_url }}">
+                {% if post.cover_image %}
                     <img class="card-img-top" src="{{ post.cover_image.url|urlencode }}" alt="{% firstof post.cover_description post.title %}"{% if post.cover_image.width and post.cover_image.height %} width="{{ post.cover_image.width }}" height="{{ post.cover_image.height }}"{% endif %} loading="lazy" decoding="async">
+                {% else %}
+                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center text-muted small" style="min-height: 8rem;">No cover</div>
+                {% endif %}
                 </a>
                 <div class="card-body d-flex flex-column">
                     <a href="{{ post.get_absolute_url }}" class="text-decoration-none text-reset">
+                        {% if post.title %}
                         <h5 class="card-title fw-bolder">
                              {{ post.title }}
                         </h5>
+                        {% endif %}
                     </a>
                     <p class="card-text">
                         <small class="text-muted">{{ post.published|date:'d.m.Y' }} · <i class="fa-regular fa-clock"></i> {{ post.body|reading_time }} мин · <i class="fa-regular fa-eye"></i> {{ post.views }}</small>

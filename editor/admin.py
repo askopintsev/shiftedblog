@@ -58,6 +58,7 @@ def unpublish_selected_posts_from_site(modeladmin, request, queryset):
 class PostAdmin(admin.ModelAdmin):
     form = PostAdminForm
     change_form_template = "admin/editor/post/change_form.html"
+    change_list_template = "admin/editor/post/change_list.html"
     inlines: ClassVar[list] = [PostGalleryImageInline, SitePublicationInline]
     text_quality_service = PostTextQualityService()
     actions = (publish_selected_posts_to_site, unpublish_selected_posts_from_site)
@@ -72,13 +73,26 @@ class PostAdmin(admin.ModelAdmin):
             "editor/js/post_admin_meta_validation.js",
         )
 
-    list_display = ("title", "slug", "author", "updated", "published", "status")
+    list_display = ("id", "title", "slug", "author", "updated", "published", "status")
     list_filter = ("status", "created", "published", "author")
     search_fields = ("title", "body")
     prepopulated_fields: ClassVar[dict] = {"slug": ("title",)}
     readonly_fields = ("views", "updated", "draft_preview_link")
     date_hierarchy = "published"
     ordering = ("status", "published")
+
+    def get_changeform_initial_data(self, request: HttpRequest):
+        initial = super().get_changeform_initial_data(request)
+        user = request.user
+        pk = getattr(user, "pk", None)
+        if user.is_authenticated and pk is not None and "author" not in initial:
+            initial["author"] = pk
+        return initial
+
+    def changelist_view(self, request, extra_context=None):
+        merged = dict(extra_context or {})
+        merged["sender_publish_url"] = reverse("sender_publish_workflow")
+        return super().changelist_view(request, extra_context=merged)
 
     def changeform_view(
         self,

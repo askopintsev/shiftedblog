@@ -1,16 +1,19 @@
 # pyright: reportAttributeAccessIssue=false
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
-from django.db.models import Count
+from django.db.models import Count, Prefetch
 from django.http import Http404, HttpRequest, HttpResponsePermanentRedirect
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_cookie
 from taggit.models import Tag
 
 from blog.querysets import public_posts_queryset
 from editor.forms import SearchForm
 from editor.models import Category, PostSlugRedirect
+from sender.models import PostLink
 
 
 def _public_page_cache(key_prefix: str):
@@ -104,6 +107,7 @@ def _post_list_seo(
     }
 
 
+@vary_on_cookie
 @_public_page_cache("blog.post_list")
 def post_list(request, tag_slug=None, category_slug=None):
     object_list = public_posts_queryset()
@@ -182,6 +186,7 @@ def post_list(request, tag_slug=None, category_slug=None):
     )
 
 
+@vary_on_cookie
 @_public_page_cache("blog.post_detail")
 def post_detail(request, slug):
     post = (
@@ -323,6 +328,39 @@ def post_search(request):
             "results": results,
             "query_string": query_string,
         },
+    )
+
+
+@login_required
+def post_feed_lenta(request: HttpRequest):
+    """Authenticated feed: all site-published posts with outbound PostLink buttons."""
+    queryset = (
+        public_posts_queryset()
+        .select_related("category", "author")
+        .prefetch_related(
+            Prefetch(
+                "sender_links",
+                queryset=PostLink.objects.select_related("network").order_by(
+                    "network__slug",
+                ),
+            ),
+            "tags",
+        )
+        .order_by("-published")
+    )
+    paginator = Paginator(queryset, 12)
+    page = request.GET.get("page") or 1
+    try:
+        posts = paginator.page(page)
+    except PageNotAnInteger:
+        posts = paginator.page(1)
+    except EmptyPage:
+        posts = paginator.page(paginator.num_pages)
+
+    return render(
+        request,
+        "blog/post/feed_lenta.html",
+        {"posts": posts},
     )
 
 

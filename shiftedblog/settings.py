@@ -61,6 +61,10 @@ db_port = os.environ.get("DB_PORT")
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# File logging: default ``<project>/logs/``. Override if the UID cannot write there
+# (docker-compose ``web`` as HOST_UID vs image-owned ``/app/logs``).
+_log_dir_env = os.environ.get("SHIFTED_BLOG_LOG_DIR", "").strip()
+LOG_DIR = os.path.abspath(_log_dir_env) if _log_dir_env else str(BASE_DIR / "logs")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -118,6 +122,7 @@ INSTALLED_APPS = [
     "team",
     "editor",
     "blog",
+    "sender",
 ]
 
 _MIDDLEWARE = [
@@ -273,6 +278,22 @@ IMAGE_UPLOAD_AVIF_QUALITY = get_int_env("IMAGE_UPLOAD_AVIF_QUALITY", 72)
 IMAGE_UPLOAD_AVIF_SPEED = get_int_env("IMAGE_UPLOAD_AVIF_SPEED", 6)
 IMAGE_UPLOAD_WEBP_QUALITY = get_int_env("IMAGE_UPLOAD_WEBP_QUALITY", 85)
 IMAGE_UPLOAD_JPEG_QUALITY = get_int_env("IMAGE_UPLOAD_JPEG_QUALITY", 88)
+
+# Fernet encryption for ``core.Credential``.
+# Key: url-safe base64 from Fernet.generate_key().
+CREDENTIALS_ENCRYPTION_KEY = os.environ.get("CREDENTIALS_ENCRYPTION_KEY", "").strip()
+
+# Optional HTTP(S) proxies for outbound integrations (e.g. Telegram).
+HTTP_PROXY = os.environ.get("HTTP_PROXY", "").strip()
+HTTPS_PROXY = os.environ.get("HTTPS_PROXY", "").strip()
+TELEGRAM_HTTP_PROXY = os.environ.get("TELEGRAM_HTTP_PROXY", "").strip()
+
+# Optional bootstrap for Telegram when DB credentials are not set yet.
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+# Public channel: username with or without ``@``; sent to the API as ``@mychannel``.
+TELEGRAM_CHANNEL_NAME = os.environ.get("TELEGRAM_CHANNEL_NAME", "").strip()
+# Numeric chat id (groups, private); used if channel name is not set.
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
 
 # Optional local Python checker integration for post text quality checks in admin.
 # Uses optional python libs (language_tool_python / pyspellchecker) if installed.
@@ -605,14 +626,14 @@ LOGGING = {
         },
         "security_file": {
             "class": "logging.handlers.RotatingFileHandler",
-            "filename": os.path.join(BASE_DIR, "logs", "security.log"),
+            "filename": os.path.join(LOG_DIR, "security.log"),
             "maxBytes": 1024 * 1024 * 10,  # 10 MB
             "backupCount": 5,
             "formatter": "security",
         },
         "auth_file": {
             "class": "logging.handlers.RotatingFileHandler",
-            "filename": os.path.join(BASE_DIR, "logs", "authentication.log"),
+            "filename": os.path.join(LOG_DIR, "authentication.log"),
             "maxBytes": 1024 * 1024 * 10,  # 10 MB
             "backupCount": 5,
             "formatter": "security_detailed",
@@ -674,5 +695,4 @@ LOGGING = {
 }
 
 # Ensure logs directory exists
-logs_dir = os.path.join(BASE_DIR, "logs")
-os.makedirs(logs_dir, exist_ok=True)
+os.makedirs(LOG_DIR, exist_ok=True)

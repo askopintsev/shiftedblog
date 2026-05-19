@@ -9,6 +9,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, models
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import strip_tags
 from django.utils.safestring import mark_safe
 from django.utils.text import slugify
 from taggit.managers import TaggableManager
@@ -25,6 +26,15 @@ def validate_image_extension(value):
             "Unsupported file extension. Upload JPG, PNG, or WebP "
             "(stored on disk as AVIF/WebP or JPEG)."
         )
+
+
+def _plain_body_first_words(body: str | None, n: int = 5) -> str:
+    """Strip HTML and join the first ``n`` whitespace-separated tokens."""
+    plain = strip_tags(body or "").strip()
+    if not plain:
+        return ""
+    parts = plain.split()
+    return " ".join(parts[:n])
 
 
 def _looks_like_editor_post_slug_unique_violation(exc: BaseException) -> bool:
@@ -107,7 +117,9 @@ class PostSeries(models.Model):
 
     def __str__(self):
         return (
-            f"{self.series.name} - {self.post.title} (Position: {self.order_position})"
+            f"{self.series.name} — "
+            f"{(self.post.title or '').strip() or f'Post #{self.post_id}'}"
+            f" (Position: {self.order_position})"
         )
 
 
@@ -120,10 +132,12 @@ class Post(models.Model):
         ("published", "Published"),
     )
 
-    title = models.CharField(max_length=250)
+    title = models.CharField(max_length=250, blank=True, default="")
     slug = models.SlugField(
         max_length=250,
         unique=True,
+        blank=True,
+        default="",
     )
     uuid = models.UUIDField(
         unique=True,
@@ -133,12 +147,16 @@ class Post(models.Model):
     )
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="blog_posts",
     )
     cover_image = models.ImageField(
         upload_to="img/post/" + datetime.datetime.today().strftime("%Y/%m/%d"),
         validators=[validate_image_extension],
+        null=True,
+        blank=True,
     )
     cover_image_credits = models.CharField(
         max_length=250,
@@ -152,7 +170,7 @@ class Post(models.Model):
         blank=True,
         default=None,
     )
-    body = models.TextField()
+    body = models.TextField(blank=False)
     published = models.DateTimeField(null=True, blank=True, default=None)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -161,10 +179,12 @@ class Post(models.Model):
         choices=STATUS_CHOICES,
         default="draft",
     )
-    tags = TaggableManager()
+    tags = TaggableManager(blank=True)
     category = models.ForeignKey(
         Category,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="blog_category",
     )
     series = models.ManyToManyField(
@@ -193,12 +213,42 @@ class Post(models.Model):
         )
 
     def __str__(self):
-        return self.title
+        t = (self.title or "").strip()
+        if t:
+            return t
+        if self.pk:
+            return f"Post #{self.pk}"
+        return "Post (unsaved)"
 
     def save(self, *args, **kwargs):
         """Automatically set published date when status changes to 'published'."""
         update_fields = kwargs.get("update_fields")
         update_fields_set = set(update_fields) if update_fields is not None else None
+        allow_publish_via_sender = kwargs.pop("_allow_publish_via_sender", False)
+        skip_status_guard = False
+        if update_fields is not None:
+            skip_status_guard = "status" not in set(update_fields)
+        if not skip_status_guard:
+            old_status: str | None = None
+            if self.pk:
+                old_status = (
+                    Post.objects.filter(pk=self.pk)
+                    .values_list("status", flat=True)
+                    .first()
+                )
+            transitioning_to_published = self.status == "published" and (
+                old_status is None or old_status != "published"
+            )
+            if transitioning_to_published and not allow_publish_via_sender:
+                raise ValidationError(
+                    {
+                        "status": (
+                            "Published can only be set via Multi-channel publish "
+                            "(Editor → Posts → Multi-channel publish)."
+                        ),
+                    },
+                )
+
         normalize_image_field_file(self, "cover_image", update_fields_set)
 
         slug_persisted = update_fields is None or "slug" in set(update_fields)
@@ -243,6 +293,8 @@ class Post(models.Model):
     draft_preview_link.short_description = "Draft preview link"
 
     def get_image_url(self):
+        if not self.cover_image:
+            return ""
         return str(self.cover_image)
 
     def get_series_position(self, series):
@@ -309,12 +361,16 @@ class Post(models.Model):
         return s
 
     def _ensure_unique_slug(self) -> None:
-        """Set slug from title or normalized input; append -2, -3, … if needed."""
+        """Slug from slug field, title, or body word prefix; add suffix if taken."""
         raw = (self.slug or "").strip()
         if raw:
             base = self._slugify_segment(raw)
         else:
-            base = self._slugify_segment(str(self.title))
+            title_clean = (self.title or "").strip()
+            if title_clean:
+                base = self._slugify_segment(title_clean)
+            else:
+                base = self._slugify_segment(_plain_body_first_words(self.body))
         if not base:
             base = "post"
 
@@ -413,7 +469,10 @@ class PostGalleryImage(models.Model):
         ordering: ClassVar[list] = ["gallery_key", "order", "id"]
 
     def __str__(self):
-        return f"Gallery {self.gallery_key} image {self.order} for {self.post.title}"
+        return (
+            f"Gallery {self.gallery_key} image {self.order} for "
+            f"{(self.post.title or '').strip() or f'Post #{self.post_id}'}"
+        )
 
     def save(self, *args, **kwargs):
         update_fields = kwargs.get("update_fields")

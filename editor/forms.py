@@ -3,7 +3,7 @@ from typing import Any, ClassVar, cast
 from django import forms
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.forms import BaseInlineFormSet, ModelChoiceField
+from django.forms import BaseInlineFormSet, ChoiceField, ModelChoiceField
 from django_ckeditor_5.widgets import CKEditor5Widget
 
 from editor import models
@@ -39,9 +39,18 @@ class PostAdminForm(forms.ModelForm):
         author_field = cast(ModelChoiceField, self.fields["author"])
         author_field.queryset = user_model.objects.filter(is_active=True)
 
+        st = cast(ChoiceField, self.fields["status"])
+        choices = [c for c in models.Post.STATUS_CHOICES if c[0] != "published"]
+        if self.instance.pk and self.instance.status == "published":
+            choices = list(models.Post.STATUS_CHOICES)
+        st.choices = choices
+        if not (self.instance.pk and self.instance.status == "published"):
+            extra = "“Published” is set only via Multi-channel publish, not here."
+            st.help_text = f"{st.help_text} {extra}".strip() if st.help_text else extra
+
         title_ht = (
-            "Required. For search snippets, about "
-            f"{_TITLE_MAX_PUBLISH} characters or fewer is recommended."
+            f"Optional. For search snippets, about {_TITLE_MAX_PUBLISH} characters "
+            "or fewer is recommended when set."
         )
         self.fields["title"].help_text = (
             f"{self.fields['title'].help_text} {title_ht}".strip()
@@ -58,8 +67,8 @@ class PostAdminForm(forms.ModelForm):
             else sd_ht
         )
         cov_ht = (
-            "Required before publishing. JPEG/PNG/WebP uploads are stored as "
-            "AVIF or WebP (JPEG if encoding fails)."
+            "Optional. JPEG/PNG/WebP uploads are stored as AVIF or WebP "
+            "(JPEG if encoding fails)."
         )
         self.fields["cover_image"].help_text = (
             f"{self.fields['cover_image'].help_text} {cov_ht}".strip()
@@ -71,36 +80,11 @@ class PostAdminForm(forms.ModelForm):
             cls = self.fields[fname].widget.attrs.get("class", "")
             self.fields[fname].widget.attrs["class"] = f"{cls} post-seo-field".strip()
 
-    def _has_cover_image(self, cleaned: dict[str, Any]) -> bool:
-        val = cleaned.get("cover_image")
-        if val is False:
-            return False
-        field = self.fields["cover_image"]
-        if val not in field.empty_values:
-            return True
-        pk = getattr(self.instance, "pk", None)
-        if pk is None:
-            return False
-        try:
-            cover = self.instance.cover_image
-            name = getattr(cover, "name", "") if cover else ""
-        except ValueError:
-            name = ""
-        if name and str(name).strip():
-            return True
-        # Stale in-memory Post after AJAX save: field can disagree with DB until reload.
-        stored = (
-            models.Post.objects.filter(pk=pk)
-            .values_list("cover_image", flat=True)
-            .first()
-        )
-        return bool(stored and str(stored).strip())
-
-    def clean_title(self) -> str:
-        title = (self.cleaned_data.get("title") or "").strip()
-        if not title:
-            raise ValidationError("Title is required.")
-        return title
+    def clean_body(self) -> str:
+        body = (self.cleaned_data.get("body") or "").strip()
+        if not body:
+            raise ValidationError("Body is required.")
+        return body
 
     def clean_short_description(self) -> str | None:
         raw = self.cleaned_data.get("short_description")
@@ -113,6 +97,17 @@ class PostAdminForm(forms.ModelForm):
         cleaned_raw = super().clean()
         cleaned: dict[str, Any] = cleaned_raw if cleaned_raw is not None else {}
         status = cleaned.get("status")
+        prev = getattr(self.instance, "status", None)
+        if status == "published" and prev != "published":
+            raise ValidationError(
+                {
+                    "status": (
+                        "Published can only be set via Multi-channel publish "
+                        "(Editor → Posts → Multi-channel publish)."
+                    ),
+                },
+            )
+
         if status not in _PUBLISH_STATUSES:
             return cleaned
 
@@ -137,16 +132,6 @@ class PostAdminForm(forms.ModelForm):
                     "previews (max %(max)d characters, current %(n)d).",
                     code="short_description_seo_length",
                     params={"max": _SHORT_DESC_MAX_PUBLISH, "n": len(sd)},
-                ),
-            )
-
-        if not self._has_cover_image(cleaned):
-            self.add_error(
-                "cover_image",
-                ValidationError(
-                    "Cover image is required when status is "
-                    "“Ready to publish” or “Published”.",
-                    code="cover_image_required",
                 ),
             )
 

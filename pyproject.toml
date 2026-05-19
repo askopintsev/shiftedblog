@@ -1,6 +1,6 @@
 [project]
 name = "shiftedblog"
-version = "0.3.0"
+version = "0.3.1"
 description = "Automated blogging tool"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -19,6 +19,7 @@ dependencies = [
     "qrcode>=7.4.2",
     "redis>=5.0.0",
     "requests>=2.32.5",
+    "cryptography>=45.0.0",
     "yadisk>=3.4.0",
 ]
 
@@ -76,7 +77,7 @@ line-ending = "auto"
 [tool.pyright]
 pythonVersion = "3.13"
 typeCheckingMode = "basic"
-include = ["blog", "core", "editor", "shiftedblog", "team", "manage.py", "templates"]
+include = ["blog", "core", "editor", "sender", "shiftedblog", "team", "manage.py", "templates"]
 exclude = [
     ".git",
     ".venv",
@@ -88,6 +89,7 @@ exclude = [
     "blog/migrations",
     "core/migrations",
     "editor/migrations",
+    "sender/migrations",
     "team/migrations",
 ]
 # Use project venv for import resolution (run with venv active or set venvPath/venv)
