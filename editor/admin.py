@@ -58,6 +58,7 @@ def unpublish_selected_posts_from_site(modeladmin, request, queryset):
 class PostAdmin(admin.ModelAdmin):
     form = PostAdminForm
     change_form_template = "admin/editor/post/change_form.html"
+    change_list_template = "admin/editor/post/change_list.html"
     inlines: ClassVar[list] = [PostGalleryImageInline, SitePublicationInline]
     text_quality_service = PostTextQualityService()
     actions = (publish_selected_posts_to_site, unpublish_selected_posts_from_site)
@@ -79,6 +80,11 @@ class PostAdmin(admin.ModelAdmin):
     readonly_fields = ("views", "updated", "draft_preview_link")
     date_hierarchy = "published"
     ordering = ("status", "published")
+
+    def changelist_view(self, request, extra_context=None):
+        merged = dict(extra_context or {})
+        merged["sender_publish_url"] = reverse("sender_publish_workflow")
+        return super().changelist_view(request, extra_context=merged)
 
     def changeform_view(
         self,

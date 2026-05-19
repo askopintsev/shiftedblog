@@ -19,6 +19,7 @@ from core.views import (
     custom_image_upload,
     robots_txt,
 )
+from sender.admin_views import publish_workflow
 from shiftedblog.rate_limited_views import (
     RateLimitedLoginView,
     RateLimitedQRGeneratorView,
@@ -40,6 +41,11 @@ urlpatterns = [
         f"{admin_url}/session-keepalive/",
         admin_session_keepalive,
         name="admin_session_keepalive",
+    ),
+    path(
+        f"{admin_url}/sender/publish/",
+        admin.site.admin_view(publish_workflow),
+        name="sender_publish_workflow",
     ),
     path(f"{admin_url}/", admin.site.urls),
     path("", include("team.urls")),

@@ -12,6 +12,7 @@ A Django-based blog application with advanced security features, two-factor auth
 - CI/CD with GitHub Actions
 - Security features (CSRF, XSS protection, rate limiting)
 - Responsive design with Bootstrap
+- Multi-channel publishing to **Site** and **Telegram** (admin: *Multi-channel publish*), encrypted credentials, `PostLink` audit URLs
 
 ## Quick Start
 
@@ -55,14 +56,18 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
+**Publishing to Site + Telegram (optional):** set `CREDENTIALS_ENCRYPTION_KEY` (Fernet; see `env.example`). In admin, open **Editor → Posts** and use **Multi-channel publish**, or add Telegram secrets under **Core → Credentials** (JSON: `bot_token`, `channel_name` for a public channel username, optionally `chat_id` for numeric targets). Bootstrap env vars `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHANNEL_NAME` (or `TELEGRAM_CHAT_ID`) are optional if credentials are stored in the database.
+
+**Telegram “bot is not a member of the channel”:** the bot must be added in Telegram under **channel → Administrators**, with permission to **post messages** (same for supergroups). The channel usually needs to be **public** if you use `channel_name` / `@username`; **private** channels typically need the numeric **`chat_id`**.
+
 ### Linting (Ruff)
 
 The project uses [Ruff](https://docs.astral.sh/ruff/) for formatting and linting. Install dev dependencies and run:
 
 ```bash
 pip install -e ".[dev]"
-ruff format blog core editor shiftedblog team manage.py templates
-ruff check blog core editor shiftedblog team manage.py templates --fix
+ruff format blog core editor sender shiftedblog team manage.py templates
+ruff check blog core editor sender shiftedblog team manage.py templates --fix
 ```
 
 Or in Docker (run as host user so ruff can write to mounted files; `HOME` and `RUFF_CACHE_DIR` set so pip and ruff can write): `docker compose run --no-deps --user "$(id -u):$(id -g)" -e HOME=/tmp/ruff-home -e RUFF_CACHE_DIR=/tmp/ruff-home/.ruff_cache web sh -c 'pip install ruff && python -m ruff format . && python -m ruff check . --fix'`
@@ -73,10 +78,10 @@ The project uses [Pyright](https://microsoft.github.io/pyright/) for static type
 
 ```bash
 pip install -e ".[dev]"
-pyright blog core editor shiftedblog team manage.py
+pyright blog core editor sender shiftedblog team manage.py
 ```
 
-Or with uv: `uv sync && uv run pyright blog core editor shiftedblog team manage.py`. Config lives in `pyproject.toml` under `[tool.pyright]` (Python 3.13, `basic` mode, migrations excluded).
+Or with uv: `uv sync && uv run pyright blog core editor sender shiftedblog team manage.py`. Config lives in `pyproject.toml` under `[tool.pyright]` (Python 3.13, `basic` mode, migrations excluded).
 
 ### Docker Development
 
@@ -84,6 +89,8 @@ Or with uv: `uv sync && uv run pyright blog core editor shiftedblog team manage.
 ```bash
 docker-compose up --build
 ```
+
+For local development, add `HOST_UID` and `HOST_GID` to `.env` with the output of `id -u` and `id -g` so the `web` container can write to bind-mounted app directories (for example `makemigrations`). If omitted, compose defaults to `1000:1000`. Compose also sets `SHIFTED_BLOG_LOG_DIR=/tmp/shiftedblog_logs` so auth/security log files are writable inside the container.
 
 2. Run migrations:
 ```bash
