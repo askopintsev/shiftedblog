@@ -49,8 +49,8 @@ class PostAdminForm(forms.ModelForm):
             st.help_text = f"{st.help_text} {extra}".strip() if st.help_text else extra
 
         title_ht = (
-            "Required. For search snippets, about "
-            f"{_TITLE_MAX_PUBLISH} characters or fewer is recommended."
+            f"Optional. For search snippets, about {_TITLE_MAX_PUBLISH} characters "
+            "or fewer is recommended when set."
         )
         self.fields["title"].help_text = (
             f"{self.fields['title'].help_text} {title_ht}".strip()
@@ -67,8 +67,8 @@ class PostAdminForm(forms.ModelForm):
             else sd_ht
         )
         cov_ht = (
-            "Required before publishing. JPEG/PNG/WebP uploads are stored as "
-            "AVIF or WebP (JPEG if encoding fails)."
+            "Optional. JPEG/PNG/WebP uploads are stored as AVIF or WebP "
+            "(JPEG if encoding fails)."
         )
         self.fields["cover_image"].help_text = (
             f"{self.fields['cover_image'].help_text} {cov_ht}".strip()
@@ -80,36 +80,11 @@ class PostAdminForm(forms.ModelForm):
             cls = self.fields[fname].widget.attrs.get("class", "")
             self.fields[fname].widget.attrs["class"] = f"{cls} post-seo-field".strip()
 
-    def _has_cover_image(self, cleaned: dict[str, Any]) -> bool:
-        val = cleaned.get("cover_image")
-        if val is False:
-            return False
-        field = self.fields["cover_image"]
-        if val not in field.empty_values:
-            return True
-        pk = getattr(self.instance, "pk", None)
-        if pk is None:
-            return False
-        try:
-            cover = self.instance.cover_image
-            name = getattr(cover, "name", "") if cover else ""
-        except ValueError:
-            name = ""
-        if name and str(name).strip():
-            return True
-        # Stale in-memory Post after AJAX save: field can disagree with DB until reload.
-        stored = (
-            models.Post.objects.filter(pk=pk)
-            .values_list("cover_image", flat=True)
-            .first()
-        )
-        return bool(stored and str(stored).strip())
-
-    def clean_title(self) -> str:
-        title = (self.cleaned_data.get("title") or "").strip()
-        if not title:
-            raise ValidationError("Title is required.")
-        return title
+    def clean_body(self) -> str:
+        body = (self.cleaned_data.get("body") or "").strip()
+        if not body:
+            raise ValidationError("Body is required.")
+        return body
 
     def clean_short_description(self) -> str | None:
         raw = self.cleaned_data.get("short_description")
@@ -157,16 +132,6 @@ class PostAdminForm(forms.ModelForm):
                     "previews (max %(max)d characters, current %(n)d).",
                     code="short_description_seo_length",
                     params={"max": _SHORT_DESC_MAX_PUBLISH, "n": len(sd)},
-                ),
-            )
-
-        if not self._has_cover_image(cleaned):
-            self.add_error(
-                "cover_image",
-                ValidationError(
-                    "Cover image is required when status is "
-                    "“Ready to publish” or “Published”.",
-                    code="cover_image_required",
                 ),
             )
 

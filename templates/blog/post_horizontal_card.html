@@ -9,7 +9,7 @@
             {% endif %}
         </div>
         <div class="shb-bookmark-content">
-            <div class="shb-bookmark-title">{{ post.title }}</div>
+            {% if post.title %}<div class="shb-bookmark-title">{{ post.title }}</div>{% endif %}
             <div class="shb-bookmark-metadata">
                 <span class="shb-bookmark-publisher">{{ post.published|date:"d.m.Y" }}</span>
                 <span class="shb-bookmark-reading-time"><i class="fa-regular fa-clock"></i> {{ post.body|reading_time }} мин</span>

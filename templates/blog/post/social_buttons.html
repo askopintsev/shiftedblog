@@ -12,7 +12,7 @@
             </a>
         </button>
         <button class="btn" type="button">
-            <a href="https://t.me/share/url?url={{ request.build_absolute_uri }}&text={{ post.title }}"
+            <a href="{% if post.title %}https://t.me/share/url?url={{ request.build_absolute_uri }}&text={{ post.title|urlencode }}{% else %}https://t.me/share/url?url={{ request.build_absolute_uri }}{% endif %}"
                rel="nofollow" style="text-decoration: none" target="_blank">
                 <img src="{% static 'img/template/' %}telegram.jpg" width="25px">
             </a>

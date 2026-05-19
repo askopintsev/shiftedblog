@@ -3,7 +3,7 @@
 {% load editor_filters %}
 {% load editor_tags %}
 
-{% block title %}{{ post.title }} | Shifted Stuff{% endblock %}
+{% block title %}{% if post.title %}{{ post.title }} | {% endif %}Shifted Stuff{% endblock %}
 
 {% block canonical %}
 {% if is_draft_preview %}
@@ -20,7 +20,9 @@
 <!-- Open Graph -->
 <meta property="og:type" content="article">
 <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{{ post.get_absolute_url }}">
+{% if post.title %}
 <meta property="og:title" content="{{ post.title }}">
+{% endif %}
 {% if post.cover_image %}
 {% with image_url=post.cover_image.url %}
 <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ image_url }}">
@@ -46,12 +48,15 @@
 {% endwith %}
 {% endif %}
 <meta property="article:published_time" content="{{ post.published|date:'c' }}">
+{% if post.author %}
 <meta property="article:author" content="{{ post.author.get_full_name|default:post.author }}">
-
+{% endif %}
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:url" content="{{ request.scheme }}://{{ request.get_host }}{{ post.get_absolute_url }}">
+{% if post.title %}
 <meta name="twitter:title" content="{{ post.title }}">
+{% endif %}
 {% if post.short_description %}
 <meta name="twitter:description" content="{{ post.short_description }}">
 {% else %}
@@ -70,7 +75,9 @@
 {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
+{% if post.title %}
   "headline": "{{ post.title|striptags|escapejs }}",
+{% endif %}
   {% if post.short_description %}
   "description": "{{ post.short_description|striptags|escapejs }}",
   {% else %}
@@ -80,7 +87,7 @@
   "dateModified": "{{ post.updated|date:'c' }}",
   "author": {
     "@type": "Person",
-    "name": "{{ post.author.get_full_name|default:post.author|striptags|escapejs }}"
+    "name": "{% if post.author %}{{ post.author.get_full_name|default:post.author|striptags|escapejs }}{% else %}Anonymous{% endif %}"
   },
   {% if post.cover_image %}
   "image": "{{ request.scheme }}://{{ request.get_host }}{{ post.cover_image.url }}",
@@ -105,7 +112,7 @@
       "position": 1,
       "name": "Главная",
       "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'blog:post_list' %}"
-    },
+    }{% if post.category %},
     {
       "@type": "ListItem",
       "position": 2,
@@ -115,13 +122,23 @@
     {
       "@type": "ListItem",
       "position": 3,
-      "name": "{{ post.title|striptags|escapejs }}",
+      "name": "{% if post.title %}{{ post.title|striptags|escapejs }}{% else %}{{ post.slug|escapejs }}{% endif %}",
       {% if is_draft_preview %}
       "item": "{{ request.scheme }}://{{ request.get_host }}{{ request.path }}"
       {% else %}
       "item": "{{ request.scheme }}://{{ request.get_host }}{{ post.get_absolute_url }}"
       {% endif %}
-    }
+    }{% else %},
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "{% if post.title %}{{ post.title|striptags|escapejs }}{% else %}{{ post.slug|escapejs }}{% endif %}",
+      {% if is_draft_preview %}
+      "item": "{{ request.scheme }}://{{ request.get_host }}{{ request.path }}"
+      {% else %}
+      "item": "{{ request.scheme }}://{{ request.get_host }}{{ post.get_absolute_url }}"
+      {% endif %}
+    }{% endif %}
   ]
 }
 </script>
@@ -141,7 +158,9 @@
             <div class="post-header">
                 <div class="postinfo row row-cols-auto my-0">
                     <p class="col text-muted my-0">{{ post.published|date:'d.m.Y' }}</p>
+                    {% if post.author %}
                     <p class="col text-muted my-0">{{ post.author }}</p>
+                    {% endif %}
                     <p class="col text-muted my-0"><i class="fa-regular fa-clock"></i> {{ post.body|reading_time }} мин чтения</p>
                     <p class="col text-muted my-0"><i class="fa-regular fa-eye"></i> {{ post.views }}</p>
                 </div>
@@ -156,16 +175,20 @@
                     {% endfor %}
                 </div>
             </div>
+            {% if post.title %}
             <div class="post-title-section">
                 <h2 class="post-title">{{ post.title }}</h2>
             </div>
+            {% endif %}
         </div>
     </div>
 
     <div class="post-cover-image-wrapper">
         <div class="container">
             <div class="post-cover-image-container">
+                {% if post.cover_image %}
                 <img class="post-cover-image" src="{{ post.cover_image.url|urlencode }}" alt="{% firstof post.cover_description post.title %}"{% if post.cover_image.width and post.cover_image.height %} width="{{ post.cover_image.width }}" height="{{ post.cover_image.height }}"{% endif %} decoding="async" fetchpriority="high">
+                {% endif %}
                 {% if post.cover_description %}
                     <div class="post-cover-description">
                         <p class="text-muted mb-0">{{ post.cover_description }}</p>

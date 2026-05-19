@@ -73,13 +73,21 @@ class PostAdmin(admin.ModelAdmin):
             "editor/js/post_admin_meta_validation.js",
         )
 
-    list_display = ("title", "slug", "author", "updated", "published", "status")
+    list_display = ("id", "title", "slug", "author", "updated", "published", "status")
     list_filter = ("status", "created", "published", "author")
     search_fields = ("title", "body")
     prepopulated_fields: ClassVar[dict] = {"slug": ("title",)}
     readonly_fields = ("views", "updated", "draft_preview_link")
     date_hierarchy = "published"
     ordering = ("status", "published")
+
+    def get_changeform_initial_data(self, request: HttpRequest):
+        initial = super().get_changeform_initial_data(request)
+        user = request.user
+        pk = getattr(user, "pk", None)
+        if user.is_authenticated and pk is not None and "author" not in initial:
+            initial["author"] = pk
+        return initial
 
     def changelist_view(self, request, extra_context=None):
         merged = dict(extra_context or {})
