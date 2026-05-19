@@ -120,7 +120,9 @@ def publish_to_telegram(post: Post) -> PublishResult:
             ),
         )
 
-    text = f"{post.title}\n\n{_plain_body(post.body)}"
+    title = (post.title or "").strip()
+    plain = _plain_body(post.body)
+    text = f"{title}\n\n{plain}".strip() if title else plain.strip()
     payload = {
         "chat_id": chat_id,
         "text": text,
