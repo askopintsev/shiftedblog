@@ -1,6 +1,6 @@
 [project]
 name = "shiftedblog"
-version = "0.3.0"
+version = "0.3.1"
 description = "Automated blogging tool"
 readme = "README.md"
 requires-python = ">=3.13"
