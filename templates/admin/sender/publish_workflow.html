@@ -10,7 +10,7 @@
     <select name="post_id" id="id_post_id" required>
       <option value="">— choose —</option>
       {% for p in posts %}
-        <option value="{{ p.pk }}">{{ p.title }} ({{ p.slug }})</option>
+        <option value="{{ p.pk }}">{% if p.title %}{{ p.title }}{% else %}#{{ p.pk }}{% endif %} ({{ p.slug }})</option>
       {% endfor %}
     </select>
   </div>

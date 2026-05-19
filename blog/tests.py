@@ -72,3 +72,22 @@ class BlogPublicVisibilityTests(TestCase):
             reverse("editor:post_detail_by_uuid", args=[self.visible_post.uuid])
         )
         self.assertEqual(response.status_code, 200)
+
+
+class FeedLentaTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.reader = cast(UserManager, User.objects).create_user(
+            email="feedreader@example.com",
+            password="secret12345",
+        )
+
+    def test_feed_redirects_when_not_logged_in(self):
+        response = self.client.get(reverse("blog:post_lenta"))
+        self.assertEqual(response.status_code, 302)
+
+    def test_feed_renders_for_logged_in_user(self):
+        self.client.login(email="feedreader@example.com", password="secret12345")
+        response = self.client.get(reverse("blog:post_lenta"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Лента")
