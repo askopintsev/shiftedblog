@@ -199,6 +199,31 @@ class Post(models.Model):
         """Automatically set published date when status changes to 'published'."""
         update_fields = kwargs.get("update_fields")
         update_fields_set = set(update_fields) if update_fields is not None else None
+        allow_publish_via_sender = kwargs.pop("_allow_publish_via_sender", False)
+        skip_status_guard = False
+        if update_fields is not None:
+            skip_status_guard = "status" not in set(update_fields)
+        if not skip_status_guard:
+            old_status: str | None = None
+            if self.pk:
+                old_status = (
+                    Post.objects.filter(pk=self.pk)
+                    .values_list("status", flat=True)
+                    .first()
+                )
+            transitioning_to_published = self.status == "published" and (
+                old_status is None or old_status != "published"
+            )
+            if transitioning_to_published and not allow_publish_via_sender:
+                raise ValidationError(
+                    {
+                        "status": (
+                            "Published can only be set via Multi-channel publish "
+                            "(Editor → Posts → Multi-channel publish)."
+                        ),
+                    },
+                )
+
         normalize_image_field_file(self, "cover_image", update_fields_set)
 
         slug_persisted = update_fields is None or "slug" in set(update_fields)

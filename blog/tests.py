@@ -17,7 +17,7 @@ class BlogPublicVisibilityTests(TestCase):
         )
         self.category = Category.objects.create(name="Blog")
 
-        self.visible_post = Post.objects.create(
+        self.visible_post = Post(
             title="Visible post",
             slug="visible-post",
             author=self.author,
@@ -30,11 +30,12 @@ class BlogPublicVisibilityTests(TestCase):
             status="published",
             category=self.category,
         )
+        self.visible_post.save(_allow_publish_via_sender=True)
         SitePublication.objects.create(
             post=self.visible_post, published_at=self.visible_post.published
         )
 
-        self.hidden_post = Post.objects.create(
+        self.hidden_post = Post(
             title="Hidden post",
             slug="hidden-post",
             author=self.author,
@@ -47,6 +48,7 @@ class BlogPublicVisibilityTests(TestCase):
             status="published",
             category=self.category,
         )
+        self.hidden_post.save(_allow_publish_via_sender=True)
 
     def test_list_view_shows_only_site_published_posts(self):
         response = self.client.get(reverse("blog:post_list"))

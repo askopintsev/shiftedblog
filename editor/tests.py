@@ -1,12 +1,15 @@
 import json
 from typing import cast
 
+from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
 from django.test import Client, TestCase
 from django.test.utils import override_settings
 from django.urls import reverse
 
 from core.models.user import User, UserManager
+from editor.models import Category, Post
 from editor.text_quality_service import PostTextQualityService, TextQualityRequestDTO
 
 
@@ -161,3 +164,41 @@ class PostAdminTextQualityEndpointTests(TestCase):
         payload = json.loads(response.content.decode("utf-8"))
         self.assertFalse(payload["ok"])
         self.assertEqual(payload["error"]["code"], "VALIDATION_ERROR")
+
+
+class PostPublishedOnlyViaSenderTests(TestCase):
+    def setUp(self):
+        self.author = cast(UserManager, User.objects).create_user(
+            email="guard-test@example.com",
+            password="x",
+        )
+        self.cat = Category.objects.create(name="Cat")
+
+    def test_save_blocks_transition_to_published_without_sender_flag(self):
+        post = Post.objects.create(
+            title="T",
+            slug="guard-draft",
+            author=self.author,
+            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+            body="<p>x</p>",
+            status="draft",
+            category=self.cat,
+        )
+        post.status = "published"
+        with self.assertRaises(ValidationError):
+            post.save()
+
+    def test_save_allows_transition_with_sender_flag(self):
+        post = Post.objects.create(
+            title="T",
+            slug="guard-sender",
+            author=self.author,
+            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+            body="<p>x</p>",
+            status="ready_to_publish",
+            category=self.cat,
+        )
+        post.status = "published"
+        post.save(_allow_publish_via_sender=True)
+        post.refresh_from_db()
+        self.assertEqual(post.status, "published")

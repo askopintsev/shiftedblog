@@ -3,7 +3,7 @@ from typing import Any, ClassVar, cast
 from django import forms
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.forms import BaseInlineFormSet, ModelChoiceField
+from django.forms import BaseInlineFormSet, ChoiceField, ModelChoiceField
 from django_ckeditor_5.widgets import CKEditor5Widget
 
 from editor import models
@@ -38,6 +38,15 @@ class PostAdminForm(forms.ModelForm):
         user_model = get_user_model()
         author_field = cast(ModelChoiceField, self.fields["author"])
         author_field.queryset = user_model.objects.filter(is_active=True)
+
+        st = cast(ChoiceField, self.fields["status"])
+        choices = [c for c in models.Post.STATUS_CHOICES if c[0] != "published"]
+        if self.instance.pk and self.instance.status == "published":
+            choices = list(models.Post.STATUS_CHOICES)
+        st.choices = choices
+        if not (self.instance.pk and self.instance.status == "published"):
+            extra = "“Published” is set only via Multi-channel publish, not here."
+            st.help_text = f"{st.help_text} {extra}".strip() if st.help_text else extra
 
         title_ht = (
             "Required. For search snippets, about "
@@ -113,6 +122,17 @@ class PostAdminForm(forms.ModelForm):
         cleaned_raw = super().clean()
         cleaned: dict[str, Any] = cleaned_raw if cleaned_raw is not None else {}
         status = cleaned.get("status")
+        prev = getattr(self.instance, "status", None)
+        if status == "published" and prev != "published":
+            raise ValidationError(
+                {
+                    "status": (
+                        "Published can only be set via Multi-channel publish "
+                        "(Editor → Posts → Multi-channel publish)."
+                    ),
+                },
+            )
+
         if status not in _PUBLISH_STATUSES:
             return cleaned
 

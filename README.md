@@ -56,7 +56,7 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
-**Publishing to Site + Telegram (optional):** set `CREDENTIALS_ENCRYPTION_KEY` (Fernet; see `env.example`). In admin, open **Editor → Posts** and use **Multi-channel publish**, or add Telegram secrets under **Core → Credentials** (JSON: `bot_token`, `channel_name` for a public channel username, optionally `chat_id` for numeric targets). Bootstrap env vars `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHANNEL_NAME` (or `TELEGRAM_CHAT_ID`) are optional if credentials are stored in the database.
+**Publishing to Site + Telegram (optional):** set `CREDENTIALS_ENCRYPTION_KEY` (Fernet; see `env.example`). In admin, open **Editor → Posts** and use **Multi-channel publish**, or add Telegram secrets under **Core → Credentials** (JSON: `bot_token`, `channel_name` for a public channel username, optionally `chat_id` for numeric targets). Bootstrap env vars `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHANNEL_NAME` (or `TELEGRAM_CHAT_ID`) are optional if credentials are stored in the database. **Post status “Published”** cannot be chosen on the post edit form; it is set only when Multi-channel publish succeeds.
 
 **Telegram “bot is not a member of the channel”:** the bot must be added in Telegram under **channel → Administrators**, with permission to **post messages** (same for supergroups). The channel usually needs to be **public** if you use `channel_name` / `@username`; **private** channels typically need the numeric **`chat_id`**.
 

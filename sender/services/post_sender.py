@@ -110,7 +110,7 @@ def run_publish_job(
         status_updated = False
         if all_ok:
             post.status = "published"
-            post.save()
+            post.save(_allow_publish_via_sender=True)
             status_updated = True
 
     return PublishJobResult(
