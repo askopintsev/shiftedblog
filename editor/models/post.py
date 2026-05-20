@@ -28,6 +28,65 @@ def validate_image_extension(value):
         )
 
 
+# Longer Cyrillic sequences first so e.g. ``щ`` is not read as ``ш`` + ``ч``.
+_CYRILLIC_TO_LATIN: tuple[tuple[str, str], ...] = (
+    ("щ", "shch"),
+    ("ш", "sh"),
+    ("ч", "ch"),
+    ("ц", "ts"),
+    ("ю", "yu"),
+    ("я", "ya"),
+    ("ё", "yo"),
+    ("ж", "zh"),
+    ("х", "kh"),
+    ("э", "e"),
+    ("ы", "y"),
+    ("ъ", ""),
+    ("ь", ""),
+    ("а", "a"),
+    ("б", "b"),
+    ("в", "v"),
+    ("г", "g"),
+    ("д", "d"),
+    ("е", "e"),
+    ("з", "z"),
+    ("и", "i"),
+    ("й", "y"),
+    ("к", "k"),
+    ("л", "l"),
+    ("м", "m"),
+    ("н", "n"),
+    ("о", "o"),
+    ("п", "p"),
+    ("р", "r"),
+    ("с", "s"),
+    ("т", "t"),
+    ("у", "u"),
+    ("ф", "f"),
+)
+
+
+def _transliterate_cyrillic_to_latin(text: str) -> str:
+    """Map Cyrillic letters to Latin so ``slugify`` can build ASCII slugs."""
+    if not text:
+        return ""
+    lower = text.lower()
+    parts: list[str] = []
+    i = 0
+    while i < len(lower):
+        matched = False
+        for cyr, lat in _CYRILLIC_TO_LATIN:
+            if lower.startswith(cyr, i):
+                parts.append(lat)
+                i += len(cyr)
+                matched = True
+                break
+        if not matched:
+            parts.append(text[i])
+            i += 1
+    return "".join(parts)
+
+
 def _plain_body_first_words(body: str | None, n: int = 5) -> str:
     """Strip HTML and join the first ``n`` whitespace-separated tokens."""
     plain = strip_tags(body or "").strip()
@@ -351,14 +410,11 @@ class Post(models.Model):
 
     @staticmethod
     def _slugify_segment(value: str) -> str:
-        """Normalize to URL-safe slug; allow Unicode letters (e.g. Cyrillic)."""
+        """Transliterate Cyrillic to Latin, then build an ASCII URL slug."""
         if not value or not value.strip():
             return ""
-        cleaned = value.strip()
-        s = slugify(cleaned, allow_unicode=True)
-        if not s:
-            s = slugify(cleaned)
-        return s
+        cleaned = _transliterate_cyrillic_to_latin(value.strip())
+        return slugify(cleaned) or ""
 
     def _ensure_unique_slug(self) -> None:
         """Slug from slug field, title, or body word prefix; add suffix if taken."""
