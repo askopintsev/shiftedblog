@@ -6,6 +6,7 @@ from typing import cast
 from unittest import mock
 
 from cryptography.fernet import Fernet
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -16,9 +17,128 @@ from core.models.user import User, UserManager
 from editor.models import Category, Post
 from sender.models import PostLink
 from sender.services.post_sender import run_publish_job
+from sender.services.telegram_channel import (
+    channel_has_subscription,
+    channel_owner_has_premium,
+)
+from sender.services.telegram_format import (
+    build_formatted_message,
+    html_body_to_telegram_html,
+)
+from sender.services.telegram_plan import CONTINUATION_PREFIX, build_telegram_plan
 from sender.services.url_helpers import public_post_url
 
 _FERNET_TEST_KEY = Fernet.generate_key().decode("ascii")
+
+
+class TelegramFormatTests(TestCase):
+    def test_title_body_tags_template(self):
+        post = Post(title="Title", body="<p>Hello <strong>world</strong></p>")
+        post.save()
+        post.tags.add("news", "django")
+        text = build_formatted_message(post)
+        self.assertTrue(text.startswith("<b>Title</b>\n\n"))
+        self.assertIn("<b>world</b>", text)
+        self.assertIn("#news", text)
+        self.assertIn("#django", text)
+
+    def test_h3_gets_blank_line_and_bold(self):
+        html = "<h3>Section</h3><p>After</p>"
+        out = html_body_to_telegram_html(html)
+        self.assertIn("\n\n<b>Section</b>", out)
+
+    def test_paragraphs_keep_line_breaks(self):
+        html = "<p>First line</p><p>Second line</p>"
+        out = html_body_to_telegram_html(html)
+        self.assertIn("First line\n\nSecond line", out)
+
+    def test_br_keeps_single_line_break_inside_paragraph(self):
+        html = "<p>Line one<br>Line two</p>"
+        out = html_body_to_telegram_html(html)
+        self.assertIn("Line one\nLine two", out)
+
+    def test_continuation_prefix_on_second_chunk(self):
+        post = Post(title="", body=f"<p>{'word ' * 3000}</p>")
+        plan = build_telegram_plan(post, has_subscription=False)
+        self.assertGreater(len(plan.steps), 1)
+        self.assertTrue(plan.steps[1].text.startswith(f"{CONTINUATION_PREFIX}\n\n"))
+
+
+class TelegramSubscriptionPlanTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def test_channel_has_subscription_from_secrets(self):
+        self.assertTrue(
+            channel_has_subscription({"channel_subscription": True}),
+        )
+        self.assertFalse(
+            channel_has_subscription({"channel_subscription": False}),
+        )
+
+    def test_channel_has_subscription_detects_owner_premium(self):
+        api_resp = {
+            "ok": True,
+            "result": [
+                {
+                    "status": "creator",
+                    "user": {"id": 1, "is_premium": True},
+                },
+            ],
+        }
+        with mock.patch(
+            "sender.services.telegram_channel._api_get",
+            return_value=api_resp,
+        ):
+            self.assertTrue(
+                channel_has_subscription(
+                    {},
+                    token="tok",
+                    chat_id="@chan-premium",
+                ),
+            )
+
+    def test_channel_owner_has_premium_false(self):
+        api_resp = {
+            "ok": True,
+            "result": [
+                {
+                    "status": "creator",
+                    "user": {"id": 2, "is_premium": False},
+                },
+            ],
+        }
+        with mock.patch(
+            "sender.services.telegram_channel._api_get",
+            return_value=api_resp,
+        ):
+            self.assertFalse(channel_owner_has_premium("tok", "@chan-no-premium"))
+
+    def test_explicit_false_skips_api(self):
+        with mock.patch("sender.services.telegram_channel._api_get") as m:
+            self.assertFalse(
+                channel_has_subscription(
+                    {"channel_subscription": False},
+                    token="tok",
+                    chat_id="@chan",
+                ),
+            )
+            m.assert_not_called()
+
+    def test_subscription_splits_cover_and_text(self):
+        post = Post(
+            title="T",
+            body="<p>Short</p>",
+            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+        )
+        plan = build_telegram_plan(post, has_subscription=True)
+        self.assertEqual(len(plan.steps), 1)
+        self.assertTrue(plan.has_subscription)
+        from sender.services.telegram_plan import caption_for_step
+
+        self.assertIsNone(
+            caption_for_step(plan.steps[0], has_subscription=True),
+        )
 
 
 class PublicUrlTests(TestCase):
@@ -107,9 +227,13 @@ class TelegramPublishJobTests(TestCase):
                 [NETWORK_SLUG_SITE, NETWORK_SLUG_TELEGRAM],
             )
         self.assertTrue(r.all_ok)
-        m.assert_called_once()
-        _args, kwargs = m.call_args
-        self.assertEqual(kwargs.get("json", {}).get("chat_id"), "@chan")
+        self.assertGreaterEqual(m.call_count, 1)
+        first = m.call_args_list[0]
+        chat_id = (first.kwargs.get("data") or first.kwargs.get("json") or {}).get(
+            "chat_id",
+        )
+        self.assertEqual(chat_id, "@chan")
+        self.assertIn("sendPhoto", first.args[0])
         tg_net = Network.objects.get(slug=NETWORK_SLUG_TELEGRAM)
         pl = PostLink.objects.get(post=self.post, network=tg_net)
         self.assertIn("t.me", pl.url)
@@ -154,3 +278,27 @@ class PublishWorkflowViewTests(TestCase):
         rsp = self.client.get(url)
         self.assertEqual(rsp.status_code, 200)
         self.assertContains(rsp, "Multi-channel publish")
+
+    def test_publish_workflow_telegram_preview(self):
+        author = cast(UserManager, User.objects).create_user(
+            email="preview@example.com",
+            password="x",
+        )
+        cat = Category.objects.create(name="Cat")
+        post = Post.objects.create(
+            title="Preview",
+            slug="preview-tg",
+            author=author,
+            body="<p>Preview body</p>",
+            status="ready_to_publish",
+            category=cat,
+        )
+        self.client.force_login(self.admin)
+        url = reverse("sender_publish_workflow")
+        rsp = self.client.get(
+            url,
+            {"post_id": post.pk, "preview_telegram": "1"},
+        )
+        self.assertEqual(rsp.status_code, 200)
+        self.assertContains(rsp, "Expected Telegram messages")
+        self.assertContains(rsp, "<b>Preview</b>")

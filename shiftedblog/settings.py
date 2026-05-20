@@ -294,6 +294,11 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_CHANNEL_NAME = os.environ.get("TELEGRAM_CHANNEL_NAME", "").strip()
 # Numeric chat id (groups, private); used if channel name is not set.
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+# Paid/subscription channel: text and images are sent separately (no long photo caption).
+TELEGRAM_CHANNEL_HAS_SUBSCRIPTION = get_bool_env(
+    "TELEGRAM_CHANNEL_HAS_SUBSCRIPTION",
+    False,
+)
 
 # Optional local Python checker integration for post text quality checks in admin.
 # Uses optional python libs (language_tool_python / pyspellchecker) if installed.

@@ -18,6 +18,8 @@ class CredentialAdminForm(forms.ModelForm):
         widget=forms.Textarea(attrs={"rows": 6, "cols": 80}),
         help_text=(
             'Example: {"bot_token": "…", "channel_name": "mychannel"}. '
+            "Optional channel_subscription: true/false, or omit for auto "
+            "(owner Premium via getChatAdministrators). "
             "Leave blank while editing to keep existing secrets."
         ),
     )
