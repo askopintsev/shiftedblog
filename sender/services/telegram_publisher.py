@@ -33,6 +33,8 @@ logger = logging.getLogger(__name__)
 
 TG_API = "https://api.telegram.org"
 PARSE_MODE = "HTML"
+
+
 def _proxies() -> dict[str, str] | None:
     p = (
         getattr(settings, "TELEGRAM_HTTP_PROXY", "")
