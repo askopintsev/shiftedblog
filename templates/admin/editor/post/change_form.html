@@ -2,4 +2,24 @@
 {% block extrahead %}
 {{ block.super }}
 {{ post_admin_text_quality_url|json_script:"post-admin-text-quality-url-data" }}
+{% if post_admin_history_list_url %}
+{{ post_admin_history_list_url|json_script:"post-admin-history-list-url-data" }}
+{% endif %}
+{% endblock %}
+
+{% block after_related_objects %}
+{{ block.super }}
+{% if post_admin_history_list_url %}
+<details id="post-history-panel" class="post-history-panel">
+  <summary class="post-history-panel__summary">Autosave history</summary>
+  <div class="post-history-panel__body">
+    <p class="post-history-panel__hint">
+      Up to {{ post_history_max_entries|default:100 }} autosave snapshots are kept per post.
+      Restore loads title, body, and short description into the editor (save the form to persist).
+    </p>
+    <div id="post-history-status" class="post-history-panel__status" aria-live="polite"></div>
+    <ul id="post-history-list" class="post-history-list"></ul>
+  </div>
+</details>
+{% endif %}
 {% endblock %}

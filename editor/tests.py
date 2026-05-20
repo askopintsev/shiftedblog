@@ -9,7 +9,8 @@ from django.test.utils import override_settings
 from django.urls import reverse
 
 from core.models.user import User, UserManager
-from editor.models import Category, Post
+from editor.models import Category, Post, PostHistory
+from editor.post_history_service import PostHistoryService
 from editor.text_quality_service import PostTextQualityService, TextQualityRequestDTO
 
 
@@ -239,3 +240,52 @@ class PostPublishedOnlyViaSenderTests(TestCase):
         post.save(_allow_publish_via_sender=True)
         post.refresh_from_db()
         self.assertEqual(post.status, "published")
+
+
+class PostHistoryServiceTests(TestCase):
+    def setUp(self):
+        self.author = cast(UserManager, User.objects).create_user(
+            email="history-test@example.com",
+            password="x",
+        )
+        self.cat = Category.objects.create(name="HistoryCat")
+        self.post = Post.objects.create(
+            title="History post",
+            slug="history-post",
+            author=self.author,
+            body="<p>Version one.</p>",
+            status="draft",
+            category=self.cat,
+        )
+        self.service = PostHistoryService()
+
+    def test_record_autosave_snapshot_creates_entry(self):
+        created = self.service.record_autosave_snapshot(self.post)
+        self.assertIsNotNone(created)
+        self.assertEqual(PostHistory.objects.filter(post=self.post).count(), 1)
+
+    def test_record_skips_duplicate_snapshot(self):
+        self.service.record_autosave_snapshot(self.post)
+        second = self.service.record_autosave_snapshot(self.post)
+        self.assertIsNone(second)
+        self.assertEqual(PostHistory.objects.filter(post=self.post).count(), 1)
+
+    def test_prune_keeps_only_last_hundred_entries(self):
+        for i in range(105):
+            self.post.body = f"<p>Version {i}.</p>"
+            self.service.record_autosave_snapshot(self.post)
+        self.assertEqual(PostHistory.objects.filter(post=self.post).count(), 100)
+        latest = (
+            PostHistory.objects.filter(post=self.post).order_by("-created_at").first()
+        )
+        self.assertIsNotNone(latest)
+        assert latest is not None
+        self.assertIn("Version 104", latest.body)
+
+    def test_get_snapshot_returns_matching_entry(self):
+        created = self.service.record_autosave_snapshot(self.post)
+        assert created is not None
+        snapshot = self.service.get_snapshot(self.post.pk, created.pk)
+        self.assertIsNotNone(snapshot)
+        assert snapshot is not None
+        self.assertEqual(snapshot.body, self.post.body)
