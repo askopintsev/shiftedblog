@@ -49,3 +49,21 @@ def decrypt_text(token: str) -> str:
     if not token:
         return ""
     return decrypt_bytes(token).decode("utf-8")
+
+
+def looks_like_fernet_token(value: str) -> bool:
+    """Heuristic: ciphertext produced by ``encrypt_text`` is url-safe base64."""
+    v = value.strip()
+    return bool(v) and v.startswith("gAAAA")
+
+
+def payload_plaintext_from_stored(stored: str) -> str:
+    """Plaintext JSON from a DB column value (Fernet token or legacy plaintext)."""
+    if not stored or not stored.strip():
+        return ""
+    raw = stored.strip()
+    if raw.startswith("{"):
+        return raw
+    if looks_like_fernet_token(raw):
+        return decrypt_text(raw)
+    return ""

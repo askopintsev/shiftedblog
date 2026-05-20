@@ -78,7 +78,9 @@ class CredentialAdmin(admin.ModelAdmin):
 
     @admin.display(description="Has secrets", boolean=True)
     def has_payload(self, obj: Credential) -> bool:
-        return bool(obj.encrypted_payload)
+        if not obj.pk:
+            return False
+        return bool(Credential.get_stored_payload_raw(obj.pk).strip())
 
 
 @admin.register(User)
