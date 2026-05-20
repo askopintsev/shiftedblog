@@ -4,12 +4,14 @@ from uuid import UUID, uuid4
 
 from django.contrib import admin
 from django.http import HttpRequest, JsonResponse
+from django.shortcuts import get_object_or_404
 from django.urls import path, reverse
 from django.utils import timezone
 
 from blog.models import SitePublication
 from editor import models
 from editor.forms import OptionalGalleryFormSet, PostAdminForm
+from editor.post_history_service import PostHistoryService
 from editor.text_quality_service import PostTextQualityService, TextQualityRequestDTO
 
 
@@ -61,6 +63,7 @@ class PostAdmin(admin.ModelAdmin):
     change_list_template = "admin/editor/post/change_list.html"
     inlines: ClassVar[list] = [PostGalleryImageInline, SitePublicationInline]
     text_quality_service = PostTextQualityService()
+    post_history_service = PostHistoryService()
     actions = (publish_selected_posts_to_site, unpublish_selected_posts_from_site)
 
     class Media:
@@ -69,6 +72,7 @@ class PostAdmin(admin.ModelAdmin):
             "editor/js/post_admin_session_keepalive.js",
             "editor/js/post_body_stats.js",
             "editor/js/post_autosave.js",
+            "editor/js/post_history.js",
             "editor/js/post_editor_emoji.js",
             "editor/js/post_admin_meta_validation.js",
         )
@@ -105,7 +109,28 @@ class PostAdmin(admin.ModelAdmin):
         merged["post_admin_text_quality_url"] = reverse(
             "admin:editor_post_text_quality",
         )
+        if object_id is not None:
+            merged["post_admin_history_list_url"] = reverse(
+                "admin:editor_post_history_list",
+                args=[object_id],
+            )
+            merged["post_history_max_entries"] = self.post_history_service.max_entries
         return super().changeform_view(request, object_id, form_url, merged)
+
+    @staticmethod
+    def _is_autosave_request(request: HttpRequest) -> bool:
+        return request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+    def save_model(
+        self,
+        request: HttpRequest,
+        obj: models.Post,
+        form: PostAdminForm,
+        change: bool,
+    ) -> None:
+        super().save_model(request, obj, form, change)
+        if change and self._is_autosave_request(request):
+            self.post_history_service.record_autosave_snapshot(obj)
 
     def get_urls(self):
         custom_urls = [
@@ -114,8 +139,68 @@ class PostAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.text_quality_view),
                 name="editor_post_text_quality",
             ),
+            path(
+                "<path:object_id>/history/",
+                self.admin_site.admin_view(self.post_history_list_view),
+                name="editor_post_history_list",
+            ),
+            path(
+                "<path:object_id>/history/<int:history_id>/",
+                self.admin_site.admin_view(self.post_history_detail_view),
+                name="editor_post_history_detail",
+            ),
         ]
         return custom_urls + super().get_urls()
+
+    def post_history_list_view(
+        self,
+        request: HttpRequest,
+        object_id: str,
+    ) -> JsonResponse:
+        if request.method != "GET":
+            return JsonResponse(
+                {"ok": False, "error": "Method not allowed."},
+                status=405,
+            )
+        post = get_object_or_404(models.Post, pk=object_id)
+        if not self.has_change_permission(request, post):
+            return JsonResponse({"ok": False, "error": "Forbidden."}, status=403)
+        items = self.post_history_service.list_for_post(post.pk)
+        return JsonResponse(
+            {
+                "ok": True,
+                "items": [
+                    self.post_history_service.list_item_to_dict(item) for item in items
+                ],
+                "max_entries": self.post_history_service.max_entries,
+            },
+            status=200,
+        )
+
+    def post_history_detail_view(
+        self,
+        request: HttpRequest,
+        object_id: str,
+        history_id: int,
+    ) -> JsonResponse:
+        if request.method != "GET":
+            return JsonResponse(
+                {"ok": False, "error": "Method not allowed."},
+                status=405,
+            )
+        post = get_object_or_404(models.Post, pk=object_id)
+        if not self.has_change_permission(request, post):
+            return JsonResponse({"ok": False, "error": "Forbidden."}, status=403)
+        snapshot = self.post_history_service.get_snapshot(post.pk, history_id)
+        if snapshot is None:
+            return JsonResponse({"ok": False, "error": "Not found."}, status=404)
+        return JsonResponse(
+            {
+                "ok": True,
+                "snapshot": self.post_history_service.snapshot_to_dict(snapshot),
+            },
+            status=200,
+        )
 
     def text_quality_view(self, request: HttpRequest) -> JsonResponse:
         method = str(request.META.get("REQUEST_METHOD", "GET")).upper()

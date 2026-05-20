@@ -464,6 +464,39 @@ class Post(models.Model):
         PostSlugRedirect.objects.filter(old_slug=self.slug).delete()
 
 
+POST_HISTORY_MAX_ENTRIES = 100
+
+
+class PostHistory(models.Model):
+    """Snapshot of editable post fields created on admin autosave."""
+
+    post = models.ForeignKey(
+        "Post",
+        on_delete=models.CASCADE,
+        related_name="history_entries",
+    )
+    title = models.CharField(max_length=250, blank=True, default="")
+    body = models.TextField()
+    short_description = models.CharField(
+        max_length=300,
+        null=True,
+        blank=True,
+        default=None,
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        app_label = "editor"
+        db_table = "editor_posthistory"
+        ordering: ClassVar[list] = ["-created_at"]
+        verbose_name = "Post history"
+        verbose_name_plural = "Post history"
+
+    def __str__(self) -> str:
+        label = (self.title or "").strip() or f"Post #{self.post_id}"
+        return f"{label} @ {self.created_at:%Y-%m-%d %H:%M:%S}"
+
+
 class PostSlugRedirect(models.Model):
     """Maps a retired post slug to the post so we can 301 to the current URL."""
 

@@ -10,7 +10,9 @@
     <select name="post_id" id="id_post_id" required>
       <option value="">— choose —</option>
       {% for p in posts %}
-        <option value="{{ p.pk }}">{% if p.title %}{{ p.title }}{% else %}#{{ p.pk }}{% endif %} ({{ p.slug }})</option>
+        <option value="{{ p.pk }}"{% if form_post_id == p.pk or preview_post_id == p.pk %} selected{% endif %}>
+          {% if p.title %}{{ p.title }}{% else %}#{{ p.pk }}{% endif %} ({{ p.slug }})
+        </option>
       {% endfor %}
     </select>
   </div>
@@ -27,6 +29,52 @@
     <input type="submit" value="Publish" class="default">
   </div>
 </form>
+
+<form method="get" class="module" style="margin-top: 1.5em;">
+  <h2>Telegram preview</h2>
+  <p>Show how the post will be split and formatted for Telegram (HTML parse mode).</p>
+  <div class="form-row">
+    <label for="id_preview_post_id">Post</label>
+    <select name="post_id" id="id_preview_post_id" required>
+      <option value="">— choose —</option>
+      {% for p in posts %}
+        <option value="{{ p.pk }}"{% if preview_post_id == p.pk or form_post_id == p.pk %} selected{% endif %}>
+          {% if p.title %}{{ p.title }}{% else %}#{{ p.pk }}{% endif %} ({{ p.slug }})
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <input type="hidden" name="preview_telegram" value="1">
+  <div class="submit-row">
+    <input type="submit" value="Preview Telegram formatting">
+  </div>
+</form>
+
+{% if preview_rows %}
+  <div class="module" style="margin-top: 1.5em;">
+    <h2>Expected Telegram messages</h2>
+    {% if telegram_layout_source %}
+      <p class="help">
+        {{ telegram_layout_source }}
+        {% if telegram_owner_premium is not None %}
+          Owner Premium: <strong>{% if telegram_owner_premium %}yes{% else %}no{% endif %}</strong>.
+        {% endif %}
+      </p>
+    {% endif %}
+    {% for row in preview_rows %}
+      <fieldset class="module aligned" style="margin-bottom: 1em;">
+        <legend>{{ row.label }}{% if row.is_continuation %} (продолжение){% endif %}</legend>
+        <p>
+          {% if row.has_cover %}<strong>Обложка:</strong> фото с подписью (если влезает) или отдельно от текста.<br>{% endif %}
+          {% if row.media_count %}<strong>Галерея:</strong> {{ row.media_count }} изображений
+            {% if row.media_groups > 1 %} ({{ row.media_groups }} отправки media group){% endif %}.<br>{% endif %}
+        </p>
+        <pre style="white-space: pre-wrap; background: #f8f8f8; padding: 12px; border: 1px solid #ddd; max-width: 900px;">{{ row.text }}</pre>
+      </fieldset>
+    {% endfor %}
+  </div>
+{% endif %}
+
 {% if not posts %}
 <p class="warning">No posts in “Ready to publish”.</p>
 {% endif %}

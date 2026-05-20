@@ -1,26 +1,38 @@
-"""Telegram Bot API outbound posting."""
+"""Telegram Bot API outbound posting with HTML formatting and series support."""
 
 from __future__ import annotations
 
 import json
 import logging
-import re
+import os
 from typing import Any
 
 import requests
 from django.conf import settings
-from django.utils.html import strip_tags
+from django.core.files.storage import default_storage
 
 from core.models.network import NETWORK_SLUG_TELEGRAM, Credential, Network
+from editor.image_upload import build_share_jpeg_from_cover_bytes
 from editor.models import Post
 from sender.services.dto import PublishResult
+from sender.services.telegram_channel import (
+    channel_has_subscription,
+    telegram_chat_id_from_secrets,
+)
+from sender.services.telegram_plan import (
+    MAX_CAPTION_LEN,
+    MAX_MEDIA_GROUP,
+    TelegramPlannedStep,
+    TelegramPublishPlan,
+    _chunk_media,
+    build_telegram_plan,
+    caption_for_step,
+)
 
 logger = logging.getLogger(__name__)
 
 TG_API = "https://api.telegram.org"
-MAX_LEN = 4096
-# Bot API ``chat_id`` accepts numeric ids or @username for public channels.
-_CHAT_ID_NUMERIC = re.compile(r"^-?\d+$")
+PARSE_MODE = "HTML"
 
 
 def _proxies() -> dict[str, str] | None:
@@ -35,14 +47,6 @@ def _proxies() -> dict[str, str] | None:
     return {"http": p, "https": p}
 
 
-def _plain_body(html: str) -> str:
-    text = strip_tags(html or "")
-    text = re.sub(r"\s+", " ", text).strip()
-    if len(text) > MAX_LEN - 50:
-        text = text[: MAX_LEN - 50] + "… [truncated]"
-    return text[:MAX_LEN]
-
-
 def _telegram_secrets() -> dict[str, Any]:
     try:
         net = Network.objects.get(slug=NETWORK_SLUG_TELEGRAM)
@@ -55,25 +59,6 @@ def _telegram_secrets() -> dict[str, Any]:
         return cred.get_secrets_dict()
     except (json.JSONDecodeError, ValueError, TypeError):
         return {}
-
-
-def _telegram_chat_id_api_value(secrets: dict[str, Any]) -> str:
-    """Resolve DB/env secrets to the value sent as Bot API ``chat_id``."""
-    raw = (
-        secrets.get("channel_name")
-        or secrets.get("chat_id")
-        or getattr(settings, "TELEGRAM_CHANNEL_NAME", "")
-        or getattr(settings, "TELEGRAM_CHAT_ID", "")
-    )
-    if raw is None:
-        return ""
-    s = str(raw).strip()
-    if not s:
-        return ""
-    if _CHAT_ID_NUMERIC.fullmatch(s):
-        return s
-    name = s.lstrip("@").strip()
-    return f"@{name}" if name else ""
 
 
 def _telegram_api_error_detail(description: str) -> str:
@@ -102,12 +87,192 @@ def _message_url_from_response(data: dict[str, Any]) -> str:
     return (getattr(settings, "SITE_URL", "") or "").rstrip("/") + "/"
 
 
+def _photo_upload_file(storage_path: str) -> tuple[str, bytes, str]:
+    """Return ``(field_name, bytes, mime)`` for multipart upload."""
+    with default_storage.open(storage_path, "rb") as fh:
+        raw = fh.read()
+    base = os.path.basename(storage_path)
+    stem, ext = os.path.splitext(base)
+    ext_l = ext.lower()
+    if ext_l in (".avif", ".webp", ".png", ".gif", ".bmp", ".tiff"):
+        data = build_share_jpeg_from_cover_bytes(raw)
+        return f"{stem}.jpg", data, "image/jpeg"
+    if ext_l in (".jpg", ".jpeg"):
+        return base, raw, "image/jpeg"
+    return base or "image.jpg", raw, "image/jpeg"
+
+
+def _api_post(
+    token: str,
+    method: str,
+    *,
+    data: dict[str, Any] | None = None,
+    files: dict[str, tuple[str, bytes, str]] | None = None,
+) -> tuple[dict[str, Any], requests.Response]:
+    url = f"{TG_API}/bot{token}/{method}"
+    resp = requests.post(
+        url,
+        data=data or {},
+        files=files,
+        timeout=90,
+        proxies=_proxies(),
+    )
+    try:
+        payload = resp.json()
+    except ValueError:
+        payload = {"ok": False, "description": resp.text[:500]}
+    return payload, resp
+
+
+def _fail_from_payload(
+    payload: dict[str, Any],
+    resp: requests.Response,
+) -> PublishResult:
+    desc_raw = payload.get("description") or resp.text[:500]
+    desc = _telegram_api_error_detail(str(desc_raw))
+    logger.warning("Telegram API error: %s", desc_raw)
+    return PublishResult(ok=False, error="telegram_api", detail=desc[:700])
+
+
+def _send_message(
+    token: str,
+    chat_id: str,
+    text: str,
+) -> tuple[PublishResult, str]:
+    if not text:
+        return PublishResult(ok=True), ""
+    payload, resp = _api_post(
+        token,
+        "sendMessage",
+        data={
+            "chat_id": chat_id,
+            "text": text,
+            "parse_mode": PARSE_MODE,
+            "disable_web_page_preview": True,
+        },
+    )
+    if not payload.get("ok"):
+        return _fail_from_payload(payload, resp), ""
+    link = _message_url_from_response(payload)
+    return PublishResult(ok=True, url=link), link
+
+
+def _send_photo(
+    token: str,
+    chat_id: str,
+    storage_path: str,
+    caption: str | None,
+) -> tuple[PublishResult, str]:
+    fname, data, mime = _photo_upload_file(storage_path)
+    form: dict[str, Any] = {"chat_id": chat_id}
+    if caption:
+        form["caption"] = caption[:MAX_CAPTION_LEN]
+        form["parse_mode"] = PARSE_MODE
+    payload, resp = _api_post(
+        token,
+        "sendPhoto",
+        data=form,
+        files={"photo": (fname, data, mime)},
+    )
+    if not payload.get("ok"):
+        return _fail_from_payload(payload, resp), ""
+    link = _message_url_from_response(payload)
+    return PublishResult(ok=True, url=link), link
+
+
+def _send_media_group(
+    token: str,
+    chat_id: str,
+    paths: list[str],
+) -> tuple[PublishResult, str]:
+    if not paths:
+        return PublishResult(ok=True), ""
+    media_json: list[dict[str, str]] = []
+    files: dict[str, tuple[str, bytes, str]] = {}
+    for i, path in enumerate(paths[:MAX_MEDIA_GROUP]):
+        key = f"file{i}"
+        fname, data, mime = _photo_upload_file(path)
+        media_json.append({"type": "photo", "media": f"attach://{key}"})
+        files[key] = (fname, data, mime)
+    form: dict[str, Any] = {
+        "chat_id": chat_id,
+        "media": json.dumps(media_json, separators=(",", ":")),
+    }
+    payload, resp = _api_post(token, "sendMediaGroup", data=form, files=files)
+    if not payload.get("ok"):
+        return _fail_from_payload(payload, resp), ""
+    result = payload.get("result") or []
+    first = result[0] if isinstance(result, list) and result else {}
+    link = _message_url_from_response({"result": first})
+    return PublishResult(ok=True, url=link), link
+
+
+def _execute_step(
+    step: TelegramPlannedStep,
+    *,
+    token: str,
+    chat_id: str,
+    has_subscription: bool,
+) -> tuple[PublishResult, str]:
+    """Run one plan step; return overall result and first message URL in step."""
+    caption = caption_for_step(step, has_subscription=has_subscription)
+    first_link = ""
+
+    if step.cover_path:
+        res, link = _send_photo(token, chat_id, step.cover_path, caption)
+        if not res.ok:
+            return res, first_link
+        if link and not first_link:
+            first_link = link
+
+    text_as_caption = caption is not None and caption == step.text
+    if step.text and not text_as_caption:
+        res, link = _send_message(token, chat_id, step.text)
+        if not res.ok:
+            return res, first_link
+        if link and not first_link:
+            first_link = link
+
+    for chunk in _chunk_media(step.media_paths):
+        res, link = _send_media_group(token, chat_id, chunk)
+        if not res.ok:
+            return res, first_link
+        if link and not first_link:
+            first_link = link
+
+    return PublishResult(ok=True, url=first_link), first_link
+
+
+def build_plan_for_post(
+    post: Post,
+    secrets: dict[str, Any],
+    *,
+    token: str = "",
+    chat_id: str = "",
+) -> TelegramPublishPlan:
+    has_sub = channel_has_subscription(secrets, token=token, chat_id=chat_id)
+    return build_telegram_plan(post, has_subscription=has_sub)
+
+
+def preview_plan_for_post(
+    post: Post,
+    secrets: dict[str, Any] | None = None,
+) -> TelegramPublishPlan:
+    secrets = secrets if secrets is not None else _telegram_secrets()
+    token = (
+        secrets.get("bot_token") or getattr(settings, "TELEGRAM_BOT_TOKEN", "")
+    ).strip()
+    chat_id = telegram_chat_id_from_secrets(secrets)
+    return build_plan_for_post(post, secrets, token=token, chat_id=chat_id)
+
+
 def publish_to_telegram(post: Post) -> PublishResult:
+    post = Post.objects.prefetch_related("tags", "gallery_images").get(pk=post.pk)
     secrets = _telegram_secrets()
     token = (
         secrets.get("bot_token") or getattr(settings, "TELEGRAM_BOT_TOKEN", "")
     ).strip()
-    chat_id = _telegram_chat_id_api_value(secrets)
+    chat_id = telegram_chat_id_from_secrets(secrets)
 
     if not token or not chat_id:
         return PublishResult(
@@ -120,32 +285,22 @@ def publish_to_telegram(post: Post) -> PublishResult:
             ),
         )
 
-    title = (post.title or "").strip()
-    plain = _plain_body(post.body)
-    text = f"{title}\n\n{plain}".strip() if title else plain.strip()
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-        "disable_web_page_preview": True,
-    }
-    url = f"{TG_API}/bot{token}/sendMessage"
-    try:
-        resp = requests.post(
-            url,
-            json=payload,
-            timeout=45,
-            proxies=_proxies(),
+    plan = build_plan_for_post(post, secrets, token=token, chat_id=chat_id)
+    if not plan.steps:
+        return PublishResult(ok=False, error="empty_plan", detail="Nothing to publish.")
+
+    stored_link = ""
+
+    for step in plan.steps:
+        res, step_link = _execute_step(
+            step,
+            token=token,
+            chat_id=chat_id,
+            has_subscription=plan.has_subscription,
         )
-        data = resp.json()
-    except (requests.RequestException, ValueError) as exc:
-        logger.warning("Telegram request failed: %s", exc)
-        return PublishResult(ok=False, error="request_error", detail=str(exc)[:500])
+        if not res.ok:
+            return res
+        if step_link and not stored_link:
+            stored_link = step_link
 
-    if not data.get("ok"):
-        desc_raw = data.get("description") or resp.text[:500]
-        desc = _telegram_api_error_detail(str(desc_raw))
-        logger.warning("Telegram API error: %s", desc_raw)
-        return PublishResult(ok=False, error="telegram_api", detail=desc[:700])
-
-    link = _message_url_from_response(data)
-    return PublishResult(ok=True, url=link)
+    return PublishResult(ok=True, url=stored_link)
