@@ -8,6 +8,7 @@ from typing import Any, ClassVar
 from django.db import models
 from django.db.models import BaseConstraint
 
+from core import crypto
 from core.fields import FernetEncryptedTextField
 
 # Convention for publisher registry (extend for new channels).
@@ -78,9 +79,27 @@ class Credential(models.Model):
         """Serialize and encrypt secrets (call save() after)."""
         self.encrypted_payload = json.dumps(data, separators=(",", ":"))
 
+    @classmethod
+    def get_stored_payload_raw(cls, pk: int) -> str:
+        """Read ``encrypted_payload`` from DB without decrypting (admin-safe)."""
+        from django.db import connection
+
+        table = cls._meta.db_table
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"SELECT encrypted_payload FROM {table} WHERE id = %s",
+                [pk],
+            )
+            row = cursor.fetchone()
+        return (row[0] or "") if row else ""
+
     def get_secrets_dict(self) -> dict[str, Any]:
         """Return decrypted JSON as dict; empty if no payload."""
-        raw = self.encrypted_payload
-        if not raw:
+        if not self.pk:
             return {}
-        return json.loads(raw)
+        plain = crypto.payload_plaintext_from_stored(
+            self.get_stored_payload_raw(self.pk)
+        )
+        if not plain:
+            return {}
+        return json.loads(plain)

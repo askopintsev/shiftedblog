@@ -166,6 +166,43 @@ class PostAdminTextQualityEndpointTests(TestCase):
         self.assertEqual(payload["error"]["code"], "VALIDATION_ERROR")
 
 
+class PostSlugGenerationTests(TestCase):
+    def setUp(self):
+        self.author = cast(UserManager, User.objects).create_user(
+            email="slug-test@example.com",
+            password="x",
+        )
+        self.cat = Category.objects.create(name="Cat")
+
+    def _create_post(self, **kwargs) -> Post:
+        defaults = {
+            "title": "",
+            "slug": "",
+            "author": self.author,
+            "body": "<p>Текст тела без заголовка.</p>",
+            "status": "draft",
+            "category": self.cat,
+        }
+        defaults.update(kwargs)
+        return Post.objects.create(**defaults)
+
+    def test_empty_slug_and_title_uses_transliterated_body_first_words(self):
+        post = self._create_post()
+        self.assertEqual(post.slug, "tekst-tela-bez-zagolovka")
+
+    def test_cyrillic_title_transliterates_to_latin_slug(self):
+        post = self._create_post(title="Привет мир")
+        self.assertEqual(post.slug, "privet-mir")
+
+    def test_slug_from_title_when_slug_field_empty(self):
+        post = self._create_post(title="Hello World")
+        self.assertEqual(post.slug, "hello-world")
+
+    def test_explicit_slug_used_without_title(self):
+        post = self._create_post(slug="custom-url", title="")
+        self.assertEqual(post.slug, "custom-url")
+
+
 class PostPublishedOnlyViaSenderTests(TestCase):
     def setUp(self):
         self.author = cast(UserManager, User.objects).create_user(
