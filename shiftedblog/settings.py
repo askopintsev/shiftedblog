@@ -269,7 +269,7 @@ STATICFILES_DIRS = [
 ]
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-MEDIA_URL = "media/"
+MEDIA_URL = "/media/"
 
 # Post/gallery uploads: AVIF if Pillow has libavif, else WebP, else JPEG.
 # Only runs on new uploads (not when saving an existing stored file).

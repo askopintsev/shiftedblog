@@ -20,8 +20,10 @@ RUN apt-get update \
         libjpeg-dev \
         zlib1g-dev \
         libwebp-dev \
+        libwebpmux-dev \
         libtiff-dev \
         libopenjp2-7-dev \
+        libavif-dev \
     && rm -rf /var/lib/apt/lists/* \
     # Installing gunicorn
     && pip install "gunicorn==23.0.0"
@@ -41,8 +43,10 @@ RUN apt-get update \
         libjpeg62-turbo \
         zlib1g \
         libwebp7 \
+        libwebpmux3 \
         libtiff6 \
         libopenjp2-7 \
+        libavif15 \
     && rm -rf /var/lib/apt/lists/* \
     && ldconfig
 

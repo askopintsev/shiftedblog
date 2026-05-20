@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django.conf import settings
+from django.http import HttpRequest
 from django.urls import reverse
 
 from editor.models import Post
@@ -20,6 +21,23 @@ def public_post_url(post: Post) -> str:
     base = getattr(settings, "SITE_URL", "") or ""
     base = base.rstrip("/")
     path = reverse("blog:post_detail", args=[post.slug])
+    if not path.startswith("/"):
+        path = "/" + path
+    return base + path
+
+
+def post_og_image_absolute_url(
+    post: Post,
+    request: HttpRequest | None = None,
+) -> str | None:
+    """Absolute JPEG URL for social link previews (Telegram, X/Twitter, etc.)."""
+    if not post.cover_image:
+        return None
+    path = reverse("blog:post_og_image", args=[post.slug])
+    if request is not None:
+        return request.build_absolute_uri(path)
+    base = getattr(settings, "SITE_URL", "") or ""
+    base = base.rstrip("/")
     if not path.startswith("/"):
         path = "/" + path
     return base + path

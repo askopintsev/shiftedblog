@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from django.conf import settings
 from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from PIL import Image, ImageOps, features
 
@@ -72,6 +73,60 @@ def _base_name(path: str) -> str:
     base = os.path.basename(path)
     stem, _ext = os.path.splitext(base)
     return stem or "image"
+
+
+def social_share_storage_name(cover_storage_name: str) -> str:
+    """JPEG sibling path for link-preview crawlers (Telegram, X/Twitter, etc.)."""
+    directory, filename = os.path.split(cover_storage_name)
+    stem, _ext = os.path.splitext(filename)
+    share_filename = f"{stem}-share.jpg"
+    return f"{directory}/{share_filename}" if directory else share_filename
+
+
+def encode_image_as_share_jpeg(im: Image.Image) -> bytes:
+    """Return JPEG bytes sized for social link previews."""
+    rgb = _flatten_for_jpeg(im)
+    buf = io.BytesIO()
+    rgb.save(
+        buf,
+        format="JPEG",
+        quality=_jpeg_quality(),
+        optimize=True,
+        progressive=True,
+    )
+    return buf.getvalue()
+
+
+def save_social_share_jpeg(cover_storage_name: str, im: Image.Image) -> str:
+    """Write or replace ``{stem}-share.jpg`` next to the cover delivery file."""
+    share_name = social_share_storage_name(cover_storage_name)
+    data = encode_image_as_share_jpeg(im)
+    if default_storage.exists(share_name):
+        default_storage.delete(share_name)
+    default_storage.save(share_name, ContentFile(data))
+    return share_name
+
+
+def read_cover_bytes(field_file: FieldFile) -> bytes:
+    field_file.open("rb")
+    try:
+        return field_file.read()
+    finally:
+        field_file.close()
+
+
+def build_share_jpeg_from_cover_bytes(raw: bytes) -> bytes:
+    with Image.open(io.BytesIO(raw)) as im:
+        im = ImageOps.exif_transpose(im)
+        if im.mode == "CMYK":
+            im = im.convert("RGB")
+        im = _maybe_downscale(im)
+        if im.mode not in ("RGB", "RGBA"):
+            if im.mode in ("L", "LA"):
+                im = im.convert("RGBA" if im.mode == "LA" else "RGB")
+            else:
+                im = im.convert("RGBA" if "transparency" in im.info else "RGB")
+        return encode_image_as_share_jpeg(im)
 
 
 def _encode_delivery(im: Image.Image, stem: str) -> tuple[str, ContentFile]:
@@ -146,3 +201,5 @@ def normalize_image_field_file(
         stem = _base_name(field.name)
         filename, content = _encode_delivery(im, stem)
         field.save(filename, content, save=False)
+        if field_name == "cover_image" and field.name:
+            save_social_share_jpeg(field.name, im)
