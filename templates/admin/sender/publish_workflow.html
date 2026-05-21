@@ -10,7 +10,7 @@
     <select name="post_id" id="id_post_id" required>
       <option value="">— choose —</option>
       {% for p in posts %}
-        <option value="{{ p.pk }}"{% if form_post_id == p.pk or preview_post_id == p.pk %} selected{% endif %}>
+        <option value="{{ p.pk }}"{% if form_post_id == p.pk %} selected{% endif %}>
           {% if p.title %}{{ p.title }}{% else %}#{{ p.pk }}{% endif %} ({{ p.slug }})
         </option>
       {% endfor %}
@@ -25,33 +25,18 @@
       <label><input type="checkbox" name="dest_telegram" value="1"> Telegram</label>
     </div>
   </fieldset>
-  <div class="submit-row">
-    <input type="submit" value="Publish" class="default">
-  </div>
-</form>
-
-<form method="get" class="module" style="margin-top: 1.5em;">
-  <h2>Telegram preview</h2>
-  <p>Show how the post will be split and formatted for Telegram (HTML parse mode).</p>
-  <div class="form-row">
-    <label for="id_preview_post_id">Post</label>
-    <select name="post_id" id="id_preview_post_id" required>
-      <option value="">— choose —</option>
-      {% for p in posts %}
-        <option value="{{ p.pk }}"{% if preview_post_id == p.pk or form_post_id == p.pk %} selected{% endif %}>
-          {% if p.title %}{{ p.title }}{% else %}#{{ p.pk }}{% endif %} ({{ p.slug }})
-        </option>
-      {% endfor %}
-    </select>
-  </div>
-  <input type="hidden" name="preview_telegram" value="1">
-  <div class="submit-row">
-    <input type="submit" value="Preview Telegram formatting">
-  </div>
+  <fieldset class="module aligned" style="margin-top: 1.5em;">
+    <legend>Telegram preview</legend>
+    <p class="help">Uses the post selected above. Shows final Telegram HTML formatting and message split.</p>
+    <div class="submit-row">
+      <button type="submit" name="preview_telegram" value="1" class="button">Preview Telegram formatting</button>
+      <input type="submit" value="Publish" class="default">
+    </div>
+  </fieldset>
 </form>
 
 {% if preview_rows %}
-  <div class="module" style="margin-top: 1.5em;">
+  <div id="telegram-preview" class="module" style="margin-top: 1.5em;">
     <h2>Expected Telegram messages</h2>
     {% if telegram_layout_source %}
       <p class="help">
@@ -73,6 +58,12 @@
       </fieldset>
     {% endfor %}
   </div>
+  <script>
+    document.getElementById("telegram-preview")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  </script>
 {% endif %}
 
 {% if not posts %}

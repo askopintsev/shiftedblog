@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from django.contrib import messages
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
@@ -21,6 +23,77 @@ from sender.services.telegram_publisher import (
     preview_plan_for_post,
 )
 
+logger = logging.getLogger(__name__)
+
+
+def _parse_post_id(raw: str | None) -> int:
+    try:
+        return int(raw or "0")
+    except ValueError:
+        return 0
+
+
+def _build_telegram_preview(
+    request: HttpRequest,
+    post_id: int,
+) -> tuple[list[dict] | None, int | None, bool | None, str]:
+    """Return preview rows and layout metadata for ``post_id``."""
+    if not post_id:
+        messages.error(request, "Select a post before previewing Telegram formatting.")
+        return None, None, None, ""
+
+    post = get_object_or_404(
+        editor_models.Post.objects.prefetch_related("tags", "gallery_images"),
+        pk=post_id,
+        status="ready_to_publish",
+    )
+    try:
+        secrets = _telegram_secrets()
+        plan = preview_plan_for_post(post, secrets)
+        preview_rows = build_preview_payload(plan)
+    except Exception:
+        logger.exception("Telegram preview failed for post_id=%s", post_id)
+        messages.error(
+            request,
+            "Could not build Telegram preview. Check server logs for details.",
+        )
+        return None, post_id, None, ""
+
+    if not preview_rows:
+        messages.warning(request, "Nothing to preview for the selected post.")
+
+    token = (secrets.get("bot_token") or "").strip()
+    chat_id = telegram_chat_id_from_secrets(secrets)
+    telegram_owner_premium: bool | None = None
+    if token and chat_id:
+        try:
+            telegram_owner_premium = channel_owner_has_premium(token, chat_id)
+        except Exception:
+            logger.exception(
+                "Telegram owner Premium lookup failed for chat_id=%s",
+                chat_id,
+            )
+
+    layout_source = ""
+    if plan.has_subscription:
+        if telegram_owner_premium is True:
+            layout_source = "Channel owner has Telegram Premium (auto-detected)."
+        elif telegram_owner_premium is False:
+            layout_source = (
+                "Separate text and images (not owner Premium; "
+                "check credential override or env)."
+            )
+        else:
+            layout_source = "Separate text and images (forced in credentials or env)."
+    elif telegram_owner_premium is False:
+        layout_source = "Owner has no Premium: cover caption + gallery when possible."
+    elif telegram_owner_premium is True:
+        layout_source = "Owner has Premium but layout override is off."
+    else:
+        layout_source = "Standard layout (caption + gallery when one post fits)."
+
+    return preview_rows, post_id, telegram_owner_premium, layout_source
+
 
 @require_http_methods(["GET", "POST"])
 def publish_workflow(request: HttpRequest) -> HttpResponse:
@@ -35,56 +108,25 @@ def publish_workflow(request: HttpRequest) -> HttpResponse:
     selected_post_id = request.GET.get("post_id") or request.POST.get("post_id")
 
     if request.method == "GET" and request.GET.get("preview_telegram"):
-        try:
-            preview_post_id = int(selected_post_id or "0")
-        except ValueError:
-            preview_post_id = 0
-        if preview_post_id:
-            post = get_object_or_404(
-                editor_models.Post.objects.prefetch_related("tags", "gallery_images"),
-                pk=preview_post_id,
-                status="ready_to_publish",
-            )
-            secrets = _telegram_secrets()
-            plan = preview_plan_for_post(post, secrets)
-            preview_rows = build_preview_payload(plan)
-            token = (secrets.get("bot_token") or "").strip()
-            chat_id = telegram_chat_id_from_secrets(secrets)
-            if token and chat_id:
-                telegram_owner_premium = channel_owner_has_premium(token, chat_id)
-            if plan.has_subscription:
-                if telegram_owner_premium is True:
-                    telegram_layout_source = (
-                        "Channel owner has Telegram Premium (auto-detected)."
-                    )
-                elif telegram_owner_premium is False:
-                    telegram_layout_source = (
-                        "Separate text and images (not owner Premium; "
-                        "check credential override or env)."
-                    )
-                else:
-                    telegram_layout_source = (
-                        "Separate text and images (forced in credentials or env)."
-                    )
-            else:
-                if telegram_owner_premium is False:
-                    telegram_layout_source = (
-                        "Owner has no Premium: cover caption + gallery when possible."
-                    )
-                elif telegram_owner_premium is True:
-                    telegram_layout_source = (
-                        "Owner has Premium but layout override is off."
-                    )
-                else:
-                    telegram_layout_source = (
-                        "Standard layout (caption + gallery when one post fits)."
-                    )
+        post_id = _parse_post_id(selected_post_id)
+        (
+            preview_rows,
+            preview_post_id,
+            telegram_owner_premium,
+            telegram_layout_source,
+        ) = _build_telegram_preview(request, post_id)
 
-    if request.method == "POST":
-        try:
-            post_id = int(request.POST.get("post_id") or "0")
-        except ValueError:
-            post_id = 0
+    if request.method == "POST" and request.POST.get("preview_telegram"):
+        post_id = _parse_post_id(selected_post_id)
+        (
+            preview_rows,
+            preview_post_id,
+            telegram_owner_premium,
+            telegram_layout_source,
+        ) = _build_telegram_preview(request, post_id)
+
+    if request.method == "POST" and not request.POST.get("preview_telegram"):
+        post_id = _parse_post_id(selected_post_id)
         slugs: list[str] = []
         if request.POST.get("dest_site"):
             slugs.append(NETWORK_SLUG_SITE)
@@ -116,10 +158,7 @@ def publish_workflow(request: HttpRequest) -> HttpResponse:
 
         return HttpResponseRedirect(reverse("sender_publish_workflow"))
 
-    try:
-        form_post_id = int(selected_post_id or "0") if selected_post_id else None
-    except ValueError:
-        form_post_id = None
+    form_post_id = _parse_post_id(selected_post_id) or None
 
     return render(
         request,
@@ -132,7 +171,7 @@ def publish_workflow(request: HttpRequest) -> HttpResponse:
             "NETWORK_SLUG_TELEGRAM": NETWORK_SLUG_TELEGRAM,
             "preview_rows": preview_rows,
             "preview_post_id": preview_post_id,
-            "form_post_id": form_post_id,
+            "form_post_id": preview_post_id or form_post_id,
             "telegram_owner_premium": telegram_owner_premium,
             "telegram_layout_source": telegram_layout_source,
         },

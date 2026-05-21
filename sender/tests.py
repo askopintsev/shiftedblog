@@ -295,10 +295,18 @@ class PublishWorkflowViewTests(TestCase):
         )
         self.client.force_login(self.admin)
         url = reverse("sender_publish_workflow")
-        rsp = self.client.get(
+        rsp = self.client.post(
             url,
             {"post_id": post.pk, "preview_telegram": "1"},
         )
         self.assertEqual(rsp.status_code, 200)
         self.assertContains(rsp, "Expected Telegram messages")
         self.assertContains(rsp, "<b>Preview</b>")
+        self.assertContains(rsp, 'id="telegram-preview"')
+
+    def test_publish_workflow_preview_requires_post_selection(self):
+        self.client.force_login(self.admin)
+        url = reverse("sender_publish_workflow")
+        rsp = self.client.post(url, {"preview_telegram": "1"})
+        self.assertEqual(rsp.status_code, 200)
+        self.assertNotContains(rsp, "Expected Telegram messages")
