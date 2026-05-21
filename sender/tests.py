@@ -61,6 +61,22 @@ class TelegramFormatTests(TestCase):
         out = html_body_to_telegram_html(html)
         self.assertIn("Line one\nLine two", out)
 
+    def test_ckeditor_span_bold_converts_to_telegram_b(self):
+        html = '<p><span style="font-weight:bold">Bold</span> plain</p>'
+        out = html_body_to_telegram_html(html)
+        self.assertIn("<b>Bold</b>", out)
+
+    def test_balance_closes_unclosed_tags(self):
+        from sender.services.telegram_format import balance_telegram_html
+
+        self.assertEqual(balance_telegram_html("<b>Title"), "<b>Title</b>")
+
+    def test_code_block_uses_pre_only(self):
+        html = '<pre><code class="language-python">x = 1</code></pre>'
+        out = html_body_to_telegram_html(html)
+        self.assertIn("<pre>x = 1</pre>", out)
+        self.assertNotIn("<code>", out)
+
     def test_continuation_prefix_on_second_chunk(self):
         post = Post(title="", body=f"<p>{'word ' * 3000}</p>")
         plan = build_telegram_plan(post, has_subscription=False)
@@ -274,20 +290,20 @@ class TelegramPublishJobTests(TestCase):
         mock_resp.text = "{}"
         plan = resolve_telegram_plan(self.post)
         preview_text = plan.steps[0].text
-        with mock.patch("sender.services.telegram_publisher.requests.post") as m:
-            m.return_value = mock_resp
+        with mock.patch(
+            "sender.services.telegram_publisher._api_post_multipart",
+        ) as photo_api, mock.patch(
+            "sender.services.telegram_publisher._api_post_json",
+        ) as msg_api:
+            photo_api.return_value = (mock_resp.json.return_value, mock_resp)
+            msg_api.return_value = (mock_resp.json.return_value, mock_resp)
             from sender.services.telegram_publisher import publish_to_telegram
 
             publish_to_telegram(self.post)
-        sent: list[str] = []
-        for call in m.call_args_list:
-            data = call.kwargs.get("data") or call.kwargs.get("json") or {}
-            if data.get("caption"):
-                sent.append(str(data["caption"]))
-            if data.get("text"):
-                sent.append(str(data["text"]))
-        self.assertEqual([preview_text], sent)
-        self.assertIn("<b>TG</b>", preview_text)
+        photo_fields = photo_api.call_args[0][2]
+        self.assertEqual(photo_fields["parse_mode"], (None, "HTML"))
+        self.assertEqual(photo_fields["caption"][1], preview_text)
+        msg_api.assert_not_called()
 
     def test_telegram_numeric_chat_id_unchanged(self):
         net = Network.objects.get(slug=NETWORK_SLUG_TELEGRAM)
