@@ -4,25 +4,20 @@ from __future__ import annotations
 
 import logging
 import re
-from html import escape
+from html import escape, unescape
 from html.parser import HTMLParser
 
 from editor.models import Post
 
 logger = logging.getLogger(__name__)
 
-# Telegram Bot API HTML subset (parse_mode=HTML).
+# Telegram Bot API HTML (parse_mode=HTML) — only these tags are valid.
 _TG_ALLOWED: frozenset[str] = frozenset(
     {
         "b",
-        "strong",
         "i",
-        "em",
         "u",
-        "ins",
         "s",
-        "strike",
-        "del",
         "a",
         "code",
         "pre",
@@ -39,12 +34,6 @@ _BLOCK_BREAK_TAGS: frozenset[str] = frozenset(
         "blockquote",
         "li",
         "tr",
-        "h1",
-        "h2",
-        "h3",
-        "h4",
-        "h5",
-        "h6",
         "figure",
         "figcaption",
     }
@@ -54,6 +43,8 @@ _BALANCE_TAGS: frozenset[str] = frozenset(
     {"b", "i", "u", "s", "a", "code", "pre", "blockquote"},
 )
 
+_NESTABLE_INLINE = frozenset({"b", "i", "u", "s"})
+
 _GALLERY_PLACEHOLDER_RE = re.compile(r"\[gallery:\d+\]", re.IGNORECASE)
 _IMG_SRC_RE = re.compile(
     r"""<img[^>]+src=["']([^"']+)["']""",
@@ -61,7 +52,6 @@ _IMG_SRC_RE = re.compile(
 )
 _HREF_RE = re.compile(r"<a\s+href=", re.IGNORECASE)
 _TAG_TOKEN_RE = re.compile(r"</?([a-zA-Z]+)(?:\s[^>]*)?>", re.IGNORECASE)
-# Telegram shows paragraph gaps reliably with a blank line (double newline).
 _BLOCK_BREAK = "\n\n"
 _LINE_BREAK = "\n"
 
@@ -71,7 +61,7 @@ def escape_telegram_html(text: str) -> str:
 
 
 def balance_telegram_html(html: str) -> str:
-    """Close any unclosed Telegram HTML tags so parse_mode=HTML is accepted."""
+    """Close any unclosed Telegram HTML tags."""
     if not html:
         return ""
     stack: list[str] = []
@@ -87,7 +77,6 @@ def balance_telegram_html(html: str) -> str:
             if stack and stack[-1] == tag:
                 stack.pop()
                 parts.append(token)
-            # Drop stray closing tags.
         else:
             stack.append(tag)
             parts.append(token)
@@ -96,6 +85,74 @@ def balance_telegram_html(html: str) -> str:
     for tag in reversed(stack):
         parts.append(f"</{tag}>")
     return "".join(parts)
+
+
+def sanitize_telegram_html(html: str) -> str:
+    """Normalize output to Telegram-safe HTML (see Bot API formatting options)."""
+    if not html:
+        return ""
+
+    text = html
+    text = re.sub(r"<strong\b[^>]*>", "<b>", text, flags=re.IGNORECASE)
+    text = re.sub(r"</strong>", "</b>", text, flags=re.IGNORECASE)
+    text = re.sub(r"<em\b[^>]*>", "<i>", text, flags=re.IGNORECASE)
+    text = re.sub(r"</em>", "</i>", text, flags=re.IGNORECASE)
+    text = re.sub(r"<ins\b[^>]*>", "<u>", text, flags=re.IGNORECASE)
+    text = re.sub(r"</ins>", "</u>", text, flags=re.IGNORECASE)
+    text = re.sub(r"<(?:strike|del)\b[^>]*>", "<s>", text, flags=re.IGNORECASE)
+    text = re.sub(r"</(?:strike|del)>", "</s>", text, flags=re.IGNORECASE)
+
+    text = re.sub(r"<p[^>]*>\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s*</p>", _BLOCK_BREAK, text, flags=re.IGNORECASE)
+    text = re.sub(r"<div[^>]*>\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s*</div>", _BLOCK_BREAK, text, flags=re.IGNORECASE)
+    text = re.sub(r"<br\s*/?>", _LINE_BREAK, text, flags=re.IGNORECASE)
+
+    for tag in _NESTABLE_INLINE:
+        while True:
+            merged = re.sub(
+                rf"<{tag}>\s*<{tag}>",
+                f"<{tag}>",
+                text,
+                flags=re.IGNORECASE,
+            )
+            merged = re.sub(
+                rf"</{tag}>\s*</{tag}>",
+                f"</{tag}>",
+                merged,
+                flags=re.IGNORECASE,
+            )
+            if merged == text:
+                break
+            text = merged
+
+    for tag in _NESTABLE_INLINE:
+        text = re.sub(rf"<{tag}>\s*</{tag}>", "", text, flags=re.IGNORECASE)
+        text = re.sub(rf"<{tag}>\s+", f"<{tag}>", text, flags=re.IGNORECASE)
+        text = re.sub(rf"\s+</{tag}>", f"</{tag}>", text, flags=re.IGNORECASE)
+
+    text = re.sub(r"\n{3,}", _BLOCK_BREAK, text)
+    text = balance_telegram_html(text.strip())
+    return text
+
+
+def _convert_headings_to_telegram_blocks(html: str) -> str:
+    """Headings → blank line + ``<b>title</b>`` + blank line."""
+
+    def repl(match: re.Match[str]) -> str:
+        inner = match.group(1) or ""
+        plain = re.sub(r"<[^>]+>", "", inner)
+        plain = unescape(plain).strip()
+        if not plain:
+            return _BLOCK_BREAK
+        return f"{_BLOCK_BREAK}<b>{escape_telegram_html(plain)}</b>{_BLOCK_BREAK}"
+
+    return re.sub(
+        r"<h[1-6][^>]*>(.*?)</h[1-6]>",
+        repl,
+        html,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
 
 
 def normalize_editor_html(html: str) -> str:
@@ -135,9 +192,7 @@ def normalize_editor_html(html: str) -> str:
     )
     text = re.sub(r"<pre>\s*<code[^>]*>", "<pre>", text, flags=re.IGNORECASE)
     text = re.sub(r"</code>\s*</pre>", "</pre>", text, flags=re.IGNORECASE)
-    text = re.sub(r"<h[1-6](\s[^>]*)?>", "<h3>", text, flags=re.IGNORECASE)
-    text = re.sub(r"</h[1-6]>", "</h3>", text, flags=re.IGNORECASE)
-    return text
+    return _convert_headings_to_telegram_blocks(text)
 
 
 def format_tags_line(post: Post) -> str:
@@ -168,11 +223,11 @@ def html_contains_link(html: str) -> bool:
 def _map_tag_to_telegram(tag_l: str) -> str | None:
     if tag_l in ("strike", "del"):
         return "s"
-    if tag_l == "strong":
+    if tag_l in ("strong", "b"):
         return "b"
-    if tag_l == "em":
+    if tag_l in ("em", "i"):
         return "i"
-    if tag_l == "ins":
+    if tag_l in ("ins", "u"):
         return "u"
     if tag_l in _TG_ALLOWED:
         return tag_l
@@ -186,20 +241,17 @@ class _TelegramHTMLConverter(HTMLParser):
         super().__init__(convert_charrefs=True)
         self._out: list[str] = []
         self._tag_stack: list[str] = []
-        self._pending_h3_break = False
         self._in_pre = False
 
     def get_html(self) -> str:
-        return balance_telegram_html("".join(self._out).strip())
+        return sanitize_telegram_html("".join(self._out).strip())
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         tag_l = tag.lower()
         if tag_l == "br":
             self._out.append(_LINE_BREAK)
             return
-        if tag_l == "h3":
-            self._pending_h3_break = True
-            self._open_tag("b")
+        if tag_l.startswith("h") and tag_l[1:].isdigit():
             return
         if tag_l == "img":
             return
@@ -227,13 +279,13 @@ class _TelegramHTMLConverter(HTMLParser):
             return
         tg = _map_tag_to_telegram(tag_l)
         if tg:
+            if tg in _NESTABLE_INLINE and tg in self._tag_stack:
+                return
             self._open_tag(tg)
 
     def handle_endtag(self, tag: str) -> None:
         tag_l = tag.lower()
-        if tag_l == "h3":
-            self._close_tag("b")
-            self._out.append(_BLOCK_BREAK)
+        if tag_l.startswith("h") and tag_l[1:].isdigit():
             return
         if tag_l == "img":
             return
@@ -253,6 +305,8 @@ class _TelegramHTMLConverter(HTMLParser):
             return
         tg = _map_tag_to_telegram(tag_l)
         if tg:
+            if tg in _NESTABLE_INLINE and tg not in self._tag_stack:
+                return
             self._close_tag(tg)
             if tag_l == "blockquote":
                 self._out.append(_BLOCK_BREAK)
@@ -263,9 +317,6 @@ class _TelegramHTMLConverter(HTMLParser):
     def handle_data(self, data: str) -> None:
         if not data:
             return
-        if self._pending_h3_break:
-            self._out.append(_BLOCK_BREAK)
-            self._pending_h3_break = False
         self._out.append(escape_telegram_html(data))
 
     def handle_entityref(self, name: str) -> None:
@@ -279,6 +330,8 @@ class _TelegramHTMLConverter(HTMLParser):
         self._tag_stack.append(tag)
 
     def _close_tag(self, tag: str) -> None:
+        if tag not in self._tag_stack:
+            return
         while self._tag_stack:
             open_tag = self._tag_stack.pop()
             self._out.append(f"</{open_tag}>")
@@ -310,10 +363,8 @@ def html_body_to_telegram_html(html: str) -> str:
         )
         from django.utils.html import strip_tags
 
-        return escape_telegram_html(strip_tags(cleaned))
-    text = parser.get_html()
-    text = re.sub(r"\n{3,}", _BLOCK_BREAK, text)
-    return text.strip()
+        return sanitize_telegram_html(escape_telegram_html(strip_tags(cleaned)))
+    return parser.get_html()
 
 
 def build_formatted_message(post: Post, *, include_tags: bool = True) -> str:
@@ -333,7 +384,7 @@ def build_formatted_message(post: Post, *, include_tags: bool = True) -> str:
                 lines.append("")
             lines.append(tags_line)
     message = "\n".join(lines).strip()
-    return balance_telegram_html(message)
+    return sanitize_telegram_html(message)
 
 
 def truncate_telegram_html(text: str, max_len: int) -> str:
@@ -347,4 +398,9 @@ def truncate_telegram_html(text: str, max_len: int) -> str:
     if split_at < max_len // 3:
         split_at = max_len
     trimmed = cut[:split_at].rstrip()
-    return balance_telegram_html(trimmed)
+    return sanitize_telegram_html(trimmed)
+
+
+def prepare_outbound_telegram_html(text: str) -> str:
+    """Final pass before Bot API send (caption or message text)."""
+    return sanitize_telegram_html(text)

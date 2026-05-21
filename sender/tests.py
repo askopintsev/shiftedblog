@@ -49,7 +49,15 @@ class TelegramFormatTests(TestCase):
     def test_h3_gets_blank_line_and_bold(self):
         html = "<h3>Section</h3><p>After</p>"
         out = html_body_to_telegram_html(html)
-        self.assertIn("\n\n<b>Section</b>", out)
+        self.assertIn("<b>Section</b>", out)
+        self.assertNotIn("<b><b>", out)
+
+    def test_h3_with_inner_strong_is_single_bold(self):
+        html = "<h3><strong>Title</strong></h3><p><strong>1906</strong> — year</p>"
+        out = html_body_to_telegram_html(html)
+        self.assertNotIn("<b><b>", out)
+        self.assertIn("<b>Title</b>", out)
+        self.assertIn("<b>1906</b>", out)
 
     def test_paragraphs_keep_line_breaks(self):
         html = "<p>First line</p><p>Second line</p>"
