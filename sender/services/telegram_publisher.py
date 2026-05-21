@@ -19,6 +19,7 @@ from sender.services.telegram_channel import (
     channel_has_subscription,
     telegram_chat_id_from_secrets,
 )
+from sender.services.telegram_format import truncate_telegram_html
 from sender.services.telegram_plan import (
     MAX_CAPTION_LEN,
     MAX_MEDIA_GROUP,
@@ -102,26 +103,43 @@ def _photo_upload_file(storage_path: str) -> tuple[str, bytes, str]:
     return base or "image.jpg", raw, "image/jpeg"
 
 
-def _api_post(
+def _api_post_json(
     token: str,
     method: str,
-    *,
-    data: dict[str, Any] | None = None,
-    files: dict[str, tuple[str, bytes, str]] | None = None,
+    payload: dict[str, Any],
 ) -> tuple[dict[str, Any], requests.Response]:
     url = f"{TG_API}/bot{token}/{method}"
     resp = requests.post(
         url,
-        data=data or {},
-        files=files,
+        json=payload,
         timeout=90,
         proxies=_proxies(),
     )
     try:
-        payload = resp.json()
+        body = resp.json()
     except ValueError:
-        payload = {"ok": False, "description": resp.text[:500]}
-    return payload, resp
+        body = {"ok": False, "description": resp.text[:500]}
+    return body, resp
+
+
+def _api_post_multipart(
+    token: str,
+    method: str,
+    fields: dict[str, tuple[str | None, str] | tuple[str, bytes, str]],
+) -> tuple[dict[str, Any], requests.Response]:
+    """Send multipart request; non-file fields use ``(None, value)`` tuples."""
+    url = f"{TG_API}/bot{token}/{method}"
+    resp = requests.post(
+        url,
+        files=fields,
+        timeout=90,
+        proxies=_proxies(),
+    )
+    try:
+        body = resp.json()
+    except ValueError:
+        body = {"ok": False, "description": resp.text[:500]}
+    return body, resp
 
 
 def _fail_from_payload(
@@ -141,10 +159,10 @@ def _send_message(
 ) -> tuple[PublishResult, str]:
     if not text:
         return PublishResult(ok=True), ""
-    payload, resp = _api_post(
+    payload, resp = _api_post_json(
         token,
         "sendMessage",
-        data={
+        {
             "chat_id": chat_id,
             "text": text,
             "parse_mode": PARSE_MODE,
@@ -163,17 +181,15 @@ def _send_photo(
     storage_path: str,
     caption: str | None,
 ) -> tuple[PublishResult, str]:
-    fname, data, mime = _photo_upload_file(storage_path)
-    form: dict[str, Any] = {"chat_id": chat_id}
+    fname, photo_bytes, mime = _photo_upload_file(storage_path)
+    fields: dict[str, tuple[str | None, str] | tuple[str, bytes, str]] = {
+        "chat_id": (None, str(chat_id)),
+        "photo": (fname, photo_bytes, mime),
+    }
     if caption:
-        form["caption"] = caption[:MAX_CAPTION_LEN]
-        form["parse_mode"] = PARSE_MODE
-    payload, resp = _api_post(
-        token,
-        "sendPhoto",
-        data=form,
-        files={"photo": (fname, data, mime)},
-    )
+        fields["caption"] = (None, truncate_telegram_html(caption, MAX_CAPTION_LEN))
+        fields["parse_mode"] = (None, PARSE_MODE)
+    payload, resp = _api_post_multipart(token, "sendPhoto", fields)
     if not payload.get("ok"):
         return _fail_from_payload(payload, resp), ""
     link = _message_url_from_response(payload)
@@ -188,17 +204,16 @@ def _send_media_group(
     if not paths:
         return PublishResult(ok=True), ""
     media_json: list[dict[str, str]] = []
-    files: dict[str, tuple[str, bytes, str]] = {}
+    fields: dict[str, tuple[str | None, str] | tuple[str, bytes, str]] = {
+        "chat_id": (None, str(chat_id)),
+    }
     for i, path in enumerate(paths[:MAX_MEDIA_GROUP]):
         key = f"file{i}"
         fname, data, mime = _photo_upload_file(path)
         media_json.append({"type": "photo", "media": f"attach://{key}"})
-        files[key] = (fname, data, mime)
-    form: dict[str, Any] = {
-        "chat_id": chat_id,
-        "media": json.dumps(media_json, separators=(",", ":")),
-    }
-    payload, resp = _api_post(token, "sendMediaGroup", data=form, files=files)
+        fields[key] = (fname, data, mime)
+    fields["media"] = (None, json.dumps(media_json, separators=(",", ":")))
+    payload, resp = _api_post_multipart(token, "sendMediaGroup", fields)
     if not payload.get("ok"):
         return _fail_from_payload(payload, resp), ""
     result = payload.get("result") or []
