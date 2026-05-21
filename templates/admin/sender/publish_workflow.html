@@ -3,7 +3,7 @@
 {% block content %}
 <h1>Multi-channel publish</h1>
 <p>Select a post in <strong>Ready to publish</strong> and destinations. On full success, status becomes <strong>Published</strong>.</p>
-<form method="post">
+<form method="post" id="publish-form">
   {% csrf_token %}
   <div class="form-row">
     <label for="id_post_id">Post</label>
@@ -25,15 +25,22 @@
       <label><input type="checkbox" name="dest_telegram" value="1"> Telegram</label>
     </div>
   </fieldset>
-  <fieldset class="module aligned" style="margin-top: 1.5em;">
-    <legend>Telegram preview</legend>
-    <p class="help">Uses the post selected above. Shows final Telegram HTML formatting and message split.</p>
-    <div class="submit-row">
-      <button type="submit" name="preview_telegram" value="1" class="button">Preview Telegram formatting</button>
-      <input type="submit" value="Publish" class="default">
-    </div>
-  </fieldset>
+  <div class="submit-row">
+    <button type="submit" name="workflow_action" value="publish" class="default">Publish</button>
+  </div>
 </form>
+
+<fieldset class="module aligned" style="margin-top: 1.5em;">
+  <legend>Telegram preview</legend>
+  <p class="help">Uses the post selected above. Read-only — does not publish.</p>
+  <form method="get" id="telegram-preview-form">
+    <input type="hidden" name="post_id" id="preview_post_id" value="">
+    <input type="hidden" name="preview_telegram" value="1">
+    <div class="submit-row">
+      <button type="submit" class="button">Preview Telegram formatting</button>
+    </div>
+  </form>
+</fieldset>
 
 {% if preview_rows %}
   <div id="telegram-preview" class="module" style="margin-top: 1.5em;">
@@ -69,6 +76,26 @@
     });
   </script>
 {% endif %}
+
+<script>
+(function () {
+  var publishSelect = document.getElementById("id_post_id");
+  var previewForm = document.getElementById("telegram-preview-form");
+  var previewPostId = document.getElementById("preview_post_id");
+  if (!publishSelect || !previewForm || !previewPostId) {
+    return;
+  }
+  previewForm.addEventListener("submit", function (event) {
+    var postId = publishSelect.value;
+    if (!postId) {
+      event.preventDefault();
+      publishSelect.reportValidity();
+      return;
+    }
+    previewPostId.value = postId;
+  });
+})();
+</script>
 
 {% if not posts %}
 <p class="warning">No posts in “Ready to publish”.</p>
