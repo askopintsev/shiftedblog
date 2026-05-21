@@ -26,7 +26,7 @@ from sender.services.telegram_plan import (
     TelegramPublishPlan,
     _chunk_media,
     build_telegram_plan,
-    caption_for_step,
+    text_dispatches_for_step,
 )
 
 logger = logging.getLogger(__name__)
@@ -215,7 +215,12 @@ def _execute_step(
     has_subscription: bool,
 ) -> tuple[PublishResult, str]:
     """Run one plan step; return overall result and first message URL in step."""
-    caption = caption_for_step(step, has_subscription=has_subscription)
+    dispatches = text_dispatches_for_step(
+        step,
+        has_subscription=has_subscription,
+    )
+    caption = next((text for kind, text in dispatches if kind == "caption"), None)
+    message = next((text for kind, text in dispatches if kind == "message"), None)
     first_link = ""
 
     if step.cover_path:
@@ -225,9 +230,8 @@ def _execute_step(
         if link and not first_link:
             first_link = link
 
-    text_as_caption = caption is not None and caption == step.text
-    if step.text and not text_as_caption:
-        res, link = _send_message(token, chat_id, step.text)
+    if message:
+        res, link = _send_message(token, chat_id, message)
         if not res.ok:
             return res, first_link
         if link and not first_link:
@@ -241,6 +245,27 @@ def _execute_step(
             first_link = link
 
     return PublishResult(ok=True, url=first_link), first_link
+
+
+def _telegram_runtime(
+    secrets: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], str, str]:
+    secrets = secrets if secrets is not None else _telegram_secrets()
+    token = (
+        secrets.get("bot_token") or getattr(settings, "TELEGRAM_BOT_TOKEN", "")
+    ).strip()
+    chat_id = telegram_chat_id_from_secrets(secrets)
+    return secrets, token, chat_id
+
+
+def resolve_telegram_plan(
+    post: Post,
+    secrets: dict[str, Any] | None = None,
+) -> TelegramPublishPlan:
+    """Single entry point for preview and publish — same formatting and layout."""
+    post = Post.objects.prefetch_related("tags", "gallery_images").get(pk=post.pk)
+    secrets, token, chat_id = _telegram_runtime(secrets)
+    return build_plan_for_post(post, secrets, token=token, chat_id=chat_id)
 
 
 def build_plan_for_post(
@@ -258,21 +283,12 @@ def preview_plan_for_post(
     post: Post,
     secrets: dict[str, Any] | None = None,
 ) -> TelegramPublishPlan:
-    secrets = secrets if secrets is not None else _telegram_secrets()
-    token = (
-        secrets.get("bot_token") or getattr(settings, "TELEGRAM_BOT_TOKEN", "")
-    ).strip()
-    chat_id = telegram_chat_id_from_secrets(secrets)
-    return build_plan_for_post(post, secrets, token=token, chat_id=chat_id)
+    """Alias for :func:`resolve_telegram_plan` (admin preview)."""
+    return resolve_telegram_plan(post, secrets)
 
 
 def publish_to_telegram(post: Post) -> PublishResult:
-    post = Post.objects.prefetch_related("tags", "gallery_images").get(pk=post.pk)
-    secrets = _telegram_secrets()
-    token = (
-        secrets.get("bot_token") or getattr(settings, "TELEGRAM_BOT_TOKEN", "")
-    ).strip()
-    chat_id = telegram_chat_id_from_secrets(secrets)
+    secrets, token, chat_id = _telegram_runtime()
 
     if not token or not chat_id:
         return PublishResult(
@@ -285,7 +301,7 @@ def publish_to_telegram(post: Post) -> PublishResult:
             ),
         )
 
-    plan = build_plan_for_post(post, secrets, token=token, chat_id=chat_id)
+    plan = resolve_telegram_plan(post, secrets)
     if not plan.steps:
         return PublishResult(ok=False, error="empty_plan", detail="Nothing to publish.")
 

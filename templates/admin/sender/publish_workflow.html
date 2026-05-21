@@ -54,7 +54,11 @@
           {% if row.media_count %}<strong>Галерея:</strong> {{ row.media_count }} изображений
             {% if row.media_groups > 1 %} ({{ row.media_groups }} отправки media group){% endif %}.<br>{% endif %}
         </p>
-        <pre style="white-space: pre-wrap; background: #f8f8f8; padding: 12px; border: 1px solid #ddd; max-width: 900px;">{{ row.text }}</pre>
+        <pre style="white-space: pre-wrap; background: #f8f8f8; padding: 12px; border: 1px solid #ddd; max-width: 900px;">{% for d in row.dispatches %}{% if d.kind == "caption" %}[Photo caption]
+{% elif d.kind == "message" %}[Text message]
+{% endif %}{{ d.text }}{% if not forloop.last %}
+
+{% endif %}{% empty %}{{ row.text }}{% endfor %}</pre>
       </fieldset>
     {% endfor %}
   </div>

@@ -210,24 +210,6 @@ def build_telegram_plan(post: Post, *, has_subscription: bool) -> TelegramPublis
     return TelegramPublishPlan(steps=steps, has_subscription=has_subscription)
 
 
-def build_preview_payload(plan: TelegramPublishPlan) -> list[dict[str, Any]]:
-    """JSON-serializable preview rows for the admin UI."""
-    rows: list[dict[str, Any]] = []
-    for step in plan.steps:
-        media_chunks = _chunk_media(step.media_paths)
-        rows.append(
-            {
-                "label": step.preview_label(),
-                "text": step.text,
-                "has_cover": bool(step.cover_path),
-                "media_count": len(step.media_paths),
-                "media_groups": len(media_chunks),
-                "is_continuation": step.is_continuation,
-            },
-        )
-    return rows
-
-
 def caption_for_step(
     step: TelegramPlannedStep,
     *,
@@ -239,3 +221,44 @@ def caption_for_step(
     if len(step.text) <= MAX_CAPTION_LEN:
         return step.text
     return None
+
+
+def text_dispatches_for_step(
+    step: TelegramPlannedStep,
+    *,
+    has_subscription: bool,
+) -> list[tuple[str, str]]:
+    """Exact ``(kind, text)`` payloads sent to Telegram (caption / message)."""
+    caption = caption_for_step(step, has_subscription=has_subscription)
+    dispatches: list[tuple[str, str]] = []
+    text_as_caption = caption is not None and caption == step.text
+    if caption:
+        dispatches.append(("caption", caption))
+    if step.text and not text_as_caption:
+        dispatches.append(("message", step.text))
+    return dispatches
+
+
+def build_preview_payload(plan: TelegramPublishPlan) -> list[dict[str, Any]]:
+    """JSON-serializable preview rows for the admin UI."""
+    rows: list[dict[str, Any]] = []
+    for step in plan.steps:
+        media_chunks = _chunk_media(step.media_paths)
+        dispatches = text_dispatches_for_step(
+            step,
+            has_subscription=plan.has_subscription,
+        )
+        rows.append(
+            {
+                "label": step.preview_label(),
+                "text": step.text,
+                "dispatches": [
+                    {"kind": kind, "text": text} for kind, text in dispatches
+                ],
+                "has_cover": bool(step.cover_path),
+                "media_count": len(step.media_paths),
+                "media_groups": len(media_chunks),
+                "is_continuation": step.is_continuation,
+            },
+        )
+    return rows
