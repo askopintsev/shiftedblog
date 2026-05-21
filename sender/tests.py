@@ -25,7 +25,11 @@ from sender.services.telegram_format import (
     build_formatted_message,
     html_body_to_telegram_html,
 )
-from sender.services.telegram_plan import CONTINUATION_PREFIX, build_telegram_plan
+from sender.services.telegram_plan import (
+    CONTINUATION_PREFIX,
+    build_telegram_plan,
+)
+from sender.services.telegram_publisher import resolve_telegram_plan
 from sender.services.url_helpers import public_post_url
 
 _FERNET_TEST_KEY = Fernet.generate_key().decode("ascii")
@@ -140,6 +144,26 @@ class TelegramSubscriptionPlanTests(TestCase):
             caption_for_step(plan.steps[0], has_subscription=True),
         )
 
+    def test_preview_and_publish_share_same_plan(self):
+        post = Post(
+            title="Same",
+            body="<p>Hello <strong>world</strong></p>",
+            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+        )
+        post.save()
+        secrets = {"channel_subscription": False}
+        with mock.patch(
+            "sender.services.telegram_channel._api_get",
+            return_value={"ok": True, "result": []},
+        ):
+            preview_plan = resolve_telegram_plan(post, secrets)
+            publish_plan = resolve_telegram_plan(post, secrets)
+        self.assertEqual(
+            preview_plan.steps[0].text,
+            publish_plan.steps[0].text,
+        )
+        self.assertIn("<b>world</b>", preview_plan.steps[0].text)
+
 
 class PublicUrlTests(TestCase):
     @override_settings(SITE_URL="https://example.org")
@@ -238,6 +262,33 @@ class TelegramPublishJobTests(TestCase):
         pl = PostLink.objects.get(post=self.post, network=tg_net)
         self.assertIn("t.me", pl.url)
 
+    def test_publish_sends_preview_formatted_text(self):
+        mock_resp = mock.Mock()
+        mock_resp.json.return_value = {
+            "ok": True,
+            "result": {
+                "message_id": 42,
+                "chat": {"username": "chan", "id": -100},
+            },
+        }
+        mock_resp.text = "{}"
+        plan = resolve_telegram_plan(self.post)
+        preview_text = plan.steps[0].text
+        with mock.patch("sender.services.telegram_publisher.requests.post") as m:
+            m.return_value = mock_resp
+            from sender.services.telegram_publisher import publish_to_telegram
+
+            publish_to_telegram(self.post)
+        sent: list[str] = []
+        for call in m.call_args_list:
+            data = call.kwargs.get("data") or call.kwargs.get("json") or {}
+            if data.get("caption"):
+                sent.append(str(data["caption"]))
+            if data.get("text"):
+                sent.append(str(data["text"]))
+        self.assertEqual([preview_text], sent)
+        self.assertIn("<b>TG</b>", preview_text)
+
     def test_telegram_numeric_chat_id_unchanged(self):
         net = Network.objects.get(slug=NETWORK_SLUG_TELEGRAM)
         cred = Credential.objects.get(network=net)
@@ -295,10 +346,18 @@ class PublishWorkflowViewTests(TestCase):
         )
         self.client.force_login(self.admin)
         url = reverse("sender_publish_workflow")
-        rsp = self.client.get(
+        rsp = self.client.post(
             url,
             {"post_id": post.pk, "preview_telegram": "1"},
         )
         self.assertEqual(rsp.status_code, 200)
         self.assertContains(rsp, "Expected Telegram messages")
         self.assertContains(rsp, "<b>Preview</b>")
+        self.assertContains(rsp, 'id="telegram-preview"')
+
+    def test_publish_workflow_preview_requires_post_selection(self):
+        self.client.force_login(self.admin)
+        url = reverse("sender_publish_workflow")
+        rsp = self.client.post(url, {"preview_telegram": "1"})
+        self.assertEqual(rsp.status_code, 200)
+        self.assertNotContains(rsp, "Expected Telegram messages")
