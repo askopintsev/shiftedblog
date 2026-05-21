@@ -290,11 +290,14 @@ class TelegramPublishJobTests(TestCase):
         mock_resp.text = "{}"
         plan = resolve_telegram_plan(self.post)
         preview_text = plan.steps[0].text
-        with mock.patch(
-            "sender.services.telegram_publisher._api_post_multipart",
-        ) as photo_api, mock.patch(
-            "sender.services.telegram_publisher._api_post_json",
-        ) as msg_api:
+        with (
+            mock.patch(
+                "sender.services.telegram_publisher._api_post_multipart",
+            ) as photo_api,
+            mock.patch(
+                "sender.services.telegram_publisher._api_post_json",
+            ) as msg_api,
+        ):
             photo_api.return_value = (mock_resp.json.return_value, mock_resp)
             msg_api.return_value = (mock_resp.json.return_value, mock_resp)
             from sender.services.telegram_publisher import publish_to_telegram
