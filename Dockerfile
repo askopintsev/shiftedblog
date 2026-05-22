@@ -20,7 +20,6 @@ RUN apt-get update \
         libjpeg-dev \
         zlib1g-dev \
         libwebp-dev \
-        libwebpmux-dev \
         libtiff-dev \
         libopenjp2-7-dev \
         libavif-dev \
