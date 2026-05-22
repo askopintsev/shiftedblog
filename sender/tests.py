@@ -49,7 +49,15 @@ class TelegramFormatTests(TestCase):
     def test_h3_gets_blank_line_and_bold(self):
         html = "<h3>Section</h3><p>After</p>"
         out = html_body_to_telegram_html(html)
-        self.assertIn("\n\n<b>Section</b>", out)
+        self.assertIn("<b>Section</b>", out)
+        self.assertNotIn("<b><b>", out)
+
+    def test_h3_with_inner_strong_is_single_bold(self):
+        html = "<h3><strong>Title</strong></h3><p><strong>1906</strong> — year</p>"
+        out = html_body_to_telegram_html(html)
+        self.assertNotIn("<b><b>", out)
+        self.assertIn("<b>Title</b>", out)
+        self.assertIn("<b>1906</b>", out)
 
     def test_paragraphs_keep_line_breaks(self):
         html = "<p>First line</p><p>Second line</p>"
@@ -365,7 +373,7 @@ class PublishWorkflowViewTests(TestCase):
         )
         self.client.force_login(self.admin)
         url = reverse("sender_publish_workflow")
-        rsp = self.client.post(
+        rsp = self.client.get(
             url,
             {"post_id": post.pk, "preview_telegram": "1"},
         )
@@ -373,10 +381,36 @@ class PublishWorkflowViewTests(TestCase):
         self.assertContains(rsp, "Expected Telegram messages")
         self.assertContains(rsp, "<b>Preview</b>")
         self.assertContains(rsp, 'id="telegram-preview"')
+        post.refresh_from_db()
+        self.assertEqual(post.status, "ready_to_publish")
+
+    def test_publish_workflow_preview_does_not_publish(self):
+        author = cast(UserManager, User.objects).create_user(
+            email="nopub@example.com",
+            password="x",
+        )
+        cat = Category.objects.create(name="Cat")
+        post = Post.objects.create(
+            title="No publish on preview",
+            slug="no-pub-preview",
+            author=author,
+            body="<p>Body</p>",
+            status="ready_to_publish",
+            category=cat,
+        )
+        self.client.force_login(self.admin)
+        url = reverse("sender_publish_workflow")
+        with mock.patch("sender.admin_views.run_publish_job") as publish_job:
+            rsp = self.client.get(
+                url,
+                {"post_id": post.pk, "preview_telegram": "1"},
+            )
+        self.assertEqual(rsp.status_code, 200)
+        publish_job.assert_not_called()
 
     def test_publish_workflow_preview_requires_post_selection(self):
         self.client.force_login(self.admin)
         url = reverse("sender_publish_workflow")
-        rsp = self.client.post(url, {"preview_telegram": "1"})
+        rsp = self.client.get(url, {"preview_telegram": "1"})
         self.assertEqual(rsp.status_code, 200)
         self.assertNotContains(rsp, "Expected Telegram messages")

@@ -116,16 +116,7 @@ def publish_workflow(request: HttpRequest) -> HttpResponse:
             telegram_layout_source,
         ) = _build_telegram_preview(request, post_id)
 
-    if request.method == "POST" and request.POST.get("preview_telegram"):
-        post_id = _parse_post_id(selected_post_id)
-        (
-            preview_rows,
-            preview_post_id,
-            telegram_owner_premium,
-            telegram_layout_source,
-        ) = _build_telegram_preview(request, post_id)
-
-    if request.method == "POST" and not request.POST.get("preview_telegram"):
+    if request.method == "POST" and request.POST.get("workflow_action") == "publish":
         post_id = _parse_post_id(selected_post_id)
         slugs: list[str] = []
         if request.POST.get("dest_site"):
@@ -157,6 +148,9 @@ def publish_workflow(request: HttpRequest) -> HttpResponse:
             messages.success(request, "Selected channels completed.")
 
         return HttpResponseRedirect(reverse("sender_publish_workflow"))
+
+    elif request.method == "POST":
+        messages.error(request, "Unknown publish action.")
 
     form_post_id = _parse_post_id(selected_post_id) or None
 

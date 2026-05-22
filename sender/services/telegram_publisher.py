@@ -19,7 +19,10 @@ from sender.services.telegram_channel import (
     channel_has_subscription,
     telegram_chat_id_from_secrets,
 )
-from sender.services.telegram_format import truncate_telegram_html
+from sender.services.telegram_format import (
+    prepare_outbound_telegram_html,
+    truncate_telegram_html,
+)
 from sender.services.telegram_plan import (
     MAX_CAPTION_LEN,
     MAX_MEDIA_GROUP,
@@ -148,6 +151,12 @@ def _fail_from_payload(
 ) -> PublishResult:
     desc_raw = payload.get("description") or resp.text[:500]
     desc = _telegram_api_error_detail(str(desc_raw))
+    lowered = str(desc_raw).lower()
+    if "parse" in lowered or "entity" in lowered or "html" in lowered:
+        desc = (
+            f"{desc} Check Telegram HTML: only <b>, <i>, <u>, <s>, <a>, "
+            "<code>, <pre>, <blockquote> tags; no nested duplicate tags."
+        )[:700]
     logger.warning("Telegram API error: %s", desc_raw)
     return PublishResult(ok=False, error="telegram_api", detail=desc[:700])
 
@@ -159,6 +168,7 @@ def _send_message(
 ) -> tuple[PublishResult, str]:
     if not text:
         return PublishResult(ok=True), ""
+    text = prepare_outbound_telegram_html(text)
     payload, resp = _api_post_json(
         token,
         "sendMessage",
@@ -187,7 +197,10 @@ def _send_photo(
         "photo": (fname, photo_bytes, mime),
     }
     if caption:
-        fields["caption"] = (None, truncate_telegram_html(caption, MAX_CAPTION_LEN))
+        caption = prepare_outbound_telegram_html(
+            truncate_telegram_html(caption, MAX_CAPTION_LEN),
+        )
+        fields["caption"] = (None, caption)
         fields["parse_mode"] = (None, PARSE_MODE)
     payload, resp = _api_post_multipart(token, "sendPhoto", fields)
     if not payload.get("ok"):
