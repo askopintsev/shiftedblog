@@ -22,14 +22,13 @@
                            href="{% url 'blog:post_lenta' %}">Лента</a>
                         {% endif %}
                     </li>
+                    {% for category in nav_categories %}
                     <li class="nav-item">
-                        <a class="nav-link {% if '/category/blog' in request.path %}active{% endif %}"
-                           href="/category/blog/">Блог</a>
+                        {% url 'blog:post_list_by_category' category.slug as category_url %}
+                        <a class="nav-link {% if request.path == category_url or request.path == category_url|add:'/' %}active{% endif %}"
+                           href="{{ category_url }}">{{ category.name }}</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if '/category/projects' in request.path %}active{% endif %}"
-                           href="/category/projects/">Проекты</a>
-                    </li>
+                    {% endfor %}
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == '/about' or request.path == '/about/' %}active{% endif %}" href="{% url 'team:about' %}">Обо
                             мне</a>

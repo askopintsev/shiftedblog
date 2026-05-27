@@ -14,7 +14,7 @@
         <ul>
             {% for category in categories %}
                 <li>
-                    <a href="{% url 'blog:post_list_by_category' category.list_url_segment %}">
+                    <a href="{% url 'blog:post_list_by_category' category.slug %}">
                         {{ category.name }}
                     </a>
                 </li>

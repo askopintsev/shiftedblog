@@ -87,6 +87,12 @@ def _transliterate_cyrillic_to_latin(text: str) -> str:
     return "".join(parts)
 
 
+def slugify_segment(value: str) -> str:
+    """Transliterate Cyrillic to Latin, then build an ASCII URL slug."""
+    cleaned = _transliterate_cyrillic_to_latin((value or "").strip())
+    return slugify(cleaned) or ""
+
+
 def _plain_body_first_words(body: str | None, n: int = 5) -> str:
     """Strip HTML and join the first ``n`` whitespace-separated tokens."""
     plain = strip_tags(body or "").strip()
@@ -112,28 +118,66 @@ class Category(models.Model):
     """Model for post categories list"""
 
     name = models.CharField(max_length=250)
+    slug = models.SlugField(max_length=100, unique=True)
 
     class Meta:
         app_label = "editor"
         db_table = "editor_category"
+        ordering: ClassVar[list] = ["name"]
 
     def __str__(self):
         return self.name
 
-    def list_url_segment(self) -> str:
-        """ASCII slug for ``category/<slug>/``; never empty for saved rows.
+    def save(self, *args, **kwargs) -> None:
+        if self.pk is None:
+            super().save(*args, **kwargs)
+            if not (self.slug or "").strip():
+                self._ensure_unique_slug()
+                super().save(update_fields=["slug"])
+            return
+        self._ensure_unique_slug()
+        super().save(*args, **kwargs)
 
-        Django's ``<slug:>`` only allows ``[-a-zA-Z0-9_]+``, so Unicode-only names
-        must fall back to ``cat-{pk}`` (``reverse()`` would fail otherwise).
-        """
+    @classmethod
+    def get_by_url_slug(cls, slug: str | None) -> "Category | None":
+        token = (slug or "").strip()
+        if not token:
+            return None
+        return cls.objects.filter(slug=token).first()
+
+    def legacy_url_segment(self) -> str:
+        """URL segment used before ``slug`` field (301 redirects only)."""
         raw = (self.name or "").strip()
         if raw:
-            s = slugify(raw)
-            if s:
-                return s
+            segment = slugify_segment(raw)
+            if segment:
+                return segment
         if self.pk is not None:
             return f"cat-{self.pk}"
         return "cat-unsaved"
+
+    def list_url_segment(self) -> str:
+        """Canonical URL segment for ``/category/<slug>/`` routes."""
+        token = (self.slug or "").strip()
+        if token:
+            return token
+        return self.legacy_url_segment()
+
+    def _ensure_unique_slug(self) -> None:
+        raw = (self.slug or "").strip()
+        base = slugify_segment(raw) if raw else slugify_segment(self.name or "")
+        if not base:
+            base = f"cat-{self.pk}" if self.pk is not None else "category"
+        max_len_raw = self._meta.get_field("slug").max_length
+        max_len = max_len_raw if max_len_raw is not None else 100
+        base = base[:max_len].strip("-") or "category"
+        candidate = base
+        suffix = 2
+        while Category.objects.filter(slug=candidate).exclude(pk=self.pk).exists():
+            tail = f"-{suffix}"
+            candidate = f"{base[: max_len - len(tail)]}{tail}".strip("-")
+            suffix += 1
+        self.slug = candidate
 
 
 class Series(models.Model):
@@ -410,11 +454,9 @@ class Post(models.Model):
 
     @staticmethod
     def _slugify_segment(value: str) -> str:
-        """Transliterate Cyrillic to Latin, then build an ASCII URL slug."""
         if not value or not value.strip():
             return ""
-        cleaned = _transliterate_cyrillic_to_latin(value.strip())
-        return slugify(cleaned) or ""
+        return slugify_segment(value)
 
     def _ensure_unique_slug(self) -> None:
         """Slug from slug field, title, or body word prefix; add suffix if taken."""

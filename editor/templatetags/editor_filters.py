@@ -1,9 +1,59 @@
 import re
+from html import unescape
 
 from django import template
 from django.utils.html import strip_tags
 
 register = template.Library()
+
+_GALLERY_PLACEHOLDER_RE = re.compile(r"\[gallery:\d+\]", re.IGNORECASE)
+_NBSP_RE = re.compile(r"[\u00a0\u202f]")
+
+
+def _decode_html_entities(value: str) -> str:
+    if not value:
+        return ""
+    text = str(value)
+    for _ in range(3):
+        decoded = unescape(text)
+        if decoded == text:
+            break
+        text = decoded
+    text = re.sub(r"&nbsp;", " ", text, flags=re.IGNORECASE)
+    return _NBSP_RE.sub(" ", text)
+
+
+def _add_space_after_period(value: str) -> str:
+    return re.sub(r"\.([a-zA-Zа-яА-ЯёЁ])", r". \1", value)
+
+
+def plain_text_for_card_preview(value) -> str:
+    """Gallery-free plain text for list/lenta post cards."""
+    if not value:
+        return ""
+    text = striptags_preserve_paragraphs(value)
+    text = re.sub(r"\s+", " ", text).strip()
+    return _add_space_after_period(text)
+
+
+@register.filter
+def post_card_preview_text(value):
+    return plain_text_for_card_preview(value)
+
+
+@register.filter
+def decode_html_entities(value):
+    """Decode ``&nbsp;`` and other HTML entities for plain-text previews."""
+    return _decode_html_entities(value)
+
+
+@register.filter
+def strip_gallery_placeholders(value):
+    """Remove ``[gallery:N]`` editor placeholders from preview text."""
+    if not value:
+        return ""
+    text = _GALLERY_PLACEHOLDER_RE.sub("", str(value))
+    return re.sub(r"[ \t]{2,}", " ", text)
 
 
 @register.filter
@@ -16,6 +66,7 @@ def striptags_preserve_paragraphs(value):
     if not value:
         return ""
 
+    value = strip_gallery_placeholders(value)
     value = re.sub(r"</p>\s*<p[^>]*>", "\n\n", str(value))
     value = re.sub(r"<p[^>]*>", "\n\n", value)
     value = re.sub(r"</p>", "", value)
@@ -27,6 +78,7 @@ def striptags_preserve_paragraphs(value):
     )
     value = re.sub(r"<br\s*/?>", "\n", value, flags=re.IGNORECASE)
     value = strip_tags(value)
+    value = _decode_html_entities(value)
     value = re.sub(r"\n{3,}", "\n\n", value)
     value = value.strip()
     return value
@@ -81,6 +133,18 @@ def truncatechars_whole_words(value, arg):
             truncated += "\u2026"
 
     return truncated
+
+
+@register.filter
+def exceeds_word_limit(value, arg) -> bool:
+    """True when text has more words than ``arg`` (same cutoff as ``truncatewords``)."""
+    try:
+        limit = int(arg)
+    except (ValueError, TypeError):
+        return False
+    if not value:
+        return False
+    return len(str(value).split()) > limit
 
 
 @register.filter
@@ -146,9 +210,7 @@ def add_space_after_period(value):
     """Add a space after each period when followed by a letter (Latin/Cyrillic)."""
     if not value:
         return ""
-    value = str(value)
-    result = re.sub(r"\.([a-zA-Zа-яА-ЯёЁ])", r". \1", value)
-    return result
+    return _add_space_after_period(str(value))
 
 
 @register.filter

@@ -1,4 +1,5 @@
 import io
+import re
 from typing import cast
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -25,6 +26,7 @@ class BlogPublicVisibilityTests(TestCase):
             password="example-pass-123",
         )
         self.category = Category.objects.create(name="Blog")
+        self.assertEqual(self.category.slug, "blog")
 
         self.visible_post = Post(
             title="Visible post",
@@ -81,6 +83,27 @@ class BlogPublicVisibilityTests(TestCase):
             reverse("editor:post_detail_by_uuid", args=[self.visible_post.uuid])
         )
         self.assertEqual(response.status_code, 200)
+
+    def test_tag_url_reverse_uses_latin_slug(self):
+        url = reverse("blog:post_list_by_tag", args=["animatsiia"])
+        self.assertEqual(url, "/tag/animatsiia/")
+
+    def test_legacy_cyrillic_tag_url_redirects_to_latin_slug(self):
+        from taggit.models import Tag
+
+        Tag.objects.create(name="анимация", slug="animatsiia")
+        response = self.client.get("/tag/анимация/")
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(response["Location"], "/tag/animatsiia/")
+
+    def test_taggit_creates_latin_slug_for_cyrillic_name(self):
+        from taggit.models import Tag
+
+        from blog.tag_helpers import tag_slug_from_name
+
+        tag = Tag.objects.create(name="тестновый")
+        self.assertEqual(tag.slug, tag_slug_from_name("тестновый"))
+        self.assertNotRegex(tag.slug, r"[а-яё]", re.IGNORECASE)
 
 
 class PostSocialShareImageTests(TestCase):
@@ -142,3 +165,153 @@ class FeedLentaTests(TestCase):
         response = self.client.get(reverse("blog:post_lenta"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Лента")
+
+    def test_feed_card_without_cover_omits_cover_block(self):
+        author = cast(UserManager, User.objects).create_user(
+            email="nocover@example.com",
+            password="secret12345",
+        )
+        category = Category.objects.create(name="Feed")
+        post = Post(
+            title="No cover post",
+            slug="no-cover-post",
+            author=author,
+            body="<p>Short body text.</p>",
+            status="published",
+            category=category,
+        )
+        post.save(_allow_publish_via_sender=True)
+        SitePublication.objects.create(post=post, published_at=post.published)
+
+        self.client.login(email="feedreader@example.com", password="secret12345")
+        response = self.client.get(reverse("blog:post_lenta"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "No cover post")
+        self.assertNotContains(response, "No cover")
+
+    def test_feed_card_short_body_hides_read_more(self):
+        author = cast(UserManager, User.objects).create_user(
+            email="short@example.com",
+            password="secret12345",
+        )
+        category = Category.objects.create(name="Feed short")
+        post = Post(
+            title="Short read post",
+            slug="short-read-post",
+            author=author,
+            cover_image=_minimal_jpeg_upload("short.jpg"),
+            body="<p>One two three four five.</p>",
+            status="published",
+            category=category,
+        )
+        post.save(_allow_publish_via_sender=True)
+        SitePublication.objects.create(post=post, published_at=post.published)
+
+        self.client.login(email="feedreader@example.com", password="secret12345")
+        response = self.client.get(reverse("blog:post_lenta"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Short read post")
+        self.assertNotContains(response, "Читать далее")
+
+    def test_feed_card_preview_omits_gallery_placeholder(self):
+        author = cast(UserManager, User.objects).create_user(
+            email="gallery@example.com",
+            password="secret12345",
+        )
+        category = Category.objects.create(name="Feed gallery")
+        post = Post(
+            title="Gallery preview post",
+            slug="gallery-preview-post",
+            author=author,
+            body="<p>Before gallery.</p>[gallery:1]<p>After gallery.</p>",
+            status="published",
+            category=category,
+        )
+        post.save(_allow_publish_via_sender=True)
+        SitePublication.objects.create(post=post, published_at=post.published)
+
+        self.client.login(email="feedreader@example.com", password="secret12345")
+        response = self.client.get(reverse("blog:post_lenta"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Before gallery.")
+        self.assertContains(response, "After gallery.")
+        self.assertNotContains(response, "[gallery:1]")
+
+    def test_feed_card_preview_separates_heading_from_body(self):
+        author = cast(UserManager, User.objects).create_user(
+            email="heading@example.com",
+            password="secret12345",
+        )
+        category = Category.objects.create(name="Feed heading")
+        post = Post(
+            title="Heading spacing",
+            slug="heading-spacing-post",
+            author=author,
+            body="<h2>Bingo</h2><p>t,dfsbfo text</p>",
+            status="published",
+            category=category,
+        )
+        post.save(_allow_publish_via_sender=True)
+        SitePublication.objects.create(post=post, published_at=post.published)
+
+        self.client.login(email="feedreader@example.com", password="secret12345")
+        response = self.client.get(reverse("blog:post_lenta"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Bingo t,dfsbfo")
+        self.assertNotContains(response, "Bingot,dfsbfo")
+
+
+class CategorySlugTests(TestCase):
+    def setUp(self):
+        self.author = cast(UserManager, User.objects).create_user(
+            email="cat-slug@example.com",
+            password="secret12345",
+        )
+        self.blog_category = Category.objects.create(name="Блог")
+        self.blog_category.slug = "blog"
+        self.blog_category.save(update_fields=["slug"])
+        self.projects_category = Category.objects.create(name="Проекты")
+        self.projects_category.slug = "projects"
+        self.projects_category.save(update_fields=["slug"])
+
+    def test_post_list_filters_by_category_slug(self):
+        post = Post(
+            title="Blog post",
+            slug="blog-post-slug-test",
+            author=self.author,
+            body="Body",
+            status="published",
+            category=self.blog_category,
+        )
+        post.save(_allow_publish_via_sender=True)
+        SitePublication.objects.create(
+            post=post,
+            published_at=post.published,
+        )
+
+        response = self.client.get(
+            reverse("blog:post_list_by_category", args=["blog"]),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Blog post")
+
+        empty = self.client.get(
+            reverse("blog:post_list_by_category", args=["projects"]),
+        )
+        self.assertEqual(empty.status_code, 200)
+        self.assertNotContains(empty, "Blog post")
+
+    def test_legacy_category_url_redirects_to_canonical_slug(self):
+        legacy = Category.objects.create(name="Обзор")
+        legacy.slug = "overview"
+        legacy.save(update_fields=["slug"])
+        legacy_segment = legacy.legacy_url_segment()
+
+        response = self.client.get(
+            reverse("blog:post_list_by_category", args=[legacy_segment]),
+        )
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(
+            response["Location"],
+            reverse("blog:post_list_by_category", args=["overview"]),
+        )

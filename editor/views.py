@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.cache import cache_page
 from taggit.models import Tag
 
+from blog.category_helpers import resolve_category_for_list
 from editor.forms import SearchForm
 from editor.models import Category, Post, PostSlugRedirect
 
@@ -26,10 +27,6 @@ def _public_page_cache(key_prefix: str):
 def _label_for_category_slug(category_slug: str | None) -> str:
     if not category_slug:
         return "Рубрика"
-    labels = getattr(settings, "CATEGORY_URL_SLUG_LABELS", None) or {}
-    key = category_slug.lower()
-    if key in labels:
-        return labels[key]
     parts = category_slug.replace("_", "-").split("-")
     pretty = " ".join(p.capitalize() for p in parts if p)
     return pretty or category_slug
@@ -115,16 +112,9 @@ def post_list(request, tag_slug=None, category_slug=None):
         object_list = object_list.filter(tags__in=[tag])
 
     if category_slug:
-        category = Category.objects.filter(name=category_slug).first()
-        if category is None:
-            category = next(
-                (
-                    c
-                    for c in Category.objects.all()
-                    if c.list_url_segment() == category_slug
-                ),
-                None,
-            )
+        category, redirect = resolve_category_for_list(category_slug)
+        if redirect is not None:
+            return redirect
         if category is not None:
             object_list = object_list.filter(category=category)
         else:

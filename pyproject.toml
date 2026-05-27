@@ -21,6 +21,7 @@ dependencies = [
     "requests>=2.32.5",
     "cryptography>=45.0.0",
     "yadisk>=3.4.0",
+    "unidecode>=1.4.0",
 ]
 
 [project.optional-dependencies]

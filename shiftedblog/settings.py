@@ -125,6 +125,9 @@ INSTALLED_APPS = [
     "sender",
 ]
 
+# django-taggit 6.x: unidecode is used only when this flag is True (not automatic).
+TAGGIT_STRIP_UNICODE_WHEN_SLUGIFYING = True
+
 _MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -161,6 +164,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "blog.context_processors.nav_categories",
             ],
         },
     },
@@ -311,14 +315,6 @@ TEXT_QUALITY_LANGUAGETOOL_LANGUAGE = os.environ.get(
     "TEXT_QUALITY_LANGUAGETOOL_LANGUAGE",
     "ru-RU",
 ).strip()
-
-# Human titles for /category/<slug>/ when slug ≠ Category.list_url_segment()
-# (e.g. legacy nav uses English "projects" while DB category is «Проекты» → cat-N).
-CATEGORY_URL_SLUG_LABELS = {
-    "projects": "Проекты",
-    "blog": "Блог",
-}
-
 
 # Security settings
 # Determine if we're in production (not DEBUG mode)
@@ -547,6 +543,9 @@ CKEDITOR_5_CONFIGS = {
                 "tableProperties",
                 "tableCellProperties",
             ],
+        },
+        "alignment": {
+            "options": ["left", "right", "center", "justify"],
         },
         # Inter as first (and default) choice
         "fontFamily": {

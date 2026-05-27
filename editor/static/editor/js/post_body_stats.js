@@ -1,6 +1,7 @@
 /**
  * Post admin: show body stats (symbols, words, reading time) near the body field.
  * Counts only content inside the CKEditor editable area. Reading time: 200 words/min, min 1 min.
+ * Symbol counts: with spaces (Telegram / SEO style) and without whitespace characters.
  */
 (function() {
     'use strict';
@@ -48,19 +49,33 @@
         return ta ? ta.value : '';
     }
 
-    function stripHtml(html) {
+    function htmlToPlainText(html) {
         if (!html) return '';
         var div = document.createElement('div');
         div.innerHTML = html;
-        return (div.textContent || div.innerText || '').replace(/\s+/g, ' ').trim();
+        var raw = div.textContent || div.innerText || '';
+        return raw.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
     }
 
-    function getStats(html) {
-        var plain = stripHtml(html);
-        var symbols = plain.length;
+    function getStats(html, qualityData) {
+        if (qualityData && qualityData.text_meta) {
+            var meta = qualityData.text_meta;
+            var words = meta.words || 0;
+            return {
+                symbolsWithSpaces: meta.characters || 0,
+                symbolsNoSpaces: meta.characters_no_spaces || 0,
+                words: words,
+                minutes: Math.max(1, Math.round(meta.reading_time_minutes || words / 200)),
+            };
+        }
+        var plain = htmlToPlainText(html);
         var words = plain ? plain.split(/\s+/).filter(Boolean).length : 0;
-        var minutes = Math.max(1, Math.round(words / 200));
-        return { symbols: symbols, words: words, minutes: minutes };
+        return {
+            symbolsWithSpaces: plain.length,
+            symbolsNoSpaces: plain.replace(/ /g, '').length,
+            words: words,
+            minutes: Math.max(1, Math.round(words / 200)),
+        };
     }
 
     function formatNum(n) {
@@ -68,7 +83,8 @@
     }
 
     function metricsBaseLine(s) {
-        return 'Символов: <strong>' + formatNum(s.symbols) + '</strong>' +
+        return 'Символов: <strong>' + formatNum(s.symbolsWithSpaces) + '</strong>' +
+            ' (с пробелами) · без пробелов: <strong>' + formatNum(s.symbolsNoSpaces) + '</strong>' +
             ' · Слов: <strong>' + formatNum(s.words) + '</strong>' +
             ' · Время чтения: <strong>~' + s.minutes + '</strong> мин';
     }
@@ -167,8 +183,8 @@
         }).then(function(data) {
             if (!data || !data.ok) return;
             qualityState.response = data;
-            var latestStats = getStats(getBodyContentFromEditor(statsEl.parentElement));
-            updateStatsEl(statsEl, latestStats, qualityState.response);
+            var latestHtml = getBodyContentFromEditor(statsEl.parentElement);
+            updateStatsEl(statsEl, getStats(latestHtml, qualityState.response), qualityState.response);
         }).catch(function() {
         }).finally(function() {
             qualityState.inFlight = false;
@@ -176,7 +192,7 @@
     }
 
     function scheduleQuality(statsEl, html) {
-        var plain = stripHtml(html);
+        var plain = htmlToPlainText(html);
         if (plain === qualityState.lastText) return;
         qualityState.lastText = plain;
         if (qualityState.debounceTimer) clearTimeout(qualityState.debounceTimer);
@@ -207,7 +223,7 @@
 
         function refresh() {
             var html = getBodyContentFromEditor(container);
-            var s = getStats(html);
+            var s = getStats(html, qualityState.response);
             updateStatsEl(statsEl, s, qualityState.response);
             scheduleQuality(statsEl, html);
         }

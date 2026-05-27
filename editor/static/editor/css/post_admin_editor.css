@@ -190,6 +190,7 @@
 #content .ck-editor-container .ck-content p {
     margin-bottom: 1.75rem;
     line-height: 1.85;
+    text-align: justify;
 }
 
 /* Headings: same spacing as .post-body-content h1–h6 */

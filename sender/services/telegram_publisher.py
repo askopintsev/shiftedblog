@@ -213,6 +213,7 @@ def _send_media_group(
     token: str,
     chat_id: str,
     paths: list[str],
+    caption: str | None = None,
 ) -> tuple[PublishResult, str]:
     if not paths:
         return PublishResult(ok=True), ""
@@ -223,7 +224,13 @@ def _send_media_group(
     for i, path in enumerate(paths[:MAX_MEDIA_GROUP]):
         key = f"file{i}"
         fname, data, mime = _photo_upload_file(path)
-        media_json.append({"type": "photo", "media": f"attach://{key}"})
+        item: dict[str, str] = {"type": "photo", "media": f"attach://{key}"}
+        if i == 0 and caption:
+            item["caption"] = prepare_outbound_telegram_html(
+                truncate_telegram_html(caption, MAX_CAPTION_LEN),
+            )
+            item["parse_mode"] = PARSE_MODE
+        media_json.append(item)
         fields[key] = (fname, data, mime)
     fields["media"] = (None, json.dumps(media_json, separators=(",", ":")))
     payload, resp = _api_post_multipart(token, "sendMediaGroup", fields)
@@ -250,6 +257,24 @@ def _execute_step(
     caption = next((text for kind, text in dispatches if kind == "caption"), None)
     message = next((text for kind, text in dispatches if kind == "message"), None)
     first_link = ""
+
+    if step.combined_album:
+        for chunk_idx, chunk in enumerate(_chunk_media(step.media_paths)):
+            chunk_caption = (
+                caption if chunk_idx == 0 and step.caption_on_media_group else None
+            )
+            res, link = _send_media_group(token, chat_id, chunk, chunk_caption)
+            if not res.ok:
+                return res, first_link
+            if link and not first_link:
+                first_link = link
+        if message:
+            res, link = _send_message(token, chat_id, message)
+            if not res.ok:
+                return res, first_link
+            if link and not first_link:
+                first_link = link
+        return PublishResult(ok=True, url=first_link), first_link
 
     if step.cover_path:
         res, link = _send_photo(token, chat_id, step.cover_path, caption)

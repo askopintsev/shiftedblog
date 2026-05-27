@@ -554,6 +554,7 @@ a.btn.btn-light.shadow-sm{
 .post-body-content p {
     margin-bottom: 1.75rem;
     line-height: 1.85;
+    text-align: justify;
 }
 
 .post-body-content h1,

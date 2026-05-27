@@ -46,6 +46,8 @@ _BALANCE_TAGS: frozenset[str] = frozenset(
 _NESTABLE_INLINE = frozenset({"b", "i", "u", "s"})
 
 _GALLERY_PLACEHOLDER_RE = re.compile(r"\[gallery:\d+\]", re.IGNORECASE)
+_NBSP_CHARS_RE = re.compile(r"[\u00a0\u202f]")
+_ZWSP_RE = re.compile(r"[\u200b-\u200d\ufeff]")
 _IMG_SRC_RE = re.compile(
     r"""<img[^>]+src=["']([^"']+)["']""",
     re.IGNORECASE,
@@ -54,6 +56,28 @@ _HREF_RE = re.compile(r"<a\s+href=", re.IGNORECASE)
 _TAG_TOKEN_RE = re.compile(r"</?([a-zA-Z]+)(?:\s[^>]*)?>", re.IGNORECASE)
 _BLOCK_BREAK = "\n\n"
 _LINE_BREAK = "\n"
+
+
+def _normalize_telegram_plain_text(text: str) -> str:
+    """Decode entities and drop editor artifacts from Telegram text nodes."""
+    if not text:
+        return ""
+    value = str(text)
+    for _ in range(3):
+        decoded = unescape(value)
+        if decoded == value:
+            break
+        value = decoded
+    value = re.sub(r"&nbsp;", " ", value, flags=re.IGNORECASE)
+    value = _NBSP_CHARS_RE.sub(" ", value)
+    value = _ZWSP_RE.sub("", value)
+    return value
+
+
+def _strip_gallery_placeholders(html: str) -> str:
+    if not html:
+        return ""
+    return _GALLERY_PLACEHOLDER_RE.sub("", html)
 
 
 def escape_telegram_html(text: str) -> str:
@@ -85,6 +109,131 @@ def balance_telegram_html(html: str) -> str:
     for tag in reversed(stack):
         parts.append(f"</{tag}>")
     return "".join(parts)
+
+
+def _open_style_stack_at(text: str, position: int) -> list[tuple[str, int]]:
+    """Return ``(tag, open_index)`` pairs for style tags open at *position*."""
+    stack: list[tuple[str, int]] = []
+    for match in _TAG_TOKEN_RE.finditer(text):
+        if match.start() >= position:
+            break
+        tag = (match.group(1) or "").lower()
+        if tag not in _BALANCE_TAGS:
+            continue
+        token = match.group(0)
+        if token.startswith("</"):
+            if stack and stack[-1][0] == tag:
+                stack.pop()
+        else:
+            stack.append((tag, match.start()))
+    return stack
+
+
+def _nudge_split_out_of_tag_token(text: str, split_at: int) -> int:
+    """Move a split that falls inside ``<...>`` to the tag opening."""
+    for match in _TAG_TOKEN_RE.finditer(text):
+        if match.start() < split_at < match.end():
+            return match.start()
+        if match.start() >= split_at:
+            break
+    return split_at
+
+
+def _find_style_region_end(text: str, tag: str, open_start: int) -> int | None:
+    """Return index after the closing tag matching *open_start*."""
+    depth = 0
+    for match in _TAG_TOKEN_RE.finditer(text, pos=open_start):
+        current = (match.group(1) or "").lower()
+        if current != tag:
+            continue
+        token = match.group(0)
+        if token.startswith("</"):
+            depth -= 1
+            if depth == 0:
+                return match.end()
+        else:
+            depth += 1
+    return None
+
+
+def adjust_split_index_for_telegram_html(
+    text: str,
+    split_at: int,
+    *,
+    max_pos: int | None = None,
+) -> int:
+    """Move a split so styled HTML blocks are not cut in the middle."""
+    if split_at <= 0 or split_at >= len(text):
+        return split_at
+
+    split_at = _nudge_split_out_of_tag_token(text, split_at)
+    open_regions = _open_style_stack_at(text, split_at)
+    if not open_regions:
+        return split_at
+
+    tag, style_start = open_regions[0]
+    if style_start <= 0 or style_start >= split_at:
+        if style_start != 0:
+            return split_at
+        region_end = _find_style_region_end(text, tag, style_start)
+        if (
+            region_end is not None
+            and region_end > split_at
+            and (max_pos is None or region_end <= max_pos)
+        ):
+            return region_end
+        return split_at
+
+    return style_start
+
+
+_SENTENCE_BREAKS = (
+    ".\n\n",
+    "!\n\n",
+    "?\n\n",
+    ". ",
+    "! ",
+    "? ",
+    ".\n",
+    "!\n",
+    "?\n",
+    "… ",
+    "…\n",
+)
+
+
+def find_telegram_html_split_index(
+    text: str,
+    max_len: int,
+    *,
+    min_chunk_ratio: float = 1 / 3,
+) -> int:
+    """Return split position after the last sentence end within *max_len*."""
+    if len(text) <= max_len:
+        return len(text)
+    window = text[:max_len]
+    min_pos = int(max_len * min_chunk_ratio)
+    best = -1
+    for token in _SENTENCE_BREAKS:
+        pos = window.rfind(token)
+        if pos >= min_pos:
+            best = max(best, pos + len(token))
+    if best > 0:
+        return adjust_split_index_for_telegram_html(
+            text,
+            best,
+            max_pos=max_len,
+        )
+    split_at = window.rfind("\n\n")
+    if split_at < min_pos:
+        split_at = window.rfind("\n")
+    if split_at < min_pos:
+        split_at = max_len
+    return adjust_split_index_for_telegram_html(
+        text,
+        split_at,
+        max_pos=max_len,
+    )
 
 
 def sanitize_telegram_html(html: str) -> str:
@@ -127,9 +276,8 @@ def sanitize_telegram_html(html: str) -> str:
             text = merged
 
     for tag in _NESTABLE_INLINE:
-        text = re.sub(rf"<{tag}>\s*</{tag}>", "", text, flags=re.IGNORECASE)
-        text = re.sub(rf"<{tag}>\s+", f"<{tag}>", text, flags=re.IGNORECASE)
-        text = re.sub(rf"\s+</{tag}>", f"</{tag}>", text, flags=re.IGNORECASE)
+        # Keep whitespace-only tags as plain spaces (CKEditor often wraps word gaps).
+        text = re.sub(rf"<{tag}>(\s*)</{tag}>", r"\1", text, flags=re.IGNORECASE)
 
     text = re.sub(r"\n{3,}", _BLOCK_BREAK, text)
     text = balance_telegram_html(text.strip())
@@ -197,6 +345,8 @@ def normalize_editor_html(html: str) -> str:
 
 def format_tags_line(post: Post) -> str:
     """One line: ``#tag`` tokens separated by spaces."""
+    if post.pk is None:
+        return ""
     names = [t.name.strip() for t in post.tags.all() if (t.name or "").strip()]
     if not names:
         return ""
@@ -207,6 +357,15 @@ def format_tags_line(post: Post) -> str:
         if token:
             parts.append(f"#{escape_telegram_html(token)}")
     return " ".join(parts)
+
+
+def format_tags_suffix(post: Post) -> tuple[str, str, int]:
+    """Return ``(suffix_with_blank, bare_line, reserved_len)`` for the first send."""
+    tags_line = format_tags_line(post)
+    if not tags_line:
+        return "", "", 0
+    suffix = f"\n\n{tags_line}"
+    return suffix, tags_line, len(suffix)
 
 
 def extract_img_srcs_from_html(html: str) -> list[str]:
@@ -317,13 +476,13 @@ class _TelegramHTMLConverter(HTMLParser):
     def handle_data(self, data: str) -> None:
         if not data:
             return
-        self._out.append(escape_telegram_html(data))
+        self._out.append(escape_telegram_html(_normalize_telegram_plain_text(data)))
 
     def handle_entityref(self, name: str) -> None:
-        self.handle_data(f"&{name};")
+        self.handle_data(unescape(f"&{name};"))
 
     def handle_charref(self, name: str) -> None:
-        self.handle_data(f"&#{name};")
+        self.handle_data(unescape(f"&#{name};"))
 
     def _open_tag(self, tag: str) -> None:
         self._out.append(f"<{tag}>")
@@ -344,7 +503,7 @@ def html_body_to_telegram_html(html: str) -> str:
     if not html:
         return ""
     cleaned = normalize_editor_html(html)
-    cleaned = _GALLERY_PLACEHOLDER_RE.sub("", cleaned)
+    cleaned = _strip_gallery_placeholders(cleaned)
     cleaned = re.sub(
         r"<figure[^>]*>.*?</figure>",
         "",
@@ -363,7 +522,8 @@ def html_body_to_telegram_html(html: str) -> str:
         )
         from django.utils.html import strip_tags
 
-        return sanitize_telegram_html(escape_telegram_html(strip_tags(cleaned)))
+        plain = _normalize_telegram_plain_text(strip_tags(cleaned))
+        return sanitize_telegram_html(escape_telegram_html(plain))
     return parser.get_html()
 
 
@@ -391,14 +551,9 @@ def truncate_telegram_html(text: str, max_len: int) -> str:
     """Truncate HTML for Telegram captions without leaving tags open."""
     if len(text) <= max_len:
         return text
-    cut = text[:max_len]
-    split_at = cut.rfind("\n\n")
-    if split_at < max_len // 3:
-        split_at = cut.rfind("\n")
-    if split_at < max_len // 3:
-        split_at = max_len
-    trimmed = cut[:split_at].rstrip()
-    return sanitize_telegram_html(trimmed)
+    split_at = find_telegram_html_split_index(text, max_len)
+    trimmed = text[:split_at].rstrip()
+    return sanitize_telegram_html(balance_telegram_html(trimmed))
 
 
 def prepare_outbound_telegram_html(text: str) -> str:
