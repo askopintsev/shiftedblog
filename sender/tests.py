@@ -22,7 +22,10 @@ from sender.services.telegram_channel import (
     channel_owner_has_premium,
 )
 from sender.services.telegram_format import (
+    adjust_split_index_for_telegram_html,
+    balance_telegram_html,
     build_formatted_message,
+    find_telegram_html_split_index,
     html_body_to_telegram_html,
 )
 from sender.services.telegram_plan import (
@@ -95,6 +98,49 @@ class TelegramFormatTests(TestCase):
         from sender.services.telegram_format import balance_telegram_html
 
         self.assertEqual(balance_telegram_html("<b>Title"), "<b>Title</b>")
+
+    def test_split_moves_before_styled_block_when_cut_inside_style(self):
+        bold_start = "Intro. "
+        bold_body = "<b>" + ("styled word. " * 120) + "</b>"
+        text = bold_start + bold_body + " tail."
+        naive_split = len(bold_start) + 50
+        self.assertLess(naive_split, text.index("</b>"))
+        adjusted = adjust_split_index_for_telegram_html(text, naive_split)
+        self.assertEqual(adjusted, text.index("<b>"))
+        self.assertNotIn("<b>", text[:adjusted])
+
+    def test_find_split_index_keeps_bold_block_in_one_chunk(self):
+        prefix = "A" * 3800 + ". "
+        bold = "<b>" + ("Bold sentence. " * 40) + "</b>"
+        text = prefix + bold
+        split_at = find_telegram_html_split_index(text, 4096)
+        first = balance_telegram_html(text[:split_at].rstrip())
+        self.assertNotIn("<b>", first)
+        self.assertTrue(text[split_at:].lstrip().startswith("<b>"))
+
+    def test_series_split_does_not_break_bold_paragraph(self):
+        prefix = "word " * 2000
+        bold = "<b>" + "styled " * 500 + "</b>"
+        suffix = " word" * 2000
+        body = f"<p>{prefix}{bold}{suffix}</p>"
+        post = Post(title="", body=body)
+        plan = build_telegram_plan(post, has_subscription=False)
+        self.assertGreater(len(plan.steps), 1)
+        for step in plan.steps:
+            if "<b>" in step.text or "</b>" in step.text:
+                self.assertIn("<b>", step.text)
+                self.assertIn("</b>", step.text)
+        combined = "".join(
+            step.text.removeprefix(f"{CONTINUATION_PREFIX}\n\n")
+            for step in plan.steps
+        )
+        self.assertIn("<b>", combined)
+        self.assertIn("</b>", combined)
+
+    def test_code_block_split_moves_to_pre_start(self):
+        text = "Start. <pre>" + ("code line\n" * 80) + "</pre> end."
+        split_at = find_telegram_html_split_index(text, 120)
+        self.assertEqual(split_at, text.index("<pre>"))
 
     def test_code_block_uses_pre_only(self):
         html = '<pre><code class="language-python">x = 1</code></pre>'

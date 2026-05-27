@@ -14,6 +14,7 @@ from sender.services.telegram_format import (
     balance_telegram_html,
     build_formatted_message,
     extract_img_srcs_from_html,
+    find_telegram_html_split_index,
     html_contains_link,
 )
 
@@ -111,40 +112,12 @@ def _continuation_header() -> str:
     return f"{CONTINUATION_PREFIX}\n\n"
 
 
-_SENTENCE_BREAKS = (
-    ".\n\n",
-    "!\n\n",
-    "?\n\n",
-    ". ",
-    "! ",
-    "? ",
-    ".\n",
-    "!\n",
-    "?\n",
-    "… ",
-    "…\n",
-)
-
-
 def _find_split_index(text: str, max_len: int, *, min_chunk_ratio: float = 1 / 3) -> int:
-    """Return split position after the last sentence end within *max_len*."""
-    if len(text) <= max_len:
-        return len(text)
-    window = text[:max_len]
-    min_pos = int(max_len * min_chunk_ratio)
-    best = -1
-    for token in _SENTENCE_BREAKS:
-        pos = window.rfind(token)
-        if pos >= min_pos:
-            best = max(best, pos + len(token))
-    if best > 0:
-        return best
-    split_at = window.rfind("\n\n")
-    if split_at < min_pos:
-        split_at = window.rfind("\n")
-    if split_at < min_pos:
-        split_at = max_len
-    return split_at
+    return find_telegram_html_split_index(
+        text,
+        max_len,
+        min_chunk_ratio=min_chunk_ratio,
+    )
 
 
 def _split_for_cover_caption(full_text: str) -> tuple[str, str]:
@@ -177,13 +150,8 @@ def _split_text_chunks(
             chunk = rest
             rest = ""
         else:
-            cut = rest[:limit]
-            split_at = cut.rfind("\n\n")
-            if split_at < limit // 3:
-                split_at = cut.rfind("\n")
-            if split_at < limit // 3:
-                split_at = limit
-            chunk = rest[:split_at].rstrip()
+            split_at = _find_split_index(rest, limit)
+            chunk = balance_telegram_html(rest[:split_at].rstrip())
             rest = rest[split_at:].lstrip()
         if not first:
             chunk = header + chunk

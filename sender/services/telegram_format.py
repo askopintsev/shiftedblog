@@ -111,6 +111,128 @@ def balance_telegram_html(html: str) -> str:
     return "".join(parts)
 
 
+def _open_style_stack_at(text: str, position: int) -> list[tuple[str, int]]:
+    """Return ``(tag, open_index)`` pairs for style tags open at *position*."""
+    stack: list[tuple[str, int]] = []
+    for match in _TAG_TOKEN_RE.finditer(text):
+        if match.start() >= position:
+            break
+        tag = (match.group(1) or "").lower()
+        if tag not in _BALANCE_TAGS:
+            continue
+        token = match.group(0)
+        if token.startswith("</"):
+            if stack and stack[-1][0] == tag:
+                stack.pop()
+        else:
+            stack.append((tag, match.start()))
+    return stack
+
+
+def _nudge_split_out_of_tag_token(text: str, split_at: int) -> int:
+    """Move a split that falls inside ``<...>`` to the tag opening."""
+    for match in _TAG_TOKEN_RE.finditer(text):
+        if match.start() < split_at < match.end():
+            return match.start()
+        if match.start() >= split_at:
+            break
+    return split_at
+
+
+def _find_style_region_end(text: str, tag: str, open_start: int) -> int | None:
+    """Return index after the closing tag matching *open_start*."""
+    depth = 0
+    for match in _TAG_TOKEN_RE.finditer(text, pos=open_start):
+        current = (match.group(1) or "").lower()
+        if current != tag:
+            continue
+        token = match.group(0)
+        if token.startswith("</"):
+            depth -= 1
+            if depth == 0:
+                return match.end()
+        else:
+            depth += 1
+    return None
+
+
+def adjust_split_index_for_telegram_html(
+    text: str,
+    split_at: int,
+    *,
+    max_pos: int | None = None,
+) -> int:
+    """Move a split so styled HTML blocks are not cut in the middle."""
+    if split_at <= 0 or split_at >= len(text):
+        return split_at
+
+    split_at = _nudge_split_out_of_tag_token(text, split_at)
+    open_regions = _open_style_stack_at(text, split_at)
+    if not open_regions:
+        return split_at
+
+    tag, style_start = open_regions[0]
+    if style_start <= 0 or style_start >= split_at:
+        if style_start != 0:
+            return split_at
+        region_end = _find_style_region_end(text, tag, style_start)
+        if region_end is not None and region_end > split_at:
+            if max_pos is None or region_end <= max_pos:
+                return region_end
+        return split_at
+
+    return style_start
+
+
+_SENTENCE_BREAKS = (
+    ".\n\n",
+    "!\n\n",
+    "?\n\n",
+    ". ",
+    "! ",
+    "? ",
+    ".\n",
+    "!\n",
+    "?\n",
+    "… ",
+    "…\n",
+)
+
+
+def find_telegram_html_split_index(
+    text: str,
+    max_len: int,
+    *,
+    min_chunk_ratio: float = 1 / 3,
+) -> int:
+    """Return split position after the last sentence end within *max_len*."""
+    if len(text) <= max_len:
+        return len(text)
+    window = text[:max_len]
+    min_pos = int(max_len * min_chunk_ratio)
+    best = -1
+    for token in _SENTENCE_BREAKS:
+        pos = window.rfind(token)
+        if pos >= min_pos:
+            best = max(best, pos + len(token))
+    if best > 0:
+        return adjust_split_index_for_telegram_html(
+            text,
+            best,
+            max_pos=max_len,
+        )
+    split_at = window.rfind("\n\n")
+    if split_at < min_pos:
+        split_at = window.rfind("\n")
+    if split_at < min_pos:
+        split_at = max_len
+    return adjust_split_index_for_telegram_html(
+        text,
+        split_at,
+        max_pos=max_len,
+    )
+
+
 def sanitize_telegram_html(html: str) -> str:
     """Normalize output to Telegram-safe HTML (see Bot API formatting options)."""
     if not html:
@@ -417,14 +539,9 @@ def truncate_telegram_html(text: str, max_len: int) -> str:
     """Truncate HTML for Telegram captions without leaving tags open."""
     if len(text) <= max_len:
         return text
-    cut = text[:max_len]
-    split_at = cut.rfind("\n\n")
-    if split_at < max_len // 3:
-        split_at = cut.rfind("\n")
-    if split_at < max_len // 3:
-        split_at = max_len
-    trimmed = cut[:split_at].rstrip()
-    return sanitize_telegram_html(trimmed)
+    split_at = find_telegram_html_split_index(text, max_len)
+    trimmed = text[:split_at].rstrip()
+    return sanitize_telegram_html(balance_telegram_html(trimmed))
 
 
 def prepare_outbound_telegram_html(text: str) -> str:
