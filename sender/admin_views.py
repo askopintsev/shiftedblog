@@ -78,8 +78,7 @@ def _build_telegram_preview(
     if plan.has_subscription:
         if telegram_owner_premium is True:
             layout_source = (
-                "Channel owner has Telegram Premium; "
-                "album uses caption on first photo."
+                "Channel owner has Telegram Premium; album uses caption on first photo."
             )
         elif telegram_owner_premium is False:
             layout_source = (
@@ -88,8 +87,7 @@ def _build_telegram_preview(
             )
         else:
             layout_source = (
-                "Premium layout from credentials or env "
-                "(album caption on first photo)."
+                "Premium layout from credentials or env (album caption on first photo)."
             )
     elif telegram_owner_premium is False:
         layout_source = "Owner has no Premium: cover caption + gallery when possible."

@@ -168,15 +168,12 @@ class Category(models.Model):
         base = slugify_segment(raw) if raw else slugify_segment(self.name or "")
         if not base:
             base = f"cat-{self.pk}" if self.pk is not None else "category"
-        max_len = self._meta.get_field("slug").max_length
+        max_len_raw = self._meta.get_field("slug").max_length
+        max_len = max_len_raw if max_len_raw is not None else 100
         base = base[:max_len].strip("-") or "category"
         candidate = base
         suffix = 2
-        while (
-            Category.objects.filter(slug=candidate)
-            .exclude(pk=self.pk)
-            .exists()
-        ):
+        while Category.objects.filter(slug=candidate).exclude(pk=self.pk).exists():
             tail = f"-{suffix}"
             candidate = f"{base[: max_len - len(tail)]}{tail}".strip("-")
             suffix += 1

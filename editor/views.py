@@ -8,8 +8,8 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.cache import cache_page
 from taggit.models import Tag
 
-from editor.forms import SearchForm
 from blog.category_helpers import resolve_category_for_list
+from editor.forms import SearchForm
 from editor.models import Category, Post, PostSlugRedirect
 
 

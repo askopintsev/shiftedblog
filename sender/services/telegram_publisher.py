@@ -261,9 +261,7 @@ def _execute_step(
     if step.combined_album:
         for chunk_idx, chunk in enumerate(_chunk_media(step.media_paths)):
             chunk_caption = (
-                caption
-                if chunk_idx == 0 and step.caption_on_media_group
-                else None
+                caption if chunk_idx == 0 and step.caption_on_media_group else None
             )
             res, link = _send_media_group(token, chat_id, chunk, chunk_caption)
             if not res.ok:

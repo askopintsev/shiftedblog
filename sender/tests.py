@@ -131,8 +131,7 @@ class TelegramFormatTests(TestCase):
                 self.assertIn("<b>", step.text)
                 self.assertIn("</b>", step.text)
         combined = "".join(
-            step.text.removeprefix(f"{CONTINUATION_PREFIX}\n\n")
-            for step in plan.steps
+            step.text.removeprefix(f"{CONTINUATION_PREFIX}\n\n") for step in plan.steps
         )
         self.assertIn("<b>", combined)
         self.assertIn("</b>", combined)
@@ -232,7 +231,9 @@ class TelegramPreviewSendCardsTests(TestCase):
         self.assertEqual(cards[0]["kind"], "photo")
         self.assertTrue(cards[0]["has_text"])
         self.assertEqual(cards[0]["max_chars"], MAX_CAPTION_LEN)
-        self.assertEqual(caption_for_step(plan.steps[0], has_subscription=False), cards[0]["text"])
+        self.assertEqual(
+            caption_for_step(plan.steps[0], has_subscription=False), cards[0]["text"]
+        )
         self.assertEqual(len(cards), 1)
 
     def test_single_post_cover_and_gallery_use_combined_album(self):
@@ -629,7 +630,8 @@ class PublishWorkflowViewTests(TestCase):
         self.assertContains(rsp, 'class="telegram-preview-thumbs-row"')
         self.assertContains(rsp, "Send 1/")
         self.assertContains(rsp, post.cover_image.url)
-        self.assertContains(rsp, post.gallery_images.first().image.url)
+        gallery = PostGalleryImage.objects.get(post=post)
+        self.assertContains(rsp, gallery.image.url)
         author = cast(UserManager, User.objects).create_user(
             email="nopub@example.com",
             password="x",

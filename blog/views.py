@@ -12,14 +12,14 @@ from django.http import (
     HttpResponse,
     HttpResponsePermanentRedirect,
 )
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import render
 from django.views.decorators.cache import cache_page
 from django.views.decorators.vary import vary_on_cookie
 from taggit.models import Tag
 
 from blog.category_helpers import resolve_category_for_list
-from blog.tag_helpers import resolve_tag_for_list
 from blog.querysets import public_posts_queryset
+from blog.tag_helpers import resolve_tag_for_list
 from editor.forms import SearchForm
 from editor.image_upload import (
     build_share_jpeg_from_cover_bytes,

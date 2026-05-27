@@ -117,7 +117,9 @@ def _continuation_header() -> str:
     return f"{CONTINUATION_PREFIX}\n\n"
 
 
-def _find_split_index(text: str, max_len: int, *, min_chunk_ratio: float = 1 / 3) -> int:
+def _find_split_index(
+    text: str, max_len: int, *, min_chunk_ratio: float = 1 / 3
+) -> int:
     return find_telegram_html_split_index(
         text,
         max_len,
@@ -140,7 +142,9 @@ def _split_for_cover_caption(
     return caption, remainder
 
 
-def _append_tags_to_part(parts: list[str], index: int, *, tags_suffix: str, tags_line: str) -> None:
+def _append_tags_to_part(
+    parts: list[str], index: int, *, tags_suffix: str, tags_line: str
+) -> None:
     if not parts or not tags_line:
         return
     if parts[index]:
@@ -328,7 +332,9 @@ def build_telegram_plan(post: Post, *, has_subscription: bool) -> TelegramPublis
         media_for_step = image_buckets[i] if i < len(image_buckets) else []
         step = TelegramPlannedStep(
             text=part_text,
-            cover_path=None if single_album and is_first else (cover_path if is_first else None),
+            cover_path=None
+            if single_album and is_first
+            else (cover_path if is_first else None),
             media_paths=[],
             is_continuation=not is_first,
             combined_album=single_album and is_first,
@@ -407,9 +413,7 @@ def _limit_note_for_photo(
 
 def _limit_note_for_media_group_caption(*, caption: str | None) -> str:
     if caption:
-        return (
-            f"Caption on the first album photo (max {MAX_CAPTION_LEN} characters)."
-        )
+        return f"Caption on the first album photo (max {MAX_CAPTION_LEN} characters)."
     return "Album without caption."
 
 

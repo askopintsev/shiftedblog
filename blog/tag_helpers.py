@@ -8,7 +8,7 @@ from unidecode import unidecode
 
 
 def tag_slug_from_name(name: str, *, suffix: int | None = None) -> str:
-    """Build a Latin tag slug (matches taggit with ``TAGGIT_STRIP_UNICODE_WHEN_SLUGIFYING``)."""
+    """Latin tag slug; matches taggit ``TAGGIT_STRIP_UNICODE_WHEN_SLUGIFYING``."""
     slug = slugify(unidecode(name or ""))
     if suffix is not None:
         slug = f"{slug}_{suffix}"

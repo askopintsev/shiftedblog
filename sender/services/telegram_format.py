@@ -176,9 +176,12 @@ def adjust_split_index_for_telegram_html(
         if style_start != 0:
             return split_at
         region_end = _find_style_region_end(text, tag, style_start)
-        if region_end is not None and region_end > split_at:
-            if max_pos is None or region_end <= max_pos:
-                return region_end
+        if (
+            region_end is not None
+            and region_end > split_at
+            and (max_pos is None or region_end <= max_pos)
+        ):
+            return region_end
         return split_at
 
     return style_start
