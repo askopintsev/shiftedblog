@@ -77,14 +77,20 @@ def _build_telegram_preview(
     layout_source = ""
     if plan.has_subscription:
         if telegram_owner_premium is True:
-            layout_source = "Channel owner has Telegram Premium (auto-detected)."
+            layout_source = (
+                "Channel owner has Telegram Premium; "
+                "album uses caption on first photo."
+            )
         elif telegram_owner_premium is False:
             layout_source = (
-                "Separate text and images (not owner Premium; "
-                "check credential override or env)."
+                "Cover-only posts may send text separately; "
+                "album uses caption on first photo."
             )
         else:
-            layout_source = "Separate text and images (forced in credentials or env)."
+            layout_source = (
+                "Premium layout from credentials or env "
+                "(album caption on first photo)."
+            )
     elif telegram_owner_premium is False:
         layout_source = "Owner has no Premium: cover caption + gallery when possible."
     elif telegram_owner_premium is True:

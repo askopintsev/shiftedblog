@@ -95,6 +95,12 @@
     gap: 8px;
     margin-top: 0.75em;
   }
+  .telegram-preview-thumbs-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-top: 0;
+    margin-bottom: 0.75em;
+  }
   .telegram-preview-thumb {
     width: 96px;
     height: 96px;
@@ -230,9 +236,9 @@
         {% endif %}
         {{ preview_payload.send_count }} Telegram send{{ preview_payload.send_count|pluralize }} total.
         {% if preview_payload.has_subscription %}
-          Premium layout active (cover and text separate).
+          Premium channel (album caption on first photo; cover-only may split text).
         {% else %}
-          Standard layout (caption on cover when text ≤ 1024 chars).
+          Standard layout (caption on cover or album when text fits).
         {% endif %}
       </p>
     {% endif %}
@@ -262,18 +268,25 @@
                 <img class="telegram-preview-cover" src="{{ card.cover_url }}" alt="Cover">
               </div>
             {% endif %}
+            {% if card.thumb_row and card.thumb_urls %}
+              <div class="telegram-preview-thumbs telegram-preview-thumbs-row">
+                {% for url in card.thumb_urls %}
+                  <img class="telegram-preview-thumb" src="{{ url }}" alt="Album image {{ forloop.counter }}">
+                {% endfor %}
+              </div>
+            {% endif %}
             {% if card.has_text %}
               <div class="telegram-preview-text">{{ card.text|safe }}</div>
             {% elif card.kind == "photo" and not card.cover_url %}
               <p class="telegram-preview-note">Cover file not found on disk.</p>
             {% endif %}
-            {% if card.thumb_urls %}
+            {% if not card.thumb_row and card.thumb_urls %}
               <div class="telegram-preview-thumbs">
                 {% for url in card.thumb_urls %}
                   <img class="telegram-preview-thumb" src="{{ url }}" alt="Gallery image {{ forloop.counter }}">
                 {% endfor %}
               </div>
-            {% elif card.kind == "media_group" and card.image_count %}
+            {% elif card.kind == "media_group" and card.image_count and not card.thumb_urls %}
               <p class="telegram-preview-note">{{ card.image_count }} gallery file(s) not found on disk.</p>
             {% endif %}
           </div>

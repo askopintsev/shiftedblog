@@ -235,6 +235,55 @@ class TelegramPreviewSendCardsTests(TestCase):
         self.assertEqual(caption_for_step(plan.steps[0], has_subscription=False), cards[0]["text"])
         self.assertEqual(len(cards), 1)
 
+    def test_single_post_cover_and_gallery_use_combined_album(self):
+        post = Post(
+            title="Album",
+            body="<p>Short with gallery.</p>",
+            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+        )
+        gallery_paths = ["img/post/gallery-1.jpg", "img/post/gallery-2.jpg"]
+        with mock.patch(
+            "sender.services.telegram_plan.collect_body_image_paths",
+            return_value=gallery_paths,
+        ):
+            plan = build_telegram_plan(post, has_subscription=False)
+            cards = build_preview_send_cards(plan)
+        self.assertEqual(len(plan.steps), 1)
+        step = plan.steps[0]
+        self.assertTrue(step.combined_album)
+        self.assertTrue(step.caption_on_media_group)
+        self.assertIsNone(step.cover_path)
+        self.assertEqual(step.media_paths, [post.cover_image.name, *gallery_paths])
+        self.assertEqual(cards[0]["kind"], "media_group")
+        self.assertTrue(cards[0]["has_text"])
+        self.assertTrue(cards[0].get("thumb_row"))
+        self.assertIsNone(cards[0].get("cover_url"))
+        self.assertEqual(len(step.media_paths), 3)
+        self.assertEqual([card["kind"] for card in cards], ["media_group"])
+
+    def test_premium_single_post_cover_and_gallery_use_combined_album_caption(self):
+        post = Post(
+            title="Premium album",
+            body="<p>Short with gallery.</p>",
+            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+        )
+        gallery_paths = ["img/post/gallery-1.jpg", "img/post/gallery-2.jpg"]
+        with mock.patch(
+            "sender.services.telegram_plan.collect_body_image_paths",
+            return_value=gallery_paths,
+        ):
+            plan = build_telegram_plan(post, has_subscription=True)
+            cards = build_preview_send_cards(plan)
+        step = plan.steps[0]
+        self.assertTrue(step.combined_album)
+        self.assertTrue(step.caption_on_media_group)
+        self.assertEqual(
+            caption_for_step(step, has_subscription=True),
+            step.text,
+        )
+        self.assertEqual([card["kind"] for card in cards], ["media_group"])
+        self.assertTrue(cards[0]["has_text"])
+
     def test_series_preview_numbers_all_sends(self):
         post = Post(title="", body=f"<p>{'word ' * 3000}</p>")
         plan = build_telegram_plan(post, has_subscription=False)
@@ -576,8 +625,8 @@ class PublishWorkflowViewTests(TestCase):
             {"post_id": post.pk, "preview_telegram": "1"},
         )
         self.assertEqual(rsp.status_code, 200)
-        self.assertContains(rsp, 'class="telegram-preview-cover"')
         self.assertContains(rsp, 'class="telegram-preview-thumb"')
+        self.assertContains(rsp, 'class="telegram-preview-thumbs-row"')
         self.assertContains(rsp, "Send 1/")
         self.assertContains(rsp, post.cover_image.url)
         self.assertContains(rsp, post.gallery_images.first().image.url)

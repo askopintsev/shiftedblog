@@ -90,10 +90,14 @@ class TelegramPlannedStep:
     cover_path: str | None = None
     media_paths: list[str] = field(default_factory=list)
     is_continuation: bool = False
+    combined_album: bool = False
+    caption_on_media_group: bool = False
 
     def preview_label(self) -> str:
         if self.is_continuation:
             return "Продолжение"
+        if self.combined_album or self.caption_on_media_group:
+            return "Первый пост (альбом)"
         if self.cover_path:
             return "Первый пост (обложка)"
         return "Пост"
@@ -242,6 +246,15 @@ def _chunk_media(paths: list[str]) -> list[list[str]]:
     ]
 
 
+def _album_paths_with_cover(cover_path: str, body_images: list[str]) -> list[str]:
+    """Cover first, then body gallery paths without duplicating the cover."""
+    paths = [cover_path]
+    for path in body_images:
+        if path != cover_path:
+            paths.append(path)
+    return paths
+
+
 def media_preview_url(storage_path: str | None) -> str | None:
     """Public URL for a stored image path (admin Telegram preview)."""
     if not storage_path:
@@ -309,24 +322,28 @@ def build_telegram_plan(post: Post, *, has_subscription: bool) -> TelegramPublis
     steps: list[TelegramPlannedStep] = []
 
     single_text = len(text_parts) == 1
+    single_album = single_text and bool(cover_path) and bool(body_images)
     for i, part_text in enumerate(text_parts):
         is_first = i == 0
         media_for_step = image_buckets[i] if i < len(image_buckets) else []
         step = TelegramPlannedStep(
             text=part_text,
-            cover_path=cover_path if is_first else None,
+            cover_path=None if single_album and is_first else (cover_path if is_first else None),
             media_paths=[],
             is_continuation=not is_first,
+            combined_album=single_album and is_first,
+            caption_on_media_group=single_album and is_first,
         )
         steps.append(step)
 
-        if single_text and not has_subscription:
-            step.media_paths = body_images
+        if single_album and is_first and cover_path:
+            step.media_paths = _album_paths_with_cover(cover_path, body_images)
+        elif single_text and not has_subscription:
+            step.media_paths = body_images if is_first else []
         elif not single_text:
             step.media_paths = media_for_step
-
-    if single_text and has_subscription:
-        steps[0].media_paths = body_images
+        elif single_text and has_subscription:
+            step.media_paths = body_images if is_first else []
 
     return TelegramPublishPlan(steps=steps, has_subscription=has_subscription)
 
@@ -336,10 +353,16 @@ def caption_for_step(
     *,
     has_subscription: bool,
 ) -> str | None:
-    """Caption for cover photo when text is sent together with the image."""
-    if not step.cover_path or not step.text or has_subscription:
+    """Caption for cover photo or the first photo in a media group."""
+    if not step.text:
         return None
-    return step.text
+    if step.caption_on_media_group:
+        return step.text
+    if has_subscription:
+        return None
+    if step.cover_path:
+        return step.text
+    return None
 
 
 def text_dispatches_for_step(
@@ -382,6 +405,14 @@ def _limit_note_for_photo(
     return "Cover photo without caption."
 
 
+def _limit_note_for_media_group_caption(*, caption: str | None) -> str:
+    if caption:
+        return (
+            f"Caption on the first album photo (max {MAX_CAPTION_LEN} characters)."
+        )
+    return "Album without caption."
+
+
 def build_preview_send_cards(plan: TelegramPublishPlan) -> list[dict[str, Any]]:
     """One preview card per Bot API send, in publish order."""
     cards: list[dict[str, Any]] = []
@@ -394,7 +425,34 @@ def build_preview_send_cards(plan: TelegramPublishPlan) -> list[dict[str, Any]]:
         message = next((text for kind, text in dispatches if kind == "message"), None)
         media_chunks = _chunk_media(step.media_paths)
 
-        if step.cover_path:
+        if step.combined_album:
+            for chunk_idx, chunk in enumerate(media_chunks, start=1):
+                chunk_caption = caption if chunk_idx == 1 else None
+                thumb_urls = _preview_urls(chunk)
+                cards.append(
+                    {
+                        "step_index": step_idx,
+                        "step_total": step_total,
+                        "step_label": step.preview_label(),
+                        "step_is_continuation": step.is_continuation,
+                        "kind": "media_group",
+                        "title": "sendMediaGroup",
+                        "text": chunk_caption or "",
+                        "has_text": bool(chunk_caption),
+                        "char_count": len(chunk_caption) if chunk_caption else 0,
+                        "max_chars": MAX_CAPTION_LEN if chunk_caption else None,
+                        "limit_note": _limit_note_for_media_group_caption(
+                            caption=chunk_caption,
+                        ),
+                        "cover_url": None,
+                        "thumb_urls": thumb_urls,
+                        "thumb_row": True,
+                        "image_count": len(chunk),
+                        "media_group_index": chunk_idx,
+                        "media_group_total": len(media_chunks),
+                    },
+                )
+        elif step.cover_path:
             cards.append(
                 {
                     "step_index": step_idx,
@@ -439,31 +497,32 @@ def build_preview_send_cards(plan: TelegramPublishPlan) -> list[dict[str, Any]]:
                 },
             )
 
-        for chunk_idx, chunk in enumerate(media_chunks, start=1):
-            thumb_urls = _preview_urls(chunk)
-            cards.append(
-                {
-                    "step_index": step_idx,
-                    "step_total": step_total,
-                    "step_label": step.preview_label(),
-                    "step_is_continuation": step.is_continuation,
-                    "kind": "media_group",
-                    "title": "sendMediaGroup",
-                    "text": "",
-                    "has_text": False,
-                    "char_count": 0,
-                    "max_chars": None,
-                    "limit_note": (
-                        f"Album {chunk_idx}/{len(media_chunks)} — "
-                        f"up to {MAX_MEDIA_GROUP} photos per send."
-                    ),
-                    "cover_url": None,
-                    "thumb_urls": thumb_urls,
-                    "image_count": len(thumb_urls),
-                    "media_group_index": chunk_idx,
-                    "media_group_total": len(media_chunks),
-                },
-            )
+        if not step.combined_album:
+            for chunk_idx, chunk in enumerate(media_chunks, start=1):
+                thumb_urls = _preview_urls(chunk)
+                cards.append(
+                    {
+                        "step_index": step_idx,
+                        "step_total": step_total,
+                        "step_label": step.preview_label(),
+                        "step_is_continuation": step.is_continuation,
+                        "kind": "media_group",
+                        "title": "sendMediaGroup",
+                        "text": "",
+                        "has_text": False,
+                        "char_count": 0,
+                        "max_chars": None,
+                        "limit_note": (
+                            f"Album {chunk_idx}/{len(media_chunks)} — "
+                            f"up to {MAX_MEDIA_GROUP} photos per send."
+                        ),
+                        "cover_url": None,
+                        "thumb_urls": thumb_urls,
+                        "image_count": len(thumb_urls),
+                        "media_group_index": chunk_idx,
+                        "media_group_total": len(media_chunks),
+                    },
+                )
 
     send_total = len(cards)
     for send_index, card in enumerate(cards, start=1):
