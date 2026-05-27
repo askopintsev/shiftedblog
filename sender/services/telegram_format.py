@@ -127,9 +127,8 @@ def sanitize_telegram_html(html: str) -> str:
             text = merged
 
     for tag in _NESTABLE_INLINE:
-        text = re.sub(rf"<{tag}>\s*</{tag}>", "", text, flags=re.IGNORECASE)
-        text = re.sub(rf"<{tag}>\s+", f"<{tag}>", text, flags=re.IGNORECASE)
-        text = re.sub(rf"\s+</{tag}>", f"</{tag}>", text, flags=re.IGNORECASE)
+        # Keep whitespace-only tags as plain spaces (CKEditor often wraps word gaps).
+        text = re.sub(rf"<{tag}>(\s*)</{tag}>", r"\1", text, flags=re.IGNORECASE)
 
     text = re.sub(r"\n{3,}", _BLOCK_BREAK, text)
     text = balance_telegram_html(text.strip())

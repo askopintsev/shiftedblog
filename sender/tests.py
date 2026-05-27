@@ -74,6 +74,18 @@ class TelegramFormatTests(TestCase):
         out = html_body_to_telegram_html(html)
         self.assertIn("<b>Bold</b>", out)
 
+    def test_whitespace_only_strong_tag_keeps_word_gap(self):
+        html = '<p>А первой<strong> </strong>песней, "официально"</p>'
+        out = html_body_to_telegram_html(html)
+        self.assertIn("первой песней", out)
+        self.assertNotIn("первойпесней", out)
+
+    def test_trailing_space_inside_strong_before_plain_word(self):
+        html = "<p>1 июня запущен сайт <strong>Napster. </strong>Его часто</p>"
+        out = html_body_to_telegram_html(html)
+        self.assertNotIn("Napster.Его", out)
+        self.assertRegex(out, r"Napster\.\s*</b>Его")
+
     def test_balance_closes_unclosed_tags(self):
         from sender.services.telegram_format import balance_telegram_html
 
