@@ -142,3 +142,50 @@ class FeedLentaTests(TestCase):
         response = self.client.get(reverse("blog:post_lenta"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Лента")
+
+    def test_feed_card_without_cover_omits_cover_block(self):
+        author = cast(UserManager, User.objects).create_user(
+            email="nocover@example.com",
+            password="secret12345",
+        )
+        category = Category.objects.create(name="Feed")
+        post = Post(
+            title="No cover post",
+            slug="no-cover-post",
+            author=author,
+            body="<p>Short body text.</p>",
+            status="published",
+            category=category,
+        )
+        post.save(_allow_publish_via_sender=True)
+        SitePublication.objects.create(post=post, published_at=post.published)
+
+        self.client.login(email="feedreader@example.com", password="secret12345")
+        response = self.client.get(reverse("blog:post_lenta"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "No cover post")
+        self.assertNotContains(response, "No cover")
+
+    def test_feed_card_short_body_hides_read_more(self):
+        author = cast(UserManager, User.objects).create_user(
+            email="short@example.com",
+            password="secret12345",
+        )
+        category = Category.objects.create(name="Feed short")
+        post = Post(
+            title="Short read post",
+            slug="short-read-post",
+            author=author,
+            cover_image=_minimal_jpeg_upload("short.jpg"),
+            body="<p>One two three four five.</p>",
+            status="published",
+            category=category,
+        )
+        post.save(_allow_publish_via_sender=True)
+        SitePublication.objects.create(post=post, published_at=post.published)
+
+        self.client.login(email="feedreader@example.com", password="secret12345")
+        response = self.client.get(reverse("blog:post_lenta"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Short read post")
+        self.assertNotContains(response, "Читать далее")

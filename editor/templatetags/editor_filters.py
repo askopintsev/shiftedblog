@@ -84,6 +84,18 @@ def truncatechars_whole_words(value, arg):
 
 
 @register.filter
+def exceeds_word_limit(value, arg) -> bool:
+    """True when text has more words than ``arg`` (same cutoff as ``truncatewords``)."""
+    try:
+        limit = int(arg)
+    except (ValueError, TypeError):
+        return False
+    if not value:
+        return False
+    return len(str(value).split()) > limit
+
+
+@register.filter
 def needs_read_more_button(post) -> bool:
     """True when card preview (152 chars, whole words) truncates full preview text."""
     if post is None:
