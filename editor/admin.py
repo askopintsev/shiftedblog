@@ -71,6 +71,7 @@ class PostAdmin(admin.ModelAdmin):
         js: ClassVar[tuple] = (
             "editor/js/post_admin_session_keepalive.js",
             "editor/js/post_body_stats.js",
+            "editor/js/post_body_default_align.js",
             "editor/js/post_autosave.js",
             "editor/js/post_history.js",
             "editor/js/post_editor_emoji.js",

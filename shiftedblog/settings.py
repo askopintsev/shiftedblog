@@ -544,6 +544,9 @@ CKEDITOR_5_CONFIGS = {
                 "tableCellProperties",
             ],
         },
+        "alignment": {
+            "options": ["left", "right", "center", "justify"],
+        },
         # Inter as first (and default) choice
         "fontFamily": {
             "options": [
