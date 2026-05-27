@@ -1,4 +1,5 @@
 import io
+import re
 from typing import cast
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -82,6 +83,27 @@ class BlogPublicVisibilityTests(TestCase):
             reverse("editor:post_detail_by_uuid", args=[self.visible_post.uuid])
         )
         self.assertEqual(response.status_code, 200)
+
+    def test_tag_url_reverse_uses_latin_slug(self):
+        url = reverse("blog:post_list_by_tag", args=["animatsiia"])
+        self.assertEqual(url, "/tag/animatsiia/")
+
+    def test_legacy_cyrillic_tag_url_redirects_to_latin_slug(self):
+        from taggit.models import Tag
+
+        Tag.objects.create(name="анимация", slug="animatsiia")
+        response = self.client.get("/tag/анимация/")
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(response["Location"], "/tag/animatsiia/")
+
+    def test_taggit_creates_latin_slug_for_cyrillic_name(self):
+        from taggit.models import Tag
+
+        from blog.tag_helpers import tag_slug_from_name
+
+        tag = Tag.objects.create(name="тестновый")
+        self.assertEqual(tag.slug, tag_slug_from_name("тестновый"))
+        self.assertNotRegex(tag.slug, r"[а-яё]", re.IGNORECASE)
 
 
 class PostSocialShareImageTests(TestCase):

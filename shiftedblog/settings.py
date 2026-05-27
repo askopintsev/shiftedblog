@@ -125,6 +125,9 @@ INSTALLED_APPS = [
     "sender",
 ]
 
+# django-taggit 6.x: unidecode is used only when this flag is True (not automatic).
+TAGGIT_STRIP_UNICODE_WHEN_SLUGIFYING = True
+
 _MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",

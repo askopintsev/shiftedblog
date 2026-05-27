@@ -18,6 +18,7 @@ from django.views.decorators.vary import vary_on_cookie
 from taggit.models import Tag
 
 from blog.category_helpers import resolve_category_for_list
+from blog.tag_helpers import resolve_tag_for_list
 from blog.querysets import public_posts_queryset
 from editor.forms import SearchForm
 from editor.image_upload import (
@@ -125,7 +126,11 @@ def post_list(request, tag_slug=None, category_slug=None):
     category = None
 
     if tag_slug:
-        tag = get_object_or_404(Tag, slug=tag_slug)
+        tag, redirect = resolve_tag_for_list(tag_slug)
+        if redirect is not None:
+            return redirect
+        if tag is None:
+            raise Http404("Tag not found")
         object_list = object_list.filter(tags__in=[tag])
 
     if category_slug:
