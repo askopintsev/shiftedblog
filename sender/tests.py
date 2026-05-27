@@ -14,7 +14,7 @@ from django.urls import reverse
 from blog.models import SitePublication
 from core.models import NETWORK_SLUG_SITE, NETWORK_SLUG_TELEGRAM, Credential, Network
 from core.models.user import User, UserManager
-from editor.models import Category, Post
+from editor.models import Category, Post, PostGalleryImage
 from sender.models import PostLink
 from sender.services.post_sender import run_publish_job
 from sender.services.telegram_channel import (
@@ -27,7 +27,12 @@ from sender.services.telegram_format import (
 )
 from sender.services.telegram_plan import (
     CONTINUATION_PREFIX,
+    MAX_CAPTION_LEN,
+    MAX_MESSAGE_LEN,
+    build_preview_payload,
+    build_preview_send_cards,
     build_telegram_plan,
+    caption_for_step,
 )
 from sender.services.telegram_publisher import resolve_telegram_plan
 from sender.services.url_helpers import public_post_url
@@ -120,7 +125,65 @@ class TelegramFormatTests(TestCase):
         self.assertTrue(plan.steps[1].text.startswith(f"{CONTINUATION_PREFIX}\n\n"))
 
 
-class TelegramSubscriptionPlanTests(TestCase):
+class TelegramPreviewSendCardsTests(TestCase):
+    def test_subscription_splits_cover_and_message_cards(self):
+        post = Post(
+            title="T",
+            body="<p>Short body</p>",
+            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+        )
+        plan = build_telegram_plan(post, has_subscription=True)
+        cards = build_preview_send_cards(plan)
+        self.assertEqual(len(cards), 2)
+        self.assertEqual(cards[0]["kind"], "photo")
+        self.assertFalse(cards[0]["has_text"])
+        self.assertEqual(cards[1]["kind"], "message")
+        self.assertEqual(cards[1]["max_chars"], MAX_MESSAGE_LEN)
+
+    def test_long_text_with_cover_splits_caption_and_message(self):
+        sentences = "First sentence. " * 80 + "Last overflow sentence."
+        post = Post(
+            title="Long",
+            body=f"<p>{sentences}</p>",
+            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+        )
+        plan = build_telegram_plan(post, has_subscription=False)
+        self.assertGreater(len(plan.steps), 1)
+        self.assertLessEqual(len(plan.steps[0].text), MAX_CAPTION_LEN)
+        self.assertTrue(plan.steps[0].text.rstrip().endswith("."))
+        cards = build_preview_send_cards(plan)
+        self.assertEqual(cards[0]["kind"], "photo")
+        self.assertTrue(cards[0]["has_text"])
+        self.assertIn("sentence", cards[0]["limit_note"])
+        self.assertEqual(cards[1]["kind"], "message")
+        self.assertTrue(cards[1]["text"].startswith(f"{CONTINUATION_PREFIX}\n\n"))
+
+    def test_short_text_with_cover_uses_caption_card(self):
+        post = Post(
+            title="Cap",
+            body="<p>Short</p>",
+            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+        )
+        plan = build_telegram_plan(post, has_subscription=False)
+        cards = build_preview_send_cards(plan)
+        self.assertEqual(cards[0]["kind"], "photo")
+        self.assertTrue(cards[0]["has_text"])
+        self.assertEqual(cards[0]["max_chars"], MAX_CAPTION_LEN)
+        self.assertEqual(caption_for_step(plan.steps[0], has_subscription=False), cards[0]["text"])
+        self.assertEqual(len(cards), 1)
+
+    def test_series_preview_numbers_all_sends(self):
+        post = Post(title="", body=f"<p>{'word ' * 3000}</p>")
+        plan = build_telegram_plan(post, has_subscription=False)
+        payload = build_preview_payload(plan)
+        self.assertTrue(payload["is_series"])
+        self.assertGreater(payload["step_count"], 1)
+        self.assertEqual(payload["send_count"], len(payload["cards"]))
+        self.assertEqual(payload["cards"][0]["send_index"], 1)
+        self.assertEqual(payload["cards"][-1]["send_total"], payload["send_count"])
+
+
+class TelegramChannelPlanTests(TestCase):
     def setUp(self):
         cache.clear()
 
@@ -406,13 +469,55 @@ class PublishWorkflowViewTests(TestCase):
             {"post_id": post.pk, "preview_telegram": "1"},
         )
         self.assertEqual(rsp.status_code, 200)
-        self.assertContains(rsp, "Expected Telegram messages")
+        self.assertContains(rsp, "Expected Telegram sends")
+        self.assertContains(rsp, 'class="telegram-preview-card"')
+        self.assertContains(rsp, 'class="telegram-preview-text"')
         self.assertContains(rsp, "<b>Preview</b>")
+        self.assertNotContains(rsp, "<pre")
         self.assertContains(rsp, 'id="telegram-preview"')
         post.refresh_from_db()
         self.assertEqual(post.status, "ready_to_publish")
 
-    def test_publish_workflow_preview_does_not_publish(self):
+    def test_publish_workflow_telegram_preview_shows_image_thumbnails(self):
+        author = cast(UserManager, User.objects).create_user(
+            email="preview-img@example.com",
+            password="x",
+        )
+        cat = Category.objects.create(name="Cat")
+        post = Post.objects.create(
+            title="Preview images",
+            slug="preview-tg-images",
+            author=author,
+            body="<p>Preview body</p>",
+            status="ready_to_publish",
+            category=cat,
+            cover_image=SimpleUploadedFile(
+                "cover.jpg",
+                b"cover-bytes",
+                content_type="image/jpeg",
+            ),
+        )
+        PostGalleryImage.objects.create(
+            post=post,
+            gallery_key=1,
+            image=SimpleUploadedFile(
+                "gallery.jpg",
+                b"gallery-bytes",
+                content_type="image/jpeg",
+            ),
+        )
+        self.client.force_login(self.admin)
+        url = reverse("sender_publish_workflow")
+        rsp = self.client.get(
+            url,
+            {"post_id": post.pk, "preview_telegram": "1"},
+        )
+        self.assertEqual(rsp.status_code, 200)
+        self.assertContains(rsp, 'class="telegram-preview-cover"')
+        self.assertContains(rsp, 'class="telegram-preview-thumb"')
+        self.assertContains(rsp, "Send 1/")
+        self.assertContains(rsp, post.cover_image.url)
+        self.assertContains(rsp, post.gallery_images.first().image.url)
         author = cast(UserManager, User.objects).create_user(
             email="nopub@example.com",
             password="x",

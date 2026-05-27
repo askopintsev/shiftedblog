@@ -11,6 +11,7 @@ from django.core.files.storage import default_storage
 
 from editor.models import Post
 from sender.services.telegram_format import (
+    balance_telegram_html,
     build_formatted_message,
     extract_img_srcs_from_html,
     html_contains_link,
@@ -65,6 +66,9 @@ def collect_body_image_paths(post: Post) -> list[str]:
     for src in extract_img_srcs_from_html(post.body or ""):
         add(storage_path_from_src(src))
 
+    if post.pk is None:
+        return ordered
+
     for gi in post.gallery_images.order_by(  # pyright: ignore[reportAttributeAccessIssue]
         "gallery_key",
         "order",
@@ -107,13 +111,66 @@ def _continuation_header() -> str:
     return f"{CONTINUATION_PREFIX}\n\n"
 
 
-def _split_text_chunks(text: str, max_len: int) -> list[str]:
+_SENTENCE_BREAKS = (
+    ".\n\n",
+    "!\n\n",
+    "?\n\n",
+    ". ",
+    "! ",
+    "? ",
+    ".\n",
+    "!\n",
+    "?\n",
+    "… ",
+    "…\n",
+)
+
+
+def _find_split_index(text: str, max_len: int, *, min_chunk_ratio: float = 1 / 3) -> int:
+    """Return split position after the last sentence end within *max_len*."""
     if len(text) <= max_len:
-        return [text] if text else []
+        return len(text)
+    window = text[:max_len]
+    min_pos = int(max_len * min_chunk_ratio)
+    best = -1
+    for token in _SENTENCE_BREAKS:
+        pos = window.rfind(token)
+        if pos >= min_pos:
+            best = max(best, pos + len(token))
+    if best > 0:
+        return best
+    split_at = window.rfind("\n\n")
+    if split_at < min_pos:
+        split_at = window.rfind("\n")
+    if split_at < min_pos:
+        split_at = max_len
+    return split_at
+
+
+def _split_for_cover_caption(full_text: str) -> tuple[str, str]:
+    """First part fits a photo caption; remainder is sent as follow-up message(s)."""
+    if not full_text:
+        return "", ""
+    split_at = _find_split_index(full_text, MAX_CAPTION_LEN)
+    caption = balance_telegram_html(full_text[:split_at].rstrip())
+    remainder = full_text[split_at:].lstrip()
+    return caption, remainder
+
+
+def _split_text_chunks(
+    text: str,
+    max_len: int,
+    *,
+    continuation_from_start: bool = False,
+) -> list[str]:
+    if not text:
+        return []
+    if len(text) <= max_len and not continuation_from_start:
+        return [text]
     chunks: list[str] = []
     rest = text
     header = _continuation_header()
-    first = True
+    first = not continuation_from_start
     while rest:
         limit = max_len if first else max_len - len(header)
         if len(rest) <= limit:
@@ -172,6 +229,24 @@ def _chunk_media(paths: list[str]) -> list[list[str]]:
     ]
 
 
+def media_preview_url(storage_path: str | None) -> str | None:
+    """Public URL for a stored image path (admin Telegram preview)."""
+    if not storage_path:
+        return None
+    if not default_storage.exists(storage_path):
+        return None
+    return default_storage.url(storage_path)
+
+
+def _preview_urls(paths: list[str]) -> list[str]:
+    urls: list[str] = []
+    for path in paths:
+        url = media_preview_url(path)
+        if url:
+            urls.append(url)
+    return urls
+
+
 def build_telegram_plan(post: Post, *, has_subscription: bool) -> TelegramPublishPlan:
     """Compose steps for *post* according to subscription and length rules."""
     full_text = build_formatted_message(post)
@@ -180,7 +255,25 @@ def build_telegram_plan(post: Post, *, has_subscription: bool) -> TelegramPublis
         cover_path = post.cover_image.name
 
     body_images = collect_body_image_paths(post)
-    text_parts = _split_text_chunks(full_text, MAX_MESSAGE_LEN)
+    text_parts: list[str]
+    if (
+        cover_path
+        and not has_subscription
+        and full_text
+        and len(full_text) > MAX_CAPTION_LEN
+    ):
+        caption_part, remainder = _split_for_cover_caption(full_text)
+        text_parts = [caption_part]
+        if remainder:
+            text_parts.extend(
+                _split_text_chunks(
+                    remainder,
+                    MAX_MESSAGE_LEN,
+                    continuation_from_start=True,
+                ),
+            )
+    else:
+        text_parts = _split_text_chunks(full_text, MAX_MESSAGE_LEN)
     if not text_parts and cover_path:
         text_parts = [""]
 
@@ -218,9 +311,7 @@ def caption_for_step(
     """Caption for cover photo when text is sent together with the image."""
     if not step.cover_path or not step.text or has_subscription:
         return None
-    if len(step.text) <= MAX_CAPTION_LEN:
-        return step.text
-    return None
+    return step.text
 
 
 def text_dispatches_for_step(
@@ -239,26 +330,128 @@ def text_dispatches_for_step(
     return dispatches
 
 
-def build_preview_payload(plan: TelegramPublishPlan) -> list[dict[str, Any]]:
-    """JSON-serializable preview rows for the admin UI."""
-    rows: list[dict[str, Any]] = []
-    for step in plan.steps:
+def _limit_note_for_photo(
+    step: TelegramPlannedStep,
+    *,
+    has_subscription: bool,
+    caption: str | None,
+    step_total: int = 1,
+) -> str:
+    if not step.cover_path:
+        return ""
+    if has_subscription and step.text:
+        return (
+            "Premium layout: cover is sent without caption; "
+            "text follows as a separate message."
+        )
+    if caption and step_total > 1:
+        return (
+            f"Caption ends at the last complete sentence "
+            f"(max {MAX_CAPTION_LEN} characters); remainder in the next message."
+        )
+    if caption:
+        return f"Text fits in photo caption (max {MAX_CAPTION_LEN} characters)."
+    return "Cover photo without caption."
+
+
+def build_preview_send_cards(plan: TelegramPublishPlan) -> list[dict[str, Any]]:
+    """One preview card per Bot API send, in publish order."""
+    cards: list[dict[str, Any]] = []
+    has_sub = plan.has_subscription
+    step_total = len(plan.steps)
+
+    for step_idx, step in enumerate(plan.steps, start=1):
+        dispatches = text_dispatches_for_step(step, has_subscription=has_sub)
+        caption = next((text for kind, text in dispatches if kind == "caption"), None)
+        message = next((text for kind, text in dispatches if kind == "message"), None)
         media_chunks = _chunk_media(step.media_paths)
-        dispatches = text_dispatches_for_step(
-            step,
-            has_subscription=plan.has_subscription,
-        )
-        rows.append(
-            {
-                "label": step.preview_label(),
-                "text": step.text,
-                "dispatches": [
-                    {"kind": kind, "text": text} for kind, text in dispatches
-                ],
-                "has_cover": bool(step.cover_path),
-                "media_count": len(step.media_paths),
-                "media_groups": len(media_chunks),
-                "is_continuation": step.is_continuation,
-            },
-        )
-    return rows
+
+        if step.cover_path:
+            cards.append(
+                {
+                    "step_index": step_idx,
+                    "step_total": step_total,
+                    "step_label": step.preview_label(),
+                    "step_is_continuation": step.is_continuation,
+                    "kind": "photo",
+                    "title": "sendPhoto (cover)",
+                    "text": caption or "",
+                    "has_text": bool(caption),
+                    "char_count": len(caption) if caption else 0,
+                    "max_chars": MAX_CAPTION_LEN if caption else None,
+                    "limit_note": _limit_note_for_photo(
+                        step,
+                        has_subscription=has_sub,
+                        caption=caption,
+                        step_total=step_total,
+                    ),
+                    "cover_url": media_preview_url(step.cover_path),
+                    "thumb_urls": [],
+                    "image_count": 1,
+                },
+            )
+
+        if message:
+            cards.append(
+                {
+                    "step_index": step_idx,
+                    "step_total": step_total,
+                    "step_label": step.preview_label(),
+                    "step_is_continuation": step.is_continuation,
+                    "kind": "message",
+                    "title": "sendMessage",
+                    "text": message,
+                    "has_text": True,
+                    "char_count": len(message),
+                    "max_chars": MAX_MESSAGE_LEN,
+                    "limit_note": f"Message limit {MAX_MESSAGE_LEN} characters.",
+                    "cover_url": None,
+                    "thumb_urls": [],
+                    "image_count": 0,
+                },
+            )
+
+        for chunk_idx, chunk in enumerate(media_chunks, start=1):
+            thumb_urls = _preview_urls(chunk)
+            cards.append(
+                {
+                    "step_index": step_idx,
+                    "step_total": step_total,
+                    "step_label": step.preview_label(),
+                    "step_is_continuation": step.is_continuation,
+                    "kind": "media_group",
+                    "title": "sendMediaGroup",
+                    "text": "",
+                    "has_text": False,
+                    "char_count": 0,
+                    "max_chars": None,
+                    "limit_note": (
+                        f"Album {chunk_idx}/{len(media_chunks)} — "
+                        f"up to {MAX_MEDIA_GROUP} photos per send."
+                    ),
+                    "cover_url": None,
+                    "thumb_urls": thumb_urls,
+                    "image_count": len(thumb_urls),
+                    "media_group_index": chunk_idx,
+                    "media_group_total": len(media_chunks),
+                },
+            )
+
+    send_total = len(cards)
+    for send_index, card in enumerate(cards, start=1):
+        card["send_index"] = send_index
+        card["send_total"] = send_total
+
+    return cards
+
+
+def build_preview_payload(plan: TelegramPublishPlan) -> dict[str, Any]:
+    """Preview metadata and sequential send cards for the admin UI."""
+    cards = build_preview_send_cards(plan)
+    return {
+        "has_subscription": plan.has_subscription,
+        "is_series": plan.is_series,
+        "step_count": len(plan.steps),
+        "send_count": len(cards),
+        "cards": cards,
+    }

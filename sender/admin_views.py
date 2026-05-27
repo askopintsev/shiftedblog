@@ -36,8 +36,8 @@ def _parse_post_id(raw: str | None) -> int:
 def _build_telegram_preview(
     request: HttpRequest,
     post_id: int,
-) -> tuple[list[dict] | None, int | None, bool | None, str]:
-    """Return preview rows and layout metadata for ``post_id``."""
+) -> tuple[dict | None, int | None, bool | None, str]:
+    """Return preview payload and layout metadata for ``post_id``."""
     if not post_id:
         messages.error(request, "Select a post before previewing Telegram formatting.")
         return None, None, None, ""
@@ -50,7 +50,7 @@ def _build_telegram_preview(
     try:
         secrets = _telegram_secrets()
         plan = preview_plan_for_post(post, secrets)
-        preview_rows = build_preview_payload(plan)
+        preview_payload = build_preview_payload(plan)
     except Exception:
         logger.exception("Telegram preview failed for post_id=%s", post_id)
         messages.error(
@@ -59,7 +59,7 @@ def _build_telegram_preview(
         )
         return None, post_id, None, ""
 
-    if not preview_rows:
+    if not preview_payload.get("cards"):
         messages.warning(request, "Nothing to preview for the selected post.")
 
     token = (secrets.get("bot_token") or "").strip()
@@ -92,7 +92,7 @@ def _build_telegram_preview(
     else:
         layout_source = "Standard layout (caption + gallery when one post fits)."
 
-    return preview_rows, post_id, telegram_owner_premium, layout_source
+    return preview_payload, post_id, telegram_owner_premium, layout_source
 
 
 @require_http_methods(["GET", "POST"])
@@ -101,7 +101,7 @@ def publish_workflow(request: HttpRequest) -> HttpResponse:
         "-updated",
     )[:200]
 
-    preview_rows: list[dict] | None = None
+    preview_payload: dict | None = None
     preview_post_id: int | None = None
     telegram_owner_premium: bool | None = None
     telegram_layout_source: str = ""
@@ -110,7 +110,7 @@ def publish_workflow(request: HttpRequest) -> HttpResponse:
     if request.method == "GET" and request.GET.get("preview_telegram"):
         post_id = _parse_post_id(selected_post_id)
         (
-            preview_rows,
+            preview_payload,
             preview_post_id,
             telegram_owner_premium,
             telegram_layout_source,
@@ -163,7 +163,8 @@ def publish_workflow(request: HttpRequest) -> HttpResponse:
             "opts": editor_models.Post._meta,
             "NETWORK_SLUG_SITE": NETWORK_SLUG_SITE,
             "NETWORK_SLUG_TELEGRAM": NETWORK_SLUG_TELEGRAM,
-            "preview_rows": preview_rows,
+            "preview_payload": preview_payload,
+            "preview_cards": (preview_payload or {}).get("cards"),
             "preview_post_id": preview_post_id,
             "form_post_id": preview_post_id or form_post_id,
             "telegram_owner_premium": telegram_owner_premium,

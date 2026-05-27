@@ -220,6 +220,8 @@ def normalize_editor_html(html: str) -> str:
 
 def format_tags_line(post: Post) -> str:
     """One line: ``#tag`` tokens separated by spaces."""
+    if post.pk is None:
+        return ""
     names = [t.name.strip() for t in post.tags.all() if (t.name or "").strip()]
     if not names:
         return ""
