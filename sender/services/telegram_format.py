@@ -356,6 +356,15 @@ def format_tags_line(post: Post) -> str:
     return " ".join(parts)
 
 
+def format_tags_suffix(post: Post) -> tuple[str, str, int]:
+    """Return ``(suffix_with_blank, bare_line, reserved_len)`` for the first send."""
+    tags_line = format_tags_line(post)
+    if not tags_line:
+        return "", "", 0
+    suffix = f"\n\n{tags_line}"
+    return suffix, tags_line, len(suffix)
+
+
 def extract_img_srcs_from_html(html: str) -> list[str]:
     """Return ``src`` values from ``<img>`` tags in document order."""
     if not html:

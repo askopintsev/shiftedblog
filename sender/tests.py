@@ -170,6 +170,23 @@ class TelegramFormatTests(TestCase):
         self.assertGreater(len(plan.steps), 1)
         self.assertTrue(plan.steps[1].text.startswith(f"{CONTINUATION_PREFIX}\n\n"))
 
+    def test_series_tags_on_first_and_last_parts(self):
+        post = Post(title="Tagged", body=f"<p>{'word ' * 3000}</p>")
+        post.save()
+        post.tags.add("news", "django")
+        plan = build_telegram_plan(post, has_subscription=False)
+        self.assertGreater(len(plan.steps), 1)
+        self.assertIn("#news", plan.steps[0].text)
+        self.assertIn("#django", plan.steps[0].text)
+        self.assertIn("#news", plan.steps[-1].text)
+        self.assertIn("#django", plan.steps[-1].text)
+        self.assertLessEqual(len(plan.steps[0].text), MAX_MESSAGE_LEN)
+        self.assertLessEqual(len(plan.steps[-1].text), MAX_MESSAGE_LEN)
+        if len(plan.steps) > 2:
+            for step in plan.steps[1:-1]:
+                self.assertNotIn("#news", step.text)
+                self.assertNotIn("#django", step.text)
+
 
 class TelegramPreviewSendCardsTests(TestCase):
     def test_subscription_splits_cover_and_message_cards(self):

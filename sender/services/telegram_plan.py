@@ -15,6 +15,7 @@ from sender.services.telegram_format import (
     build_formatted_message,
     extract_img_srcs_from_html,
     find_telegram_html_split_index,
+    format_tags_suffix,
     html_contains_link,
 )
 
@@ -120,14 +121,41 @@ def _find_split_index(text: str, max_len: int, *, min_chunk_ratio: float = 1 / 3
     )
 
 
-def _split_for_cover_caption(full_text: str) -> tuple[str, str]:
+def _split_for_cover_caption(
+    full_text: str,
+    *,
+    first_reserve: int = 0,
+) -> tuple[str, str]:
     """First part fits a photo caption; remainder is sent as follow-up message(s)."""
     if not full_text:
         return "", ""
-    split_at = _find_split_index(full_text, MAX_CAPTION_LEN)
+    limit = max(1, MAX_CAPTION_LEN - first_reserve)
+    split_at = _find_split_index(full_text, limit)
     caption = balance_telegram_html(full_text[:split_at].rstrip())
     remainder = full_text[split_at:].lstrip()
     return caption, remainder
+
+
+def _append_tags_to_part(parts: list[str], index: int, *, tags_suffix: str, tags_line: str) -> None:
+    if not parts or not tags_line:
+        return
+    if parts[index]:
+        parts[index] += tags_suffix
+    else:
+        parts[index] = tags_line
+
+
+def _append_tags_to_series_endpoints(
+    parts: list[str],
+    *,
+    tags_suffix: str,
+    tags_line: str,
+) -> None:
+    if not parts or not tags_line:
+        return
+    _append_tags_to_part(parts, 0, tags_suffix=tags_suffix, tags_line=tags_line)
+    if len(parts) > 1:
+        _append_tags_to_part(parts, -1, tags_suffix=tags_suffix, tags_line=tags_line)
 
 
 def _split_text_chunks(
@@ -135,21 +163,38 @@ def _split_text_chunks(
     max_len: int,
     *,
     continuation_from_start: bool = False,
+    first_chunk_reserve: int = 0,
+    last_chunk_reserve: int = 0,
 ) -> list[str]:
     if not text:
         return []
-    if len(text) <= max_len and not continuation_from_start:
+    header = _continuation_header()
+    first = not continuation_from_start
+    header_len = 0 if first else len(header)
+    base_limit = max(1, max_len - header_len)
+    single_tag_reserve = 0 if continuation_from_start else first_chunk_reserve
+    if len(text) + single_tag_reserve <= base_limit and first:
         return [text]
     chunks: list[str] = []
     rest = text
-    header = _continuation_header()
     first = not continuation_from_start
     while rest:
-        limit = max_len if first else max_len - len(header)
-        if len(rest) <= limit:
-            chunk = rest
-            rest = ""
+        header_len = 0 if first else len(header)
+        base_limit = max(1, max_len - header_len)
+        is_only_remaining = len(rest) + last_chunk_reserve <= base_limit
+        if is_only_remaining:
+            limit = max(1, base_limit - last_chunk_reserve)
+            if first:
+                limit = max(1, limit - first_chunk_reserve)
+            if len(rest) <= limit:
+                chunk = rest
+                rest = ""
+            else:
+                split_at = _find_split_index(rest, limit)
+                chunk = balance_telegram_html(rest[:split_at].rstrip())
+                rest = rest[split_at:].lstrip()
         else:
+            limit = max(1, base_limit - (first_chunk_reserve if first else 0))
             split_at = _find_split_index(rest, limit)
             chunk = balance_telegram_html(rest[:split_at].rstrip())
             rest = rest[split_at:].lstrip()
@@ -217,7 +262,8 @@ def _preview_urls(paths: list[str]) -> list[str]:
 
 def build_telegram_plan(post: Post, *, has_subscription: bool) -> TelegramPublishPlan:
     """Compose steps for *post* according to subscription and length rules."""
-    full_text = build_formatted_message(post)
+    tags_suffix, tags_line, tags_reserve = format_tags_suffix(post)
+    core_text = build_formatted_message(post, include_tags=False)
     cover_path: str | None = None
     if post.cover_image:
         cover_path = post.cover_image.name
@@ -227,10 +273,13 @@ def build_telegram_plan(post: Post, *, has_subscription: bool) -> TelegramPublis
     if (
         cover_path
         and not has_subscription
-        and full_text
-        and len(full_text) > MAX_CAPTION_LEN
+        and core_text
+        and len(core_text) + tags_reserve > MAX_CAPTION_LEN
     ):
-        caption_part, remainder = _split_for_cover_caption(full_text)
+        caption_part, remainder = _split_for_cover_caption(
+            core_text,
+            first_reserve=tags_reserve,
+        )
         text_parts = [caption_part]
         if remainder:
             text_parts.extend(
@@ -238,12 +287,23 @@ def build_telegram_plan(post: Post, *, has_subscription: bool) -> TelegramPublis
                     remainder,
                     MAX_MESSAGE_LEN,
                     continuation_from_start=True,
+                    last_chunk_reserve=tags_reserve,
                 ),
             )
     else:
-        text_parts = _split_text_chunks(full_text, MAX_MESSAGE_LEN)
+        text_parts = _split_text_chunks(
+            core_text,
+            MAX_MESSAGE_LEN,
+            first_chunk_reserve=tags_reserve,
+            last_chunk_reserve=tags_reserve,
+        )
+    _append_tags_to_series_endpoints(
+        text_parts,
+        tags_suffix=tags_suffix,
+        tags_line=tags_line,
+    )
     if not text_parts and cover_path:
-        text_parts = [""]
+        text_parts = [tags_line or ""]
 
     image_buckets = _distribute_images(text_parts, body_images)
     steps: list[TelegramPlannedStep] = []
