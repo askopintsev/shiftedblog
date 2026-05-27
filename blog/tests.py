@@ -189,3 +189,50 @@ class FeedLentaTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Short read post")
         self.assertNotContains(response, "Читать далее")
+
+    def test_feed_card_preview_omits_gallery_placeholder(self):
+        author = cast(UserManager, User.objects).create_user(
+            email="gallery@example.com",
+            password="secret12345",
+        )
+        category = Category.objects.create(name="Feed gallery")
+        post = Post(
+            title="Gallery preview post",
+            slug="gallery-preview-post",
+            author=author,
+            body="<p>Before gallery.</p>[gallery:1]<p>After gallery.</p>",
+            status="published",
+            category=category,
+        )
+        post.save(_allow_publish_via_sender=True)
+        SitePublication.objects.create(post=post, published_at=post.published)
+
+        self.client.login(email="feedreader@example.com", password="secret12345")
+        response = self.client.get(reverse("blog:post_lenta"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Before gallery.")
+        self.assertContains(response, "After gallery.")
+        self.assertNotContains(response, "[gallery:1]")
+
+    def test_feed_card_preview_separates_heading_from_body(self):
+        author = cast(UserManager, User.objects).create_user(
+            email="heading@example.com",
+            password="secret12345",
+        )
+        category = Category.objects.create(name="Feed heading")
+        post = Post(
+            title="Heading spacing",
+            slug="heading-spacing-post",
+            author=author,
+            body="<h2>Bingo</h2><p>t,dfsbfo text</p>",
+            status="published",
+            category=category,
+        )
+        post.save(_allow_publish_via_sender=True)
+        SitePublication.objects.create(post=post, published_at=post.published)
+
+        self.client.login(email="feedreader@example.com", password="secret12345")
+        response = self.client.get(reverse("blog:post_lenta"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Bingo t,dfsbfo")
+        self.assertNotContains(response, "Bingot,dfsbfo")

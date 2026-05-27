@@ -25,7 +25,7 @@
                     </div>
                 {% endfor %}
             </div>
-            {% with preview=post.body|striptags|add_space_after_period %}
+            {% with preview=post.body|post_card_preview_text %}
             <div class="card-text">{{ preview|truncatewords:30|linebreaks }}</div>
             {% if preview|exceeds_word_limit:30 %}
             <div class="text-end mt-auto pt-3">

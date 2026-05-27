@@ -46,6 +46,8 @@ _BALANCE_TAGS: frozenset[str] = frozenset(
 _NESTABLE_INLINE = frozenset({"b", "i", "u", "s"})
 
 _GALLERY_PLACEHOLDER_RE = re.compile(r"\[gallery:\d+\]", re.IGNORECASE)
+_NBSP_CHARS_RE = re.compile(r"[\u00a0\u202f]")
+_ZWSP_RE = re.compile(r"[\u200b-\u200d\ufeff]")
 _IMG_SRC_RE = re.compile(
     r"""<img[^>]+src=["']([^"']+)["']""",
     re.IGNORECASE,
@@ -54,6 +56,28 @@ _HREF_RE = re.compile(r"<a\s+href=", re.IGNORECASE)
 _TAG_TOKEN_RE = re.compile(r"</?([a-zA-Z]+)(?:\s[^>]*)?>", re.IGNORECASE)
 _BLOCK_BREAK = "\n\n"
 _LINE_BREAK = "\n"
+
+
+def _normalize_telegram_plain_text(text: str) -> str:
+    """Decode entities and drop editor artifacts from Telegram text nodes."""
+    if not text:
+        return ""
+    value = str(text)
+    for _ in range(3):
+        decoded = unescape(value)
+        if decoded == value:
+            break
+        value = decoded
+    value = re.sub(r"&nbsp;", " ", value, flags=re.IGNORECASE)
+    value = _NBSP_CHARS_RE.sub(" ", value)
+    value = _ZWSP_RE.sub("", value)
+    return value
+
+
+def _strip_gallery_placeholders(html: str) -> str:
+    if not html:
+        return ""
+    return _GALLERY_PLACEHOLDER_RE.sub("", html)
 
 
 def escape_telegram_html(text: str) -> str:
@@ -316,13 +340,13 @@ class _TelegramHTMLConverter(HTMLParser):
     def handle_data(self, data: str) -> None:
         if not data:
             return
-        self._out.append(escape_telegram_html(data))
+        self._out.append(escape_telegram_html(_normalize_telegram_plain_text(data)))
 
     def handle_entityref(self, name: str) -> None:
-        self.handle_data(f"&{name};")
+        self.handle_data(unescape(f"&{name};"))
 
     def handle_charref(self, name: str) -> None:
-        self.handle_data(f"&#{name};")
+        self.handle_data(unescape(f"&#{name};"))
 
     def _open_tag(self, tag: str) -> None:
         self._out.append(f"<{tag}>")
@@ -343,7 +367,7 @@ def html_body_to_telegram_html(html: str) -> str:
     if not html:
         return ""
     cleaned = normalize_editor_html(html)
-    cleaned = _GALLERY_PLACEHOLDER_RE.sub("", cleaned)
+    cleaned = _strip_gallery_placeholders(cleaned)
     cleaned = re.sub(
         r"<figure[^>]*>.*?</figure>",
         "",
@@ -362,7 +386,8 @@ def html_body_to_telegram_html(html: str) -> str:
         )
         from django.utils.html import strip_tags
 
-        return sanitize_telegram_html(escape_telegram_html(strip_tags(cleaned)))
+        plain = _normalize_telegram_plain_text(strip_tags(cleaned))
+        return sanitize_telegram_html(escape_telegram_html(plain))
     return parser.get_html()
 
 

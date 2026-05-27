@@ -97,6 +97,22 @@ class TelegramFormatTests(TestCase):
         self.assertIn("<pre>x = 1</pre>", out)
         self.assertNotIn("<code>", out)
 
+    def test_gallery_placeholder_removed_from_body(self):
+        html = "<p>Before [gallery:1] after</p>"
+        out = html_body_to_telegram_html(html)
+        self.assertIn("Before", out)
+        self.assertIn("after", out)
+        self.assertNotIn("[gallery", out)
+
+    def test_nbsp_and_zwsp_normalized_in_body(self):
+        html = "<p>word&nbsp;next</p><p>zero\u200bwidth</p>"
+        out = html_body_to_telegram_html(html)
+        self.assertNotIn("&nbsp;", out)
+        self.assertNotIn("\xa0", out)
+        self.assertNotIn("\u200b", out)
+        self.assertIn("word next", out)
+        self.assertIn("zerowidth", out)
+
     def test_continuation_prefix_on_second_chunk(self):
         post = Post(title="", body=f"<p>{'word ' * 3000}</p>")
         plan = build_telegram_plan(post, has_subscription=False)
