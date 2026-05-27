@@ -259,7 +259,9 @@ class PostAdmin(admin.ModelAdmin):
 
 @admin.register(models.Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ("name",)
+    list_display = ("name", "slug")
+    search_fields = ("name", "slug")
+    prepopulated_fields: ClassVar[dict[str, tuple[str, ...]]] = {"slug": ("name",)}
     ordering = ("name",)
 
 

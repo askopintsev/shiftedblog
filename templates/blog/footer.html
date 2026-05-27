@@ -31,16 +31,13 @@
                     </h6>
                     <div class="pb-3">
                         <ul class="list-unstyled">
+                            {% for category in nav_categories %}
                             <li class="mb-2">
-                                <a class="text-reset text-decoration-none" href="/category/blog/">
-                                    <i class="fa-solid fa-newspaper me-2"></i>Блог
+                                <a class="text-reset text-decoration-none" href="{% url 'blog:post_list_by_category' category.slug %}">
+                                    <i class="fa-solid fa-folder me-2"></i>{{ category.name }}
                                 </a>
                             </li>
-                            <li class="mb-2">
-                                <a class="text-reset text-decoration-none" href="/category/projects/">
-                                    <i class="fa-solid fa-project-diagram me-2"></i>Проекты
-                                </a>
-                            </li>
+                            {% endfor %}
                             <li class="mb-2">
                                 <a class="text-reset text-decoration-none" href="{% url 'team:about' %}">
                                     <i class="fa-solid fa-user me-2"></i>Обо мне

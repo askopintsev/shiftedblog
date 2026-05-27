@@ -161,6 +161,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "blog.context_processors.nav_categories",
             ],
         },
     },
@@ -311,14 +312,6 @@ TEXT_QUALITY_LANGUAGETOOL_LANGUAGE = os.environ.get(
     "TEXT_QUALITY_LANGUAGETOOL_LANGUAGE",
     "ru-RU",
 ).strip()
-
-# Human titles for /category/<slug>/ when slug ≠ Category.list_url_segment()
-# (e.g. legacy nav uses English "projects" while DB category is «Проекты» → cat-N).
-CATEGORY_URL_SLUG_LABELS = {
-    "projects": "Проекты",
-    "blog": "Блог",
-}
-
 
 # Security settings
 # Determine if we're in production (not DEBUG mode)

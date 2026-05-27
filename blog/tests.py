@@ -25,6 +25,7 @@ class BlogPublicVisibilityTests(TestCase):
             password="example-pass-123",
         )
         self.category = Category.objects.create(name="Blog")
+        self.assertEqual(self.category.slug, "blog")
 
         self.visible_post = Post(
             title="Visible post",
@@ -236,3 +237,59 @@ class FeedLentaTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Bingo t,dfsbfo")
         self.assertNotContains(response, "Bingot,dfsbfo")
+
+
+class CategorySlugTests(TestCase):
+    def setUp(self):
+        self.author = cast(UserManager, User.objects).create_user(
+            email="cat-slug@example.com",
+            password="secret12345",
+        )
+        self.blog_category = Category.objects.create(name="Блог")
+        self.blog_category.slug = "blog"
+        self.blog_category.save(update_fields=["slug"])
+        self.projects_category = Category.objects.create(name="Проекты")
+        self.projects_category.slug = "projects"
+        self.projects_category.save(update_fields=["slug"])
+
+    def test_post_list_filters_by_category_slug(self):
+        post = Post(
+            title="Blog post",
+            slug="blog-post-slug-test",
+            author=self.author,
+            body="Body",
+            status="published",
+            category=self.blog_category,
+        )
+        post.save(_allow_publish_via_sender=True)
+        SitePublication.objects.create(
+            post=post,
+            published_at=post.published,
+        )
+
+        response = self.client.get(
+            reverse("blog:post_list_by_category", args=["blog"]),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Blog post")
+
+        empty = self.client.get(
+            reverse("blog:post_list_by_category", args=["projects"]),
+        )
+        self.assertEqual(empty.status_code, 200)
+        self.assertNotContains(empty, "Blog post")
+
+    def test_legacy_category_url_redirects_to_canonical_slug(self):
+        legacy = Category.objects.create(name="Обзор")
+        legacy.slug = "overview"
+        legacy.save(update_fields=["slug"])
+        legacy_segment = legacy.legacy_url_segment()
+
+        response = self.client.get(
+            reverse("blog:post_list_by_category", args=[legacy_segment]),
+        )
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(
+            response["Location"],
+            reverse("blog:post_list_by_category", args=["overview"]),
+        )
