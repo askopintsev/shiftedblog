@@ -22,9 +22,12 @@ from sender.services.telegram_channel import (
     channel_owner_has_premium,
 )
 from sender.services.telegram_format import (
+    TELEGRAM_FORMAT_CROSSLINK,
     adjust_split_index_for_telegram_html,
     balance_telegram_html,
+    build_crosslink_message,
     build_formatted_message,
+    crosslink_label_text,
     find_telegram_html_split_index,
     html_body_to_telegram_html,
 )
@@ -34,11 +37,12 @@ from sender.services.telegram_plan import (
     MAX_MESSAGE_LEN,
     build_preview_payload,
     build_preview_send_cards,
+    build_telegram_crosslink_plan,
     build_telegram_plan,
     caption_for_step,
 )
 from sender.services.telegram_publisher import resolve_telegram_plan
-from sender.services.url_helpers import public_post_url
+from sender.services.url_helpers import crosslink_url_for_post, public_post_url
 
 _FERNET_TEST_KEY = Fernet.generate_key().decode("ascii")
 
@@ -185,6 +189,66 @@ class TelegramFormatTests(TestCase):
             for step in plan.steps[1:-1]:
                 self.assertNotIn("#news", step.text)
                 self.assertNotIn("#django", step.text)
+
+
+class TelegramCrosslinkFormatTests(TestCase):
+    @override_settings(SITE_URL="https://example.org")
+    def test_crosslink_label_prefers_short_description(self):
+        post = Post(
+            title="Title",
+            short_description="Short desc",
+            body="<p>Body first sentence. Second.</p>",
+        )
+        self.assertEqual(crosslink_label_text(post), "Short desc")
+
+    def test_crosslink_label_falls_back_to_title(self):
+        post = Post(title="Title only", body="<p>Body first sentence.</p>")
+        self.assertEqual(crosslink_label_text(post), "Title only")
+
+    def test_crosslink_label_falls_back_to_first_sentence(self):
+        post = Post(title="", body="<p>First sentence. Second one.</p>")
+        self.assertEqual(crosslink_label_text(post), "First sentence.")
+
+    @override_settings(SITE_URL="https://example.org")
+    def test_crosslink_message_template(self):
+        post = Post(
+            title="Title",
+            short_description="Read on site",
+            body="<p>Body</p>",
+        )
+        post.save()
+        post.tags.add("news", "django")
+        url = public_post_url(post)
+        text = build_crosslink_message(post, url)
+        self.assertIn(f'<a href="{url}">Read on site</a>', text)
+        self.assertIn("\n\n", text)
+        self.assertIn("#news", text)
+        self.assertIn("#django", text)
+        self.assertNotIn("<b>", text)
+
+    @override_settings(SITE_URL="https://example.org")
+    def test_crosslink_plan_is_single_text_step(self):
+        post = Post(title="T", body="<p>Body</p>")
+        post.save()
+        post.tags.add("tag1")
+        url = public_post_url(post)
+        plan = build_telegram_crosslink_plan(post, link_url=url)
+        self.assertFalse(plan.has_subscription)
+        self.assertEqual(len(plan.steps), 1)
+        self.assertFalse(plan.steps[0].cover_path)
+        self.assertEqual(plan.steps[0].media_paths, [])
+        cards = build_preview_send_cards(plan)
+        self.assertEqual(len(cards), 1)
+        self.assertEqual(cards[0]["kind"], "message")
+        self.assertIn("<a href=", cards[0]["text"])
+
+    @override_settings(SITE_URL="https://example.org")
+    def test_crosslink_url_for_site(self):
+        post = Post(title="T", slug="my-post")
+        self.assertEqual(
+            crosslink_url_for_post(post, NETWORK_SLUG_SITE),
+            "https://example.org/my-post/",
+        )
 
 
 class TelegramPreviewSendCardsTests(TestCase):
@@ -541,6 +605,89 @@ class TelegramPublishJobTests(TestCase):
         _args, kwargs = m.call_args
         self.assertEqual(kwargs.get("json", {}).get("chat_id"), "-100555")
 
+        self.assertEqual(
+            r.by_network["_"].error,
+            "missing_crosslink_network",
+        )
+
+
+@override_settings(
+    SITE_URL="https://example.org",
+    CREDENTIALS_ENCRYPTION_KEY=_FERNET_TEST_KEY,
+)
+class CrosslinkPublishJobTests(TestCase):
+    def setUp(self):
+        self.author = cast(UserManager, User.objects).create_user(
+            email="crosslink-job@example.com",
+            password="x",
+        )
+        self.cat = Category.objects.create(name="Cat")
+        self.post = Post.objects.create(
+            title="TG crosslink",
+            slug="tg-crosslink",
+            author=self.author,
+            body="<p>Body</p>",
+            status="ready_to_publish",
+            category=self.cat,
+        )
+        net, _ = Network.objects.get_or_create(
+            slug=NETWORK_SLUG_TELEGRAM,
+            defaults={"name": "Telegram"},
+        )
+        Network.objects.get_or_create(
+            slug=NETWORK_SLUG_SITE,
+            defaults={"name": "Site"},
+        )
+        cred = Credential(network=net, label="")
+        cred.set_secrets_dict({"bot_token": "test-token", "channel_name": "chan"})
+        cred.save()
+
+    def test_crosslink_publishes_text_message_only(self):
+        mock_resp = mock.Mock()
+        mock_resp.json.return_value = {
+            "ok": True,
+            "result": {
+                "message_id": 99,
+                "chat": {"username": "chan", "id": -100},
+            },
+        }
+        mock_resp.text = "{}"
+        self.post.short_description = "Crosslink teaser"
+        self.post.save()
+        self.post.tags.add("news")
+        with mock.patch("sender.services.telegram_publisher.requests.post") as m:
+            m.return_value = mock_resp
+            r = run_publish_job(
+                self.post.pk,
+                [NETWORK_SLUG_SITE, NETWORK_SLUG_TELEGRAM],
+                telegram_format=TELEGRAM_FORMAT_CROSSLINK,
+                telegram_crosslink_network=NETWORK_SLUG_SITE,
+            )
+        self.assertTrue(r.all_ok)
+        send_message_calls = [
+            c for c in m.call_args_list if "sendMessage" in c.args[0]
+        ]
+        self.assertEqual(len(send_message_calls), 1)
+        payload = send_message_calls[0].kwargs.get("json") or {}
+        self.assertIn("Crosslink teaser", payload.get("text", ""))
+        self.assertIn("#news", payload.get("text", ""))
+        self.assertIn("tg-crosslink", payload.get("text", ""))
+        photo_calls = [c for c in m.call_args_list if "sendPhoto" in c.args[0]]
+        self.assertEqual(photo_calls, [])
+
+    def test_crosslink_requires_target_network(self):
+        r = run_publish_job(
+            self.post.pk,
+            [NETWORK_SLUG_TELEGRAM],
+            telegram_format=TELEGRAM_FORMAT_CROSSLINK,
+            telegram_crosslink_network=None,
+        )
+        self.assertFalse(r.all_ok)
+        self.assertEqual(
+            r.by_network["_"].error,
+            "missing_crosslink_network",
+        )
+
 
 class PublishWorkflowViewTests(TestCase):
     def setUp(self):
@@ -661,3 +808,39 @@ class PublishWorkflowViewTests(TestCase):
         rsp = self.client.get(url, {"preview_telegram": "1"})
         self.assertEqual(rsp.status_code, 200)
         self.assertNotContains(rsp, "Expected Telegram messages")
+
+    @override_settings(SITE_URL="https://example.org")
+    def test_publish_workflow_crosslink_preview(self):
+        author = cast(UserManager, User.objects).create_user(
+            email="crosslink@example.com",
+            password="x",
+        )
+        cat = Category.objects.create(name="Cat")
+        post = Post.objects.create(
+            title="Crosslink post",
+            slug="crosslink-preview",
+            short_description="Teaser text",
+            author=author,
+            body="<p>Body content.</p>",
+            status="ready_to_publish",
+            category=cat,
+        )
+        post.tags.add("news")
+        self.client.force_login(self.admin)
+        url = reverse("sender_publish_workflow")
+        rsp = self.client.get(
+            url,
+            {
+                "post_id": post.pk,
+                "preview_telegram": "1",
+                "telegram_format": TELEGRAM_FORMAT_CROSSLINK,
+                "crosslink_network": NETWORK_SLUG_SITE,
+            },
+        )
+        self.assertEqual(rsp.status_code, 200)
+        self.assertContains(rsp, "Crosslink to site")
+        self.assertContains(rsp, "Teaser text")
+        self.assertContains(rsp, "crosslink-preview")
+        self.assertContains(rsp, "#news")
+        self.assertContains(rsp, 'class="telegram-preview-text"')
+        self.assertContains(rsp, "Crosslink (link to post on another network)")

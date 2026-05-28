@@ -6,6 +6,7 @@ from django.conf import settings
 from django.http import HttpRequest
 from django.urls import reverse
 
+from core.models.network import NETWORK_SLUG_SITE
 from editor.models import Post
 
 
@@ -24,6 +25,22 @@ def public_post_url(post: Post) -> str:
     if not path.startswith("/"):
         path = "/" + path
     return base + path
+
+
+def crosslink_url_for_post(post: Post, network_slug: str) -> str | None:
+    """Public URL on *network_slug* for Telegram crosslink posts."""
+    if network_slug == NETWORK_SLUG_SITE:
+        return public_post_url(post)
+    from sender.models import PostLink
+
+    link = (
+        PostLink.objects.filter(post=post, network__slug=network_slug)
+        .order_by("-pk")
+        .first()
+    )
+    if link and (link.url or "").strip():
+        return link.url.strip()
+    return None
 
 
 def post_og_image_absolute_url(

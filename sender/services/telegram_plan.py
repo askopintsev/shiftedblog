@@ -12,6 +12,7 @@ from django.core.files.storage import default_storage
 from editor.models import Post
 from sender.services.telegram_format import (
     balance_telegram_html,
+    build_crosslink_message,
     build_formatted_message,
     extract_img_srcs_from_html,
     find_telegram_html_split_index,
@@ -275,6 +276,13 @@ def _preview_urls(paths: list[str]) -> list[str]:
         if url:
             urls.append(url)
     return urls
+
+
+def build_telegram_crosslink_plan(post: Post, *, link_url: str) -> TelegramPublishPlan:
+    """Single text message: linked label, blank line, tags — no media."""
+    text = build_crosslink_message(post, link_url)
+    steps = [TelegramPlannedStep(text=text)] if text else []
+    return TelegramPublishPlan(steps=steps, has_subscription=False)
 
 
 def build_telegram_plan(post: Post, *, has_subscription: bool) -> TelegramPublishPlan:
