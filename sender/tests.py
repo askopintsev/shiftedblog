@@ -664,9 +664,7 @@ class CrosslinkPublishJobTests(TestCase):
                 telegram_crosslink_network=NETWORK_SLUG_SITE,
             )
         self.assertTrue(r.all_ok)
-        send_message_calls = [
-            c for c in m.call_args_list if "sendMessage" in c.args[0]
-        ]
+        send_message_calls = [c for c in m.call_args_list if "sendMessage" in c.args[0]]
         self.assertEqual(len(send_message_calls), 1)
         payload = send_message_calls[0].kwargs.get("json") or {}
         self.assertIn("Crosslink teaser", payload.get("text", ""))
