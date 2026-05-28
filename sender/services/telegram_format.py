@@ -7,9 +7,14 @@ import re
 from html import escape, unescape
 from html.parser import HTMLParser
 
+from django.utils.html import strip_tags
+
 from editor.models import Post
 
 logger = logging.getLogger(__name__)
+
+TELEGRAM_FORMAT_FULL = "full_text"
+TELEGRAM_FORMAT_CROSSLINK = "crosslink"
 
 # Telegram Bot API HTML (parse_mode=HTML) — only these tags are valid.
 _TG_ALLOWED: frozenset[str] = frozenset(
@@ -559,3 +564,37 @@ def truncate_telegram_html(text: str, max_len: int) -> str:
 def prepare_outbound_telegram_html(text: str) -> str:
     """Final pass before Bot API send (caption or message text)."""
     return sanitize_telegram_html(text)
+
+
+def _first_sentence_from_text(value: str) -> str:
+    text = re.sub(r"\s+", " ", strip_tags(value or "")).strip()
+    if not text:
+        return ""
+    parts = re.split(r"(?<=[.!?…])\s+", text, maxsplit=1)
+    return parts[0].strip()
+
+
+def crosslink_label_text(post: Post) -> str:
+    """Label for crosslink: short description, else title, else first body sentence."""
+    short = (post.short_description or "").strip()
+    if short:
+        return strip_tags(short).strip()
+    title = (post.title or "").strip()
+    if title:
+        return title
+    return _first_sentence_from_text(post.body or "")
+
+
+def build_crosslink_message(post: Post, link_url: str) -> str:
+    """Crosslink template: linked label, blank line, ``#tags`` line."""
+    label = crosslink_label_text(post)
+    url = (link_url or "").strip()
+    if not label or not url:
+        return ""
+    safe_url = escape(url, quote=True)
+    safe_label = escape_telegram_html(label)
+    lines = [f'<a href="{safe_url}">{safe_label}</a>', ""]
+    tags_line = format_tags_line(post)
+    if tags_line:
+        lines.append(tags_line)
+    return sanitize_telegram_html("\n".join(lines).strip())

@@ -172,6 +172,20 @@
     color: #666;
     font-style: italic;
   }
+  .telegram-format-options {
+    margin-left: 1.5em;
+    padding-left: 0.75em;
+    border-left: 3px solid #dde3ea;
+  }
+  .telegram-format-options .form-row {
+    margin-bottom: 0.5em;
+  }
+  .telegram-format-options.is-hidden {
+    display: none;
+  }
+  .crosslink-network-row.is-hidden {
+    display: none;
+  }
 </style>
 {% endblock %}
 {% block content %}
@@ -196,7 +210,37 @@
       <label><input type="checkbox" name="dest_site" value="1"> Site (SitePublication + public URL)</label>
     </div>
     <div class="form-row">
-      <label><input type="checkbox" name="dest_telegram" value="1"> Telegram</label>
+      <label><input type="checkbox" name="dest_telegram" id="dest_telegram" value="1"> Telegram</label>
+    </div>
+    <div id="telegram-format-options" class="telegram-format-options is-hidden">
+      <div class="form-row">
+        <label>Telegram format</label>
+        <div>
+          <label style="display: block; font-weight: normal;">
+            <input type="radio" name="telegram_format" value="{{ TELEGRAM_FORMAT_FULL }}"
+              {% if form_telegram_format != TELEGRAM_FORMAT_CROSSLINK %}checked{% endif %}>
+            Full post (title, body, images)
+          </label>
+          <label style="display: block; font-weight: normal; margin-top: 0.35em;">
+            <input type="radio" name="telegram_format" value="{{ TELEGRAM_FORMAT_CROSSLINK }}"
+              {% if form_telegram_format == TELEGRAM_FORMAT_CROSSLINK %}checked{% endif %}>
+            Crosslink (link to post on another network)
+          </label>
+        </div>
+      </div>
+      <div id="crosslink-network-row" class="form-row crosslink-network-row{% if form_telegram_format != TELEGRAM_FORMAT_CROSSLINK %} is-hidden{% endif %}">
+        <label for="id_crosslink_network">Crosslink target</label>
+        <select name="crosslink_network" id="id_crosslink_network">
+          <option value="">— choose —</option>
+          {% for slug, label in crosslink_network_choices %}
+            <option value="{{ slug }}" data-network-slug="{{ slug }}"
+              {% if form_crosslink_network == slug %}selected{% endif %}>
+              {{ label }}
+            </option>
+          {% endfor %}
+        </select>
+        <p class="help">Must be one of the selected destinations above (excluding Telegram).</p>
+      </div>
     </div>
   </fieldset>
   <div class="submit-row">
@@ -210,6 +254,8 @@
   <form method="get" id="telegram-preview-form">
     <input type="hidden" name="post_id" id="preview_post_id" value="">
     <input type="hidden" name="preview_telegram" value="1">
+    <input type="hidden" name="telegram_format" id="preview_telegram_format" value="">
+    <input type="hidden" name="crosslink_network" id="preview_crosslink_network" value="">
     <div class="submit-row">
       <button type="submit" class="button">Preview Telegram formatting</button>
     </div>
@@ -237,6 +283,8 @@
         {{ preview_payload.send_count }} Telegram send{{ preview_payload.send_count|pluralize }} total.
         {% if preview_payload.has_subscription %}
           Premium channel (album caption on first photo; cover-only may split text).
+        {% elif form_telegram_format == TELEGRAM_FORMAT_CROSSLINK %}
+          Crosslink: single text message with linked label and tags.
         {% else %}
           Standard layout (caption on cover or album when text fits).
         {% endif %}
@@ -307,6 +355,60 @@
   var publishSelect = document.getElementById("id_post_id");
   var previewForm = document.getElementById("telegram-preview-form");
   var previewPostId = document.getElementById("preview_post_id");
+  var previewTelegramFormat = document.getElementById("preview_telegram_format");
+  var previewCrosslinkNetwork = document.getElementById("preview_crosslink_network");
+  var destTelegram = document.getElementById("dest_telegram");
+  var destSite = document.querySelector('input[name="dest_site"]');
+  var telegramFormatOptions = document.getElementById("telegram-format-options");
+  var crosslinkNetworkRow = document.getElementById("crosslink-network-row");
+  var crosslinkSelect = document.getElementById("id_crosslink_network");
+  var formatRadios = document.querySelectorAll('input[name="telegram_format"]');
+
+  function selectedTelegramFormat() {
+    var checked = document.querySelector('input[name="telegram_format"]:checked');
+    return checked ? checked.value : "{{ TELEGRAM_FORMAT_FULL }}";
+  }
+
+  function syncCrosslinkOptionAvailability() {
+    if (!crosslinkSelect || !destSite) {
+      return;
+    }
+    Array.prototype.forEach.call(crosslinkSelect.options, function (option) {
+      if (!option.value) {
+        return;
+      }
+      var slug = option.getAttribute("data-network-slug");
+      var enabled = slug === "{{ NETWORK_SLUG_SITE }}" && destSite.checked;
+      option.disabled = !enabled;
+      if (!enabled && option.selected) {
+        crosslinkSelect.value = "";
+      }
+    });
+  }
+
+  function syncTelegramFormatUi() {
+    var telegramChecked = destTelegram && destTelegram.checked;
+    if (telegramFormatOptions) {
+      telegramFormatOptions.classList.toggle("is-hidden", !telegramChecked);
+    }
+    var isCrosslink = telegramChecked && selectedTelegramFormat() === "{{ TELEGRAM_FORMAT_CROSSLINK }}";
+    if (crosslinkNetworkRow) {
+      crosslinkNetworkRow.classList.toggle("is-hidden", !isCrosslink);
+    }
+    syncCrosslinkOptionAvailability();
+  }
+
+  if (destTelegram) {
+    destTelegram.addEventListener("change", syncTelegramFormatUi);
+  }
+  if (destSite) {
+    destSite.addEventListener("change", syncTelegramFormatUi);
+  }
+  Array.prototype.forEach.call(formatRadios, function (radio) {
+    radio.addEventListener("change", syncTelegramFormatUi);
+  });
+  syncTelegramFormatUi();
+
   if (!publishSelect || !previewForm || !previewPostId) {
     return;
   }
@@ -318,6 +420,23 @@
       return;
     }
     previewPostId.value = postId;
+    if (previewTelegramFormat) {
+      previewTelegramFormat.value = selectedTelegramFormat();
+    }
+    if (previewCrosslinkNetwork && crosslinkSelect) {
+      previewCrosslinkNetwork.value = crosslinkSelect.value || "";
+    }
+    if (
+      destTelegram &&
+      destTelegram.checked &&
+      selectedTelegramFormat() === "{{ TELEGRAM_FORMAT_CROSSLINK }}" &&
+      crosslinkSelect &&
+      !crosslinkSelect.value
+    ) {
+      event.preventDefault();
+      crosslinkSelect.focus();
+      window.alert("Select a crosslink target network before previewing.");
+    }
   });
 })();
 </script>

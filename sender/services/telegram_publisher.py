@@ -20,6 +20,8 @@ from sender.services.telegram_channel import (
     telegram_chat_id_from_secrets,
 )
 from sender.services.telegram_format import (
+    TELEGRAM_FORMAT_CROSSLINK,
+    TELEGRAM_FORMAT_FULL,
     prepare_outbound_telegram_html,
     truncate_telegram_html,
 )
@@ -29,6 +31,7 @@ from sender.services.telegram_plan import (
     TelegramPlannedStep,
     TelegramPublishPlan,
     _chunk_media,
+    build_telegram_crosslink_plan,
     build_telegram_plan,
     text_dispatches_for_step,
 )
@@ -314,9 +317,17 @@ def _telegram_runtime(
 def resolve_telegram_plan(
     post: Post,
     secrets: dict[str, Any] | None = None,
+    *,
+    format_mode: str = TELEGRAM_FORMAT_FULL,
+    crosslink_url: str | None = None,
 ) -> TelegramPublishPlan:
     """Single entry point for preview and publish — same formatting and layout."""
     post = Post.objects.prefetch_related("tags", "gallery_images").get(pk=post.pk)
+    if format_mode == TELEGRAM_FORMAT_CROSSLINK:
+        url = (crosslink_url or "").strip()
+        if not url:
+            return TelegramPublishPlan(steps=[])
+        return build_telegram_crosslink_plan(post, link_url=url)
     secrets, token, chat_id = _telegram_runtime(secrets)
     return build_plan_for_post(post, secrets, token=token, chat_id=chat_id)
 
@@ -335,12 +346,25 @@ def build_plan_for_post(
 def preview_plan_for_post(
     post: Post,
     secrets: dict[str, Any] | None = None,
+    *,
+    format_mode: str = TELEGRAM_FORMAT_FULL,
+    crosslink_url: str | None = None,
 ) -> TelegramPublishPlan:
     """Alias for :func:`resolve_telegram_plan` (admin preview)."""
-    return resolve_telegram_plan(post, secrets)
+    return resolve_telegram_plan(
+        post,
+        secrets,
+        format_mode=format_mode,
+        crosslink_url=crosslink_url,
+    )
 
 
-def publish_to_telegram(post: Post) -> PublishResult:
+def publish_to_telegram(
+    post: Post,
+    *,
+    format_mode: str = TELEGRAM_FORMAT_FULL,
+    crosslink_url: str | None = None,
+) -> PublishResult:
     secrets, token, chat_id = _telegram_runtime()
 
     if not token or not chat_id:
@@ -354,7 +378,12 @@ def publish_to_telegram(post: Post) -> PublishResult:
             ),
         )
 
-    plan = resolve_telegram_plan(post, secrets)
+    plan = resolve_telegram_plan(
+        post,
+        secrets,
+        format_mode=format_mode,
+        crosslink_url=crosslink_url,
+    )
     if not plan.steps:
         return PublishResult(ok=False, error="empty_plan", detail="Nothing to publish.")
 
