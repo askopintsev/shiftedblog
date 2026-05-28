@@ -123,9 +123,11 @@ async def _authorize_session(api_id: int, api_hash: str, phone: str) -> str:
             except SessionPasswordNeededError:
                 password = getpass.getpass("Telegram 2FA password: ")
                 await client.sign_in(password=password)
+        if client.session is None:
+            raise CommandError("Telegram session was not initialized.")
         session = client.session.save()
         if not isinstance(session, str):
             raise CommandError("Unexpected Telethon session format.")
         return session
     finally:
-        await client.disconnect()
+        await client.disconnect()  # pyright: ignore[reportGeneralTypeIssues]

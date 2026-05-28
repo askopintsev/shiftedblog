@@ -45,7 +45,8 @@ class TelegramNetworkSettings(models.Model):
 
     def clean(self) -> None:
         super().clean()
-        if self.network_id and self.network.slug != NETWORK_SLUG_TELEGRAM:
+        network_pk = getattr(self, "network_id", None)
+        if network_pk and self.network.slug != NETWORK_SLUG_TELEGRAM:
             raise ValidationError(
                 {
                     "network": (

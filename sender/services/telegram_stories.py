@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import random
-from typing import Any
+from typing import Any, cast
 
 from django.conf import settings
 from django.core.files.storage import default_storage
@@ -175,7 +175,9 @@ async def _async_check_story_availability(
                 bot_can_post_stories=bot_stories,
             )
         entity = await client.get_entity(channel_username)
-        result = await client(CanSendStoryRequest(peer=entity))
+        result = await client(
+            CanSendStoryRequest(peer=cast(Any, entity)),
+        )
         free_slots = int(getattr(result, "count", 0) or 0)
         if free_slots <= 0:
             return StoryAvailabilityDTO(
@@ -198,7 +200,7 @@ async def _async_check_story_availability(
             bot_can_post_stories=bot_stories,
         )
     finally:
-        await client.disconnect()
+        await client.disconnect()  # pyright: ignore[reportGeneralTypeIssues]
 
 
 def check_story_availability(
@@ -272,7 +274,7 @@ async def _async_publish_story(
         )
         updates = await client(
             SendStoryRequest(
-                peer=entity,
+                peer=cast(Any, entity),
                 media=media,
                 privacy_rules=[InputPrivacyValueAllowAll()],
                 random_id=random.randint(1, 2**63 - 1),
@@ -286,7 +288,7 @@ async def _async_publish_story(
             raise ValueError("Telegram did not return a story id.")
         return story_id, story_url_for(channel_username, story_id)
     finally:
-        await client.disconnect()
+        await client.disconnect()  # pyright: ignore[reportGeneralTypeIssues]
 
 
 def _story_id_from_updates(updates: Any) -> int | None:
