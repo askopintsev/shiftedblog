@@ -9,7 +9,7 @@ from core.models.network import Network
 
 
 class PostLink(models.Model):
-    """Canonical published URL for a post on a given network."""
+    """Published URLs and Telegram ids for a post on a given network."""
 
     post = models.ForeignKey(
         "editor.Post",
@@ -21,7 +21,10 @@ class PostLink(models.Model):
         on_delete=models.CASCADE,
         related_name="post_links",
     )
-    url = models.URLField(max_length=2048)
+    message_url = models.URLField(max_length=2048)
+    message_id = models.PositiveBigIntegerField(null=True, blank=True)
+    story_id = models.PositiveIntegerField(null=True, blank=True)
+    story_url = models.URLField(max_length=2048, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -10,12 +10,17 @@ from django.db import transaction
 
 from core.models.network import NETWORK_SLUG_SITE, NETWORK_SLUG_TELEGRAM, Network
 from editor.models import Post
-from sender.models import PostLink
 from sender.services import site_publisher, telegram_publisher
 from sender.services.dto import PublishJobResult, PublishResult
+from sender.services.post_link_service import upsert_post_link
+from sender.services.story_media import StoryMediaError, resolve_story_image_path
 from sender.services.telegram_format import (
     TELEGRAM_FORMAT_CROSSLINK,
     TELEGRAM_FORMAT_FULL,
+)
+from sender.services.telegram_stories import (
+    check_story_availability,
+    publish_story_for_post,
 )
 from sender.services.url_helpers import crosslink_url_for_post
 
@@ -79,12 +84,46 @@ def _order_slugs_for_crosslink(
     return ordered
 
 
+def _validate_telegram_story(
+    post: Post,
+    *,
+    telegram_post_story: bool,
+) -> PublishResult | None:
+    if not telegram_post_story:
+        return None
+    try:
+        network = Network.objects.get(slug=NETWORK_SLUG_TELEGRAM)
+    except Network.DoesNotExist:
+        return PublishResult(
+            ok=False,
+            error="missing_network",
+            detail="Telegram network is not configured.",
+        )
+    availability = check_story_availability()
+    if not availability.available:
+        return PublishResult(
+            ok=False,
+            error="story_unavailable",
+            detail=availability.reason,
+        )
+    try:
+        resolve_story_image_path(post, network=network)
+    except StoryMediaError as exc:
+        return PublishResult(
+            ok=False,
+            error="story_media_missing",
+            detail=str(exc),
+        )
+    return None
+
+
 def run_publish_job(
     post_id: int,
     network_slugs: Iterable[str],
     *,
     telegram_format: str = TELEGRAM_FORMAT_FULL,
     telegram_crosslink_network: str | None = None,
+    telegram_post_story: bool = False,
 ) -> PublishJobResult:
     """Publish ``post_id`` to each network in ``network_slugs``.
 
@@ -106,6 +145,15 @@ def run_publish_job(
             post_id,
             error="invalid_telegram_format",
             detail=f"Unknown Telegram format {telegram_format!r}.",
+        )
+
+    if NETWORK_SLUG_TELEGRAM in slugs and telegram_post_story is False:
+        pass
+    elif telegram_post_story and NETWORK_SLUG_TELEGRAM not in slugs:
+        return _invalid_job(
+            post_id,
+            error="story_requires_telegram",
+            detail="Telegram must be selected to post a story.",
         )
 
     if NETWORK_SLUG_TELEGRAM in slugs and telegram_format == TELEGRAM_FORMAT_CROSSLINK:
@@ -145,6 +193,17 @@ def run_publish_job(
                 detail=f"Post must be ready_to_publish (got {post.status!r}).",
             )
 
+        story_validation = _validate_telegram_story(
+            post,
+            telegram_post_story=telegram_post_story and NETWORK_SLUG_TELEGRAM in slugs,
+        )
+        if story_validation is not None:
+            return _invalid_job(
+                post_id,
+                error=story_validation.error,
+                detail=story_validation.detail,
+            )
+
         crosslink_url: str | None = None
         if (
             NETWORK_SLUG_TELEGRAM in slugs
@@ -172,6 +231,23 @@ def run_publish_job(
                     format_mode=telegram_format,
                     crosslink_url=crosslink_url,
                 )
+                if res.ok and telegram_post_story:
+                    story_res = _retry_call(
+                        publish_story_for_post,
+                        post,
+                        message_url=res.message_url,
+                        message_id=res.message_id,
+                    )
+                    if not story_res.ok:
+                        res = story_res
+                    else:
+                        res = PublishResult(
+                            ok=True,
+                            message_url=res.message_url,
+                            message_id=res.message_id,
+                            story_id=story_res.story_id,
+                            story_url=story_res.story_url,
+                        )
             else:
                 res = PublishResult(
                     ok=False,
@@ -181,11 +257,7 @@ def run_publish_job(
             by_network[slug] = res
             if res.ok:
                 network = Network.objects.get(slug=slug)
-                PostLink.objects.update_or_create(
-                    post=post,
-                    network=network,
-                    defaults={"url": res.url},
-                )
+                upsert_post_link(post, network, res)
             else:
                 logger.warning(
                     "Publish failed network=%s post_id=%s error=%s",

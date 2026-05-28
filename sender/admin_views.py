@@ -12,6 +12,7 @@ from django.views.decorators.http import require_http_methods
 
 from core.models.network import NETWORK_SLUG_SITE, NETWORK_SLUG_TELEGRAM
 from editor import models as editor_models
+from sender.services.dto import StoryAvailabilityDTO
 from sender.services.post_sender import run_publish_job
 from sender.services.telegram_channel import (
     channel_owner_has_premium,
@@ -26,6 +27,7 @@ from sender.services.telegram_publisher import (
     _telegram_secrets,
     preview_plan_for_post,
 )
+from sender.services.telegram_stories import check_story_availability
 from sender.services.url_helpers import crosslink_url_for_post
 
 logger = logging.getLogger(__name__)
@@ -169,6 +171,20 @@ def publish_workflow(request: HttpRequest) -> HttpResponse:
     form_crosslink_network = _parse_crosslink_network(
         request.GET.get("crosslink_network") or request.POST.get("crosslink_network"),
     )
+    form_telegram_post_story = bool(
+        request.GET.get("telegram_post_story")
+        or request.POST.get("telegram_post_story"),
+    )
+    telegram_story_availability = None
+    if request.method == "GET":
+        try:
+            telegram_story_availability = check_story_availability(_telegram_secrets())
+        except Exception:
+            logger.exception("Telegram story availability check failed")
+            telegram_story_availability = StoryAvailabilityDTO(
+                available=False,
+                reason="Story availability check failed.",
+            )
 
     if request.method == "GET" and request.GET.get("preview_telegram"):
         post_id = _parse_post_id(selected_post_id)
@@ -197,6 +213,7 @@ def publish_workflow(request: HttpRequest) -> HttpResponse:
             slugs,
             telegram_format=form_telegram_format,
             telegram_crosslink_network=form_crosslink_network,
+            telegram_post_story=form_telegram_post_story,
         )
         for key, r in result.by_network.items():
             if key == "_":
@@ -205,7 +222,10 @@ def publish_workflow(request: HttpRequest) -> HttpResponse:
                     f"Cannot publish: {r.error} — {r.detail}",
                 )
             elif r.ok:
-                messages.success(request, f"{key}: {r.url or 'ok'}")
+                detail = r.message_url or "ok"
+                if r.story_url:
+                    detail = f"{detail} (story: {r.story_url})"
+                messages.success(request, f"{key}: {detail}")
             else:
                 messages.error(
                     request,
@@ -241,6 +261,8 @@ def publish_workflow(request: HttpRequest) -> HttpResponse:
             "crosslink_network_choices": CROSSLINK_NETWORK_CHOICES,
             "form_telegram_format": form_telegram_format,
             "form_crosslink_network": form_crosslink_network,
+            "form_telegram_post_story": form_telegram_post_story,
+            "telegram_story_availability": telegram_story_availability,
             "preview_payload": preview_payload,
             "preview_cards": (preview_payload or {}).get("cards"),
             "preview_post_id": preview_post_id,

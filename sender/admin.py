@@ -6,10 +6,25 @@ from sender.models import PostLink
 
 @admin.register(PostLink)
 class PostLinkAdmin(admin.ModelAdmin):
-    list_display = ("post", "network", "url", "created_at")
+    list_display = (
+        "post",
+        "network",
+        "message_url",
+        "message_id",
+        "story_id",
+        "created_at",
+    )
     list_filter = ("network", "created_at")
-    search_fields = ("post__title", "post__slug", "url")
-    readonly_fields = ("post", "network", "url", "created_at")
+    search_fields = ("post__title", "post__slug", "message_url", "story_url")
+    readonly_fields = (
+        "post",
+        "network",
+        "message_url",
+        "message_id",
+        "story_id",
+        "story_url",
+        "created_at",
+    )
     ordering = ("-created_at",)
 
     def has_add_permission(self, request):

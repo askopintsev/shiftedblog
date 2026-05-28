@@ -4,6 +4,7 @@ from core.models.network import (
     Credential,
     Network,
 )
+from core.models.telegram_settings import TelegramNetworkSettings
 from core.models.user import User
 
 __all__ = [
@@ -11,5 +12,6 @@ __all__ = [
     "NETWORK_SLUG_TELEGRAM",
     "Credential",
     "Network",
+    "TelegramNetworkSettings",
     "User",
 ]

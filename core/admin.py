@@ -6,7 +6,7 @@ from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from core.models import Credential, Network, User
+from core.models import Credential, Network, TelegramNetworkSettings, User
 
 
 class CredentialAdminForm(forms.ModelForm):
@@ -17,7 +17,8 @@ class CredentialAdminForm(forms.ModelForm):
         required=False,
         widget=forms.Textarea(attrs={"rows": 6, "cols": 80}),
         help_text=(
-            'Example: {"bot_token": "…", "channel_name": "mychannel"}. '
+            'Example: {"bot_token": "…", "channel_name": "mychannel", '
+            '"api_id": 12345, "api_hash": "…", "operator_session": "…"}. '
             "Optional channel_subscription: true/false, or omit for auto "
             "(owner Premium via getChatAdministrators). "
             "Leave blank while editing to keep existing secrets."
@@ -68,6 +69,18 @@ class CredentialAdminForm(forms.ModelForm):
 class NetworkAdmin(admin.ModelAdmin):
     list_display = ("name", "slug")
     search_fields = ("name", "slug")
+    fields = ("name", "slug")
+
+
+@admin.register(TelegramNetworkSettings)
+class TelegramNetworkSettingsAdmin(admin.ModelAdmin):
+    list_display = ("network", "has_story_fallback", "post_continuation_text")
+    search_fields = ("network__name", "network__slug", "post_continuation_text")
+    fields = ("network", "story_fallback_image", "post_continuation_text")
+
+    @admin.display(description="Story fallback", boolean=True)
+    def has_story_fallback(self, obj: TelegramNetworkSettings) -> bool:
+        return bool(obj.story_fallback_image)
 
 
 @admin.register(Credential)

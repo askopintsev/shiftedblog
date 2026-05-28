@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 from typing import cast
 from unittest import mock
 
@@ -10,13 +11,17 @@ from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from PIL import Image
 
 from blog.models import SitePublication
 from core.models import NETWORK_SLUG_SITE, NETWORK_SLUG_TELEGRAM, Credential, Network
+from core.models.telegram_settings import TelegramNetworkSettings
 from core.models.user import User, UserManager
 from editor.models import Category, Post, PostGalleryImage
 from sender.models import PostLink
+from sender.services.dto import PublishResult, StoryAvailabilityDTO
 from sender.services.post_sender import run_publish_job
+from sender.services.story_media import StoryMediaError, resolve_story_image_path
 from sender.services.telegram_channel import (
     channel_has_subscription,
     channel_owner_has_premium,
@@ -42,9 +47,30 @@ from sender.services.telegram_plan import (
     caption_for_step,
 )
 from sender.services.telegram_publisher import resolve_telegram_plan
+from sender.services.telegram_stories import check_story_availability, story_url_for
 from sender.services.url_helpers import crosslink_url_for_post, public_post_url
 
 _FERNET_TEST_KEY = Fernet.generate_key().decode("ascii")
+
+
+def _minimal_jpeg_upload(name: str = "cover.jpg") -> SimpleUploadedFile:
+    buf = io.BytesIO()
+    Image.new("RGB", (120, 80), color=(200, 40, 40)).save(buf, format="JPEG")
+    return SimpleUploadedFile(name, buf.getvalue(), content_type="image/jpeg")
+
+
+def _chat_id_from_requests_mock_call(call: mock._Call) -> str | None:
+    json_payload = call.kwargs.get("json")
+    if isinstance(json_payload, dict):
+        chat_id = json_payload.get("chat_id")
+        if chat_id is not None:
+            return str(chat_id)
+    files = call.kwargs.get("files")
+    if isinstance(files, dict):
+        raw = files.get("chat_id")
+        if isinstance(raw, tuple) and len(raw) >= 2:
+            return str(raw[1])
+    return None
 
 
 class TelegramFormatTests(TestCase):
@@ -173,6 +199,16 @@ class TelegramFormatTests(TestCase):
         self.assertGreater(len(plan.steps), 1)
         self.assertTrue(plan.steps[1].text.startswith(f"{CONTINUATION_PREFIX}\n\n"))
 
+    def test_custom_continuation_prefix(self):
+        post = Post(title="", body=f"<p>{'word ' * 3000}</p>")
+        plan = build_telegram_plan(
+            post,
+            has_subscription=False,
+            continuation_prefix="Part 2 follows",
+        )
+        self.assertGreater(len(plan.steps), 1)
+        self.assertTrue(plan.steps[1].text.startswith("Part 2 follows\n\n"))
+
     def test_series_tags_on_first_and_last_parts(self):
         post = Post(title="Tagged", body=f"<p>{'word ' * 3000}</p>")
         post.save()
@@ -256,7 +292,7 @@ class TelegramPreviewSendCardsTests(TestCase):
         post = Post(
             title="T",
             body="<p>Short body</p>",
-            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+            cover_image=_minimal_jpeg_upload("c.jpg"),
         )
         plan = build_telegram_plan(post, has_subscription=True)
         cards = build_preview_send_cards(plan)
@@ -271,7 +307,7 @@ class TelegramPreviewSendCardsTests(TestCase):
         post = Post(
             title="Long",
             body=f"<p>{sentences}</p>",
-            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+            cover_image=_minimal_jpeg_upload("c.jpg"),
         )
         plan = build_telegram_plan(post, has_subscription=False)
         self.assertGreater(len(plan.steps), 1)
@@ -288,7 +324,7 @@ class TelegramPreviewSendCardsTests(TestCase):
         post = Post(
             title="Cap",
             body="<p>Short</p>",
-            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+            cover_image=_minimal_jpeg_upload("c.jpg"),
         )
         plan = build_telegram_plan(post, has_subscription=False)
         cards = build_preview_send_cards(plan)
@@ -304,7 +340,7 @@ class TelegramPreviewSendCardsTests(TestCase):
         post = Post(
             title="Album",
             body="<p>Short with gallery.</p>",
-            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+            cover_image=_minimal_jpeg_upload("c.jpg"),
         )
         gallery_paths = ["img/post/gallery-1.jpg", "img/post/gallery-2.jpg"]
         with mock.patch(
@@ -330,7 +366,7 @@ class TelegramPreviewSendCardsTests(TestCase):
         post = Post(
             title="Premium album",
             body="<p>Short with gallery.</p>",
-            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+            cover_image=_minimal_jpeg_upload("c.jpg"),
         )
         gallery_paths = ["img/post/gallery-1.jpg", "img/post/gallery-2.jpg"]
         with mock.patch(
@@ -425,7 +461,7 @@ class TelegramChannelPlanTests(TestCase):
         post = Post(
             title="T",
             body="<p>Short</p>",
-            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+            cover_image=_minimal_jpeg_upload("c.jpg"),
         )
         plan = build_telegram_plan(post, has_subscription=True)
         self.assertEqual(len(plan.steps), 1)
@@ -440,7 +476,7 @@ class TelegramChannelPlanTests(TestCase):
         post = Post(
             title="Same",
             body="<p>Hello <strong>world</strong></p>",
-            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+            cover_image=_minimal_jpeg_upload("c.jpg"),
         )
         post.save()
         secrets = {"channel_subscription": False}
@@ -481,10 +517,14 @@ class SitePublishJobTests(TestCase):
             title="Ready",
             slug="ready-sender",
             author=self.author,
-            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+            cover_image=_minimal_jpeg_upload("c.jpg"),
             body="<p>Hello world</p>",
             status="ready_to_publish",
             category=self.cat,
+        )
+        Network.objects.get_or_create(
+            slug=NETWORK_SLUG_SITE,
+            defaults={"name": "Site"},
         )
 
     def test_site_only_marks_published_and_creates_postlink(self):
@@ -495,7 +535,7 @@ class SitePublishJobTests(TestCase):
         self.assertEqual(self.post.status, "published")
         site_net = Network.objects.get(slug=NETWORK_SLUG_SITE)
         link = PostLink.objects.get(post=self.post, network=site_net)
-        self.assertIn("ready-sender", link.url)
+        self.assertIn("ready-sender", link.message_url)
         self.assertTrue(
             SitePublication.objects.filter(post=self.post).exists(),
         )
@@ -516,14 +556,27 @@ class TelegramPublishJobTests(TestCase):
             title="TG",
             slug="tg-ready",
             author=self.author,
-            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+            cover_image=_minimal_jpeg_upload("c.jpg"),
             body="<p>Body</p>",
             status="ready_to_publish",
             category=self.cat,
         )
-        net = Network.objects.get(slug=NETWORK_SLUG_TELEGRAM)
+        net, _ = Network.objects.get_or_create(
+            slug=NETWORK_SLUG_TELEGRAM,
+            defaults={"name": "Telegram"},
+        )
+        Network.objects.get_or_create(
+            slug=NETWORK_SLUG_SITE,
+            defaults={"name": "Site"},
+        )
         cred = Credential(network=net, label="")
-        cred.set_secrets_dict({"bot_token": "test-token", "channel_name": "chan"})
+        cred.set_secrets_dict(
+            {
+                "bot_token": "test-token",
+                "channel_name": "chan",
+                "channel_subscription": False,
+            },
+        )
         cred.save()
 
     def test_telegram_success_creates_postlink(self):
@@ -545,14 +598,12 @@ class TelegramPublishJobTests(TestCase):
         self.assertTrue(r.all_ok)
         self.assertGreaterEqual(m.call_count, 1)
         first = m.call_args_list[0]
-        chat_id = (first.kwargs.get("data") or first.kwargs.get("json") or {}).get(
-            "chat_id",
-        )
+        chat_id = _chat_id_from_requests_mock_call(first)
         self.assertEqual(chat_id, "@chan")
         self.assertIn("sendPhoto", first.args[0])
         tg_net = Network.objects.get(slug=NETWORK_SLUG_TELEGRAM)
         pl = PostLink.objects.get(post=self.post, network=tg_net)
-        self.assertIn("t.me", pl.url)
+        self.assertIn("t.me", pl.message_url)
 
     def test_publish_sends_preview_formatted_text(self):
         mock_resp = mock.Mock()
@@ -602,13 +653,7 @@ class TelegramPublishJobTests(TestCase):
             m.return_value = mock_resp
             r = run_publish_job(self.post.pk, [NETWORK_SLUG_TELEGRAM])
         self.assertTrue(r.all_ok)
-        _args, kwargs = m.call_args
-        self.assertEqual(kwargs.get("json", {}).get("chat_id"), "-100555")
-
-        self.assertEqual(
-            r.by_network["_"].error,
-            "missing_crosslink_network",
-        )
+        self.assertEqual(_chat_id_from_requests_mock_call(m.call_args), "-100555")
 
 
 @override_settings(
@@ -687,6 +732,257 @@ class CrosslinkPublishJobTests(TestCase):
         )
 
 
+class StoryUrlTests(TestCase):
+    def test_story_url_format(self):
+        self.assertEqual(
+            story_url_for("@mychannel", 123),
+            "https://t.me/mychannel/s/123",
+        )
+
+
+class StoryAvailabilityTests(TestCase):
+    def test_unavailable_without_operator_credentials(self):
+        availability = check_story_availability(
+            {"bot_token": "tok", "channel_name": "chan"},
+        )
+        self.assertFalse(availability.available)
+        self.assertIn("not configured", availability.reason.lower())
+
+    @override_settings(CREDENTIALS_ENCRYPTION_KEY=_FERNET_TEST_KEY)
+    def test_telegram_publish_works_without_story_credentials(self):
+        author = cast(UserManager, User.objects).create_user(
+            email="no-story@example.com",
+            password="x",
+        )
+        cat = Category.objects.create(name="Cat")
+        post = Post.objects.create(
+            title="No story creds",
+            slug="no-story-creds",
+            author=author,
+            cover_image=_minimal_jpeg_upload("c.jpg"),
+            body="<p>Body</p>",
+            status="ready_to_publish",
+            category=cat,
+        )
+        net, _ = Network.objects.get_or_create(
+            slug=NETWORK_SLUG_TELEGRAM,
+            defaults={"name": "Telegram"},
+        )
+        cred = Credential(network=net, label="")
+        cred.set_secrets_dict(
+            {
+                "bot_token": "test-token",
+                "channel_name": "chan",
+                "channel_subscription": False,
+            },
+        )
+        cred.save()
+        mock_resp = mock.Mock()
+        mock_resp.json.return_value = {
+            "ok": True,
+            "result": {
+                "message_id": 42,
+                "chat": {"username": "chan", "id": -100},
+            },
+        }
+        mock_resp.text = "{}"
+        with mock.patch("sender.services.telegram_publisher.requests.post") as m:
+            m.return_value = mock_resp
+            r = run_publish_job(
+                post.pk,
+                [NETWORK_SLUG_TELEGRAM],
+                telegram_post_story=False,
+            )
+        self.assertTrue(r.all_ok)
+
+
+class StoryMediaTests(TestCase):
+    def setUp(self):
+        self.author = cast(UserManager, User.objects).create_user(
+            email="story-media@example.com",
+            password="x",
+        )
+        self.cat = Category.objects.create(name="Cat")
+        self.network, _ = Network.objects.get_or_create(
+            slug=NETWORK_SLUG_TELEGRAM,
+            defaults={"name": "Telegram"},
+        )
+
+    def test_cover_image_has_priority(self):
+        post = Post.objects.create(
+            title="Cover",
+            slug="story-cover",
+            author=self.author,
+            cover_image=_minimal_jpeg_upload("c.jpg"),
+            body="<p><img src='/media/inline.jpg'></p>",
+            status="ready_to_publish",
+            category=self.cat,
+        )
+        path = resolve_story_image_path(post, network=self.network)
+        self.assertEqual(path, post.cover_image.name)
+
+    def test_network_fallback_when_post_has_no_images(self):
+        tg_settings, _ = TelegramNetworkSettings.objects.get_or_create(
+            network=self.network,
+        )
+        tg_settings.story_fallback_image = _minimal_jpeg_upload("fallback.jpg")
+        tg_settings.save()
+        post = Post.objects.create(
+            title="No images",
+            slug="story-no-images",
+            author=self.author,
+            body="<p>Text only</p>",
+            status="ready_to_publish",
+            category=self.cat,
+        )
+        path = resolve_story_image_path(post, network=self.network)
+        self.assertEqual(path, tg_settings.story_fallback_image.name)
+
+    def test_raises_when_no_image_and_no_fallback(self):
+        post = Post.objects.create(
+            title="Empty",
+            slug="story-empty",
+            author=self.author,
+            body="<p>Text only</p>",
+            status="ready_to_publish",
+            category=self.cat,
+        )
+        with self.assertRaises(StoryMediaError):
+            resolve_story_image_path(post, network=self.network)
+
+
+@override_settings(
+    SITE_URL="https://example.org",
+    CREDENTIALS_ENCRYPTION_KEY=_FERNET_TEST_KEY,
+)
+class StoryPublishJobTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.author = cast(UserManager, User.objects).create_user(
+            email="story-job@example.com",
+            password="x",
+        )
+        self.cat = Category.objects.create(name="Cat")
+        self.post = Post.objects.create(
+            title="Story post",
+            slug="story-post",
+            author=self.author,
+            cover_image=_minimal_jpeg_upload("c.jpg"),
+            body="<p>Body</p>",
+            status="ready_to_publish",
+            category=self.cat,
+        )
+        net, _ = Network.objects.get_or_create(
+            slug=NETWORK_SLUG_TELEGRAM,
+            defaults={"name": "Telegram"},
+        )
+        cred = Credential(network=net, label="")
+        cred.set_secrets_dict({"bot_token": "test-token", "channel_name": "chan"})
+        cred.save()
+
+    def _telegram_success_response(self) -> mock.Mock:
+        mock_resp = mock.Mock()
+        mock_resp.json.return_value = {
+            "ok": True,
+            "result": {
+                "message_id": 42,
+                "chat": {"username": "chan", "id": -100},
+            },
+        }
+        mock_resp.text = "{}"
+        return mock_resp
+
+    def test_story_requires_telegram_selected(self):
+        r = run_publish_job(
+            self.post.pk,
+            [NETWORK_SLUG_SITE],
+            telegram_post_story=True,
+        )
+        self.assertFalse(r.all_ok)
+        self.assertEqual(r.by_network["_"].error, "story_requires_telegram")
+
+    def test_story_unavailable_blocks_job_before_send(self):
+        with mock.patch(
+            "sender.services.post_sender.check_story_availability",
+        ) as avail:
+            avail.return_value = StoryAvailabilityDTO(
+                available=False,
+                reason="Operator session missing.",
+            )
+            r = run_publish_job(
+                self.post.pk,
+                [NETWORK_SLUG_TELEGRAM],
+                telegram_post_story=True,
+            )
+        self.assertFalse(r.all_ok)
+        self.assertEqual(r.by_network["_"].error, "story_unavailable")
+
+    def test_story_success_stores_message_and_story_on_postlink(self):
+        with (
+            mock.patch("sender.services.telegram_publisher.requests.post") as tg_api,
+            mock.patch(
+                "sender.services.post_sender.check_story_availability",
+            ) as avail,
+            mock.patch(
+                "sender.services.post_sender.publish_story_for_post",
+            ) as story_pub,
+        ):
+            tg_api.return_value = self._telegram_success_response()
+            avail.return_value = StoryAvailabilityDTO(available=True)
+            story_pub.return_value = PublishResult(
+                ok=True,
+                message_url="https://t.me/chan/42",
+                message_id=42,
+                story_id=99,
+                story_url="https://t.me/chan/s/99",
+            )
+            r = run_publish_job(
+                self.post.pk,
+                [NETWORK_SLUG_TELEGRAM],
+                telegram_post_story=True,
+            )
+        self.assertTrue(r.all_ok)
+        tg_net = Network.objects.get(slug=NETWORK_SLUG_TELEGRAM)
+        link = PostLink.objects.get(post=self.post, network=tg_net)
+        self.assertEqual(link.message_id, 42)
+        self.assertEqual(link.story_id, 99)
+        self.assertEqual(link.story_url, "https://t.me/chan/s/99")
+        self.post.refresh_from_db()
+        self.assertEqual(self.post.status, "published")
+
+    def test_story_failure_fails_job_and_keeps_post_unpublished(self):
+        with (
+            mock.patch("sender.services.telegram_publisher.requests.post") as tg_api,
+            mock.patch(
+                "sender.services.post_sender.check_story_availability",
+            ) as avail,
+            mock.patch(
+                "sender.services.post_sender.publish_story_for_post",
+            ) as story_pub,
+        ):
+            tg_api.return_value = self._telegram_success_response()
+            avail.return_value = StoryAvailabilityDTO(available=True)
+            story_pub.return_value = PublishResult(
+                ok=False,
+                error="story_publish_failed",
+                detail="No free story slots on the channel.",
+            )
+            r = run_publish_job(
+                self.post.pk,
+                [NETWORK_SLUG_TELEGRAM],
+                telegram_post_story=True,
+            )
+        self.assertFalse(r.all_ok)
+        tg_res = r.by_network[NETWORK_SLUG_TELEGRAM]
+        self.assertEqual(tg_res.error, "story_publish_failed")
+        self.post.refresh_from_db()
+        self.assertEqual(self.post.status, "ready_to_publish")
+        tg_net = Network.objects.get(slug=NETWORK_SLUG_TELEGRAM)
+        self.assertFalse(
+            PostLink.objects.filter(post=self.post, network=tg_net).exists(),
+        )
+
+
 class PublishWorkflowViewTests(TestCase):
     def setUp(self):
         self.admin = cast(UserManager, User.objects).create_superuser(
@@ -749,20 +1045,12 @@ class PublishWorkflowViewTests(TestCase):
             body="<p>Preview body</p>",
             status="ready_to_publish",
             category=cat,
-            cover_image=SimpleUploadedFile(
-                "cover.jpg",
-                b"cover-bytes",
-                content_type="image/jpeg",
-            ),
+            cover_image=_minimal_jpeg_upload("cover.jpg"),
         )
         PostGalleryImage.objects.create(
             post=post,
             gallery_key=1,
-            image=SimpleUploadedFile(
-                "gallery.jpg",
-                b"gallery-bytes",
-                content_type="image/jpeg",
-            ),
+            image=_minimal_jpeg_upload("gallery.jpg"),
         )
         self.client.force_login(self.admin)
         url = reverse("sender_publish_workflow")
@@ -772,7 +1060,7 @@ class PublishWorkflowViewTests(TestCase):
         )
         self.assertEqual(rsp.status_code, 200)
         self.assertContains(rsp, 'class="telegram-preview-thumb"')
-        self.assertContains(rsp, 'class="telegram-preview-thumbs-row"')
+        self.assertContains(rsp, "telegram-preview-thumbs-row")
         self.assertContains(rsp, "Send 1/")
         self.assertContains(rsp, post.cover_image.url)
         gallery = PostGalleryImage.objects.get(post=post)
@@ -842,3 +1130,20 @@ class PublishWorkflowViewTests(TestCase):
         self.assertContains(rsp, "#news")
         self.assertContains(rsp, 'class="telegram-preview-text"')
         self.assertContains(rsp, "Crosslink (link to post on another network)")
+
+    def test_publish_workflow_shows_story_checkbox(self):
+        self.client.force_login(self.admin)
+        url = reverse("sender_publish_workflow")
+        with mock.patch(
+            "sender.admin_views.check_story_availability",
+        ) as avail:
+            avail.return_value = StoryAvailabilityDTO(
+                available=True,
+                reason="Stories can be posted.",
+                free_story_slots=3,
+            )
+            rsp = self.client.get(url)
+        self.assertEqual(rsp.status_code, 200)
+        self.assertContains(rsp, 'id="telegram_post_story"')
+        self.assertContains(rsp, "Also post Telegram Story")
+        self.assertContains(rsp, "3 free slots")

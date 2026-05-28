@@ -186,6 +186,12 @@
   .crosslink-network-row.is-hidden {
     display: none;
   }
+  .telegram-story-row.is-hidden {
+    display: none;
+  }
+  .telegram-story-row.is-disabled {
+    opacity: 0.65;
+  }
 </style>
 {% endblock %}
 {% block content %}
@@ -241,6 +247,28 @@
         </select>
         <p class="help">Must be one of the selected destinations above (excluding Telegram).</p>
       </div>
+      <div id="telegram-story-row" class="form-row telegram-story-row is-hidden">
+        <label>
+          <input type="checkbox" name="telegram_post_story" id="telegram_post_story" value="1"
+            {% if form_telegram_post_story %}checked{% endif %}
+            {% if telegram_story_availability and not telegram_story_availability.available %}disabled{% endif %}>
+          Also post Telegram Story (links to channel post)
+        </label>
+        <p class="help" id="telegram-story-status">
+          {% if telegram_story_availability %}
+            {% if telegram_story_availability.available %}
+              {{ telegram_story_availability.reason }}
+              {% if telegram_story_availability.free_story_slots is not None %}
+                ({{ telegram_story_availability.free_story_slots }} free slot{{ telegram_story_availability.free_story_slots|pluralize }})
+              {% endif %}
+            {% else %}
+              Stories unavailable: {{ telegram_story_availability.reason }}
+            {% endif %}
+          {% else %}
+            Stories unavailable: story availability could not be checked.
+          {% endif %}
+        </p>
+      </div>
     </div>
   </fieldset>
   <div class="submit-row">
@@ -256,6 +284,7 @@
     <input type="hidden" name="preview_telegram" value="1">
     <input type="hidden" name="telegram_format" id="preview_telegram_format" value="">
     <input type="hidden" name="crosslink_network" id="preview_crosslink_network" value="">
+    <input type="hidden" name="telegram_post_story" id="preview_telegram_post_story" value="">
     <div class="submit-row">
       <button type="submit" class="button">Preview Telegram formatting</button>
     </div>
@@ -363,6 +392,9 @@
   var crosslinkNetworkRow = document.getElementById("crosslink-network-row");
   var crosslinkSelect = document.getElementById("id_crosslink_network");
   var formatRadios = document.querySelectorAll('input[name="telegram_format"]');
+  var telegramStoryRow = document.getElementById("telegram-story-row");
+  var telegramPostStory = document.getElementById("telegram_post_story");
+  var previewTelegramPostStory = document.getElementById("preview_telegram_post_story");
 
   function selectedTelegramFormat() {
     var checked = document.querySelector('input[name="telegram_format"]:checked');
@@ -395,6 +427,9 @@
     if (crosslinkNetworkRow) {
       crosslinkNetworkRow.classList.toggle("is-hidden", !isCrosslink);
     }
+    if (telegramStoryRow) {
+      telegramStoryRow.classList.toggle("is-hidden", !telegramChecked);
+    }
     syncCrosslinkOptionAvailability();
   }
 
@@ -425,6 +460,9 @@
     }
     if (previewCrosslinkNetwork && crosslinkSelect) {
       previewCrosslinkNetwork.value = crosslinkSelect.value || "";
+    }
+    if (previewTelegramPostStory && telegramPostStory) {
+      previewTelegramPostStory.value = telegramPostStory.checked ? "1" : "";
     }
     if (
       destTelegram &&

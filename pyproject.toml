@@ -19,6 +19,7 @@ dependencies = [
     "qrcode>=7.4.2",
     "redis>=5.0.0",
     "requests>=2.32.5",
+    "telethon>=1.42.0",
     "cryptography>=45.0.0",
     "yadisk>=3.4.0",
     "unidecode>=1.4.0",
