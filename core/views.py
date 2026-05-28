@@ -18,7 +18,7 @@ def admin_session_keepalive(request):
 
 
 def custom_page_not_found_view(request, exception):
-    return render(request, "core/errors/404.html", {})
+    return render(request, "core/errors/404.html", {}, status=404)
 
 
 def custom_error_view(request, exception=None):
