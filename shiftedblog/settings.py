@@ -303,6 +303,10 @@ TELEGRAM_CHANNEL_HAS_SUBSCRIPTION = get_bool_env(
     "TELEGRAM_CHANNEL_HAS_SUBSCRIPTION",
     False,
 )
+# MTProto operator session for Telegram Stories (optional env bootstrap).
+TELEGRAM_API_ID = os.environ.get("TELEGRAM_API_ID", "").strip()
+TELEGRAM_API_HASH = os.environ.get("TELEGRAM_API_HASH", "").strip()
+TELEGRAM_OPERATOR_SESSION = os.environ.get("TELEGRAM_OPERATOR_SESSION", "").strip()
 
 # Optional local Python checker integration for post text quality checks in admin.
 # Uses optional python libs (language_tool_python / pyspellchecker) if installed.

@@ -15,4 +15,4 @@ def publish_to_site(post: Post) -> PublishResult:
         post=post,
         defaults={"published_at": post.published or timezone.now()},
     )
-    return PublishResult(ok=True, url=public_post_url(post))
+    return PublishResult(ok=True, message_url=public_post_url(post))

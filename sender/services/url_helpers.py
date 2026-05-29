@@ -38,8 +38,8 @@ def crosslink_url_for_post(post: Post, network_slug: str) -> str | None:
         .order_by("-pk")
         .first()
     )
-    if link and (link.url or "").strip():
-        return link.url.strip()
+    if link and (link.message_url or "").strip():
+        return link.message_url.strip()
     return None
 
 

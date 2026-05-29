@@ -42,7 +42,10 @@
             {% if link.network.slug == 'site' %}
             <a class="btn btn-outline-secondary btn-sm" href="{{ request.scheme }}://{{ request.get_host }}{{ post.get_absolute_url }}">{{ link.network.name }}</a>
             {% else %}
-            <a class="btn btn-outline-secondary btn-sm" href="{{ link.url }}" target="_blank" rel="noopener noreferrer">{{ link.network.name }}</a>
+            <a class="btn btn-outline-secondary btn-sm" href="{{ link.message_url }}" target="_blank" rel="noopener noreferrer">{{ link.network.name }}</a>
+            {% if link.story_url %}
+            <a class="btn btn-outline-secondary btn-sm" href="{{ link.story_url }}" target="_blank" rel="noopener noreferrer">{{ link.network.name }} Story</a>
+            {% endif %}
             {% endif %}
         {% endfor %}
     </div>

@@ -114,8 +114,11 @@ class TelegramPublishPlan:
         return len(self.steps) > 1 or any(s.is_continuation for s in self.steps)
 
 
-def _continuation_header() -> str:
-    return f"{CONTINUATION_PREFIX}\n\n"
+def _continuation_header(prefix: str | None = None) -> str:
+    label = (prefix if prefix is not None else CONTINUATION_PREFIX).strip()
+    if not label:
+        return ""
+    return f"{label}\n\n"
 
 
 def _find_split_index(
@@ -174,10 +177,11 @@ def _split_text_chunks(
     continuation_from_start: bool = False,
     first_chunk_reserve: int = 0,
     last_chunk_reserve: int = 0,
+    continuation_prefix: str | None = None,
 ) -> list[str]:
     if not text:
         return []
-    header = _continuation_header()
+    header = _continuation_header(continuation_prefix)
     first = not continuation_from_start
     header_len = 0 if first else len(header)
     base_limit = max(1, max_len - header_len)
@@ -285,7 +289,12 @@ def build_telegram_crosslink_plan(post: Post, *, link_url: str) -> TelegramPubli
     return TelegramPublishPlan(steps=steps, has_subscription=False)
 
 
-def build_telegram_plan(post: Post, *, has_subscription: bool) -> TelegramPublishPlan:
+def build_telegram_plan(
+    post: Post,
+    *,
+    has_subscription: bool,
+    continuation_prefix: str | None = None,
+) -> TelegramPublishPlan:
     """Compose steps for *post* according to subscription and length rules."""
     tags_suffix, tags_line, tags_reserve = format_tags_suffix(post)
     core_text = build_formatted_message(post, include_tags=False)
@@ -313,6 +322,7 @@ def build_telegram_plan(post: Post, *, has_subscription: bool) -> TelegramPublis
                     MAX_MESSAGE_LEN,
                     continuation_from_start=True,
                     last_chunk_reserve=tags_reserve,
+                    continuation_prefix=continuation_prefix,
                 ),
             )
     else:
@@ -321,6 +331,7 @@ def build_telegram_plan(post: Post, *, has_subscription: bool) -> TelegramPublis
             MAX_MESSAGE_LEN,
             first_chunk_reserve=tags_reserve,
             last_chunk_reserve=tags_reserve,
+            continuation_prefix=continuation_prefix,
         )
     _append_tags_to_series_endpoints(
         text_parts,
