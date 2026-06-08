@@ -170,6 +170,8 @@ def _send_message(
     token: str,
     chat_id: str,
     text: str,
+    *,
+    enable_link_preview: bool = False,
 ) -> tuple[PublishResult, str, int | None]:
     if not text:
         return PublishResult(ok=True), "", None
@@ -181,7 +183,7 @@ def _send_message(
             "chat_id": chat_id,
             "text": text,
             "parse_mode": PARSE_MODE,
-            "disable_web_page_preview": True,
+            "disable_web_page_preview": not enable_link_preview,
         },
     )
     if not payload.get("ok"):
@@ -275,6 +277,7 @@ def _execute_step(
     message = next((text for kind, text in dispatches if kind == "message"), None)
     first_link = ""
     first_message_id: int | None = None
+    link_preview = step.enable_link_preview
 
     if step.combined_album:
         for chunk_idx, chunk in enumerate(_chunk_media(step.media_paths)):
@@ -289,7 +292,12 @@ def _execute_step(
             if mid is not None and first_message_id is None:
                 first_message_id = mid
         if message:
-            res, link, mid = _send_message(token, chat_id, message)
+            res, link, mid = _send_message(
+                token,
+                chat_id,
+                message,
+                enable_link_preview=link_preview,
+            )
             if not res.ok:
                 return res, first_link, first_message_id
             if link and not first_link:
@@ -316,7 +324,12 @@ def _execute_step(
             first_message_id = mid
 
     if message:
-        res, link, mid = _send_message(token, chat_id, message)
+        res, link, mid = _send_message(
+            token,
+            chat_id,
+            message,
+            enable_link_preview=link_preview,
+        )
         if not res.ok:
             return res, first_link, first_message_id
         if link and not first_link:

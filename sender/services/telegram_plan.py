@@ -93,6 +93,7 @@ class TelegramPlannedStep:
     is_continuation: bool = False
     combined_album: bool = False
     caption_on_media_group: bool = False
+    enable_link_preview: bool = False
 
     def preview_label(self) -> str:
         if self.is_continuation:
@@ -285,7 +286,9 @@ def _preview_urls(paths: list[str]) -> list[str]:
 def build_telegram_crosslink_plan(post: Post, *, link_url: str) -> TelegramPublishPlan:
     """Single text message: linked label, blank line, tags — no media."""
     text = build_crosslink_message(post, link_url)
-    steps = [TelegramPlannedStep(text=text)] if text else []
+    steps = (
+        [TelegramPlannedStep(text=text, enable_link_preview=True)] if text else []
+    )
     return TelegramPublishPlan(steps=steps, has_subscription=False)
 
 

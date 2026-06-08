@@ -271,6 +271,7 @@ class TelegramCrosslinkFormatTests(TestCase):
         plan = build_telegram_crosslink_plan(post, link_url=url)
         self.assertFalse(plan.has_subscription)
         self.assertEqual(len(plan.steps), 1)
+        self.assertTrue(plan.steps[0].enable_link_preview)
         self.assertFalse(plan.steps[0].cover_path)
         self.assertEqual(plan.steps[0].media_paths, [])
         cards = build_preview_send_cards(plan)
@@ -715,6 +716,7 @@ class CrosslinkPublishJobTests(TestCase):
         self.assertIn("Crosslink teaser", payload.get("text", ""))
         self.assertIn("#news", payload.get("text", ""))
         self.assertIn("tg-crosslink", payload.get("text", ""))
+        self.assertFalse(payload.get("disable_web_page_preview"))
         photo_calls = [c for c in m.call_args_list if "sendPhoto" in c.args[0]]
         self.assertEqual(photo_calls, [])
 
