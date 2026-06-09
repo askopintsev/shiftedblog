@@ -286,9 +286,7 @@ def _preview_urls(paths: list[str]) -> list[str]:
 def build_telegram_crosslink_plan(post: Post, *, link_url: str) -> TelegramPublishPlan:
     """Single text message: linked label, blank line, tags — no media."""
     text = build_crosslink_message(post, link_url)
-    steps = (
-        [TelegramPlannedStep(text=text, enable_link_preview=True)] if text else []
-    )
+    steps = [TelegramPlannedStep(text=text, enable_link_preview=True)] if text else []
     return TelegramPublishPlan(steps=steps, has_subscription=False)
 
 
