@@ -110,24 +110,65 @@ docker-compose exec web python manage.py createsuperuser
 - Domain name pointing to your VPS
 - SSL certificate (Let's Encrypt recommended)
 
+### SSH key access (no passwords)
+
+Use two separate keys: one for GitHub Actions to SSH into the VPS, and one for the VPS to `git pull` from GitHub.
+
+**1. CI deploy key (GitHub Actions → VPS)**
+
+On your machine:
+
+```bash
+./scripts/ssh/generate-vps-deploy-key.sh
+```
+
+- Copy the **public** key to the server (`scripts/ssh/install-vps-authorized-key.sh` on the VPS, or append to `~/.ssh/authorized_keys`).
+- Add the **private** key to GitHub repo secret `VPS_SSH_KEY`.
+- Set secrets `VPS_HOST`, `VPS_USERNAME`, `VPS_PORT` (usually `22`).
+
+**2. Git deploy key (VPS → GitHub, read-only)**
+
+On your machine:
+
+```bash
+./scripts/ssh/generate-git-deploy-key.sh
+```
+
+- GitHub repo → **Settings → Deploy keys** → add the **public** key (read-only).
+- Copy private + public key to the VPS as `~/.ssh/shiftedblog_git_deploy` (+ `.pub`), then on the server:
+
+```bash
+chmod 600 ~/.ssh/shiftedblog_git_deploy
+./scripts/ssh/install-server-git-access.sh
+```
+
+**3. Optional: disable password SSH** after keys work — see `scripts/ssh/sshd-disable-password-auth.snippet`.
+
+Generated keys are stored in `scripts/ssh/keys/` (gitignored). Never commit private keys.
+
 ### Server Setup
 
-1. Connect to your VPS:
+1. Connect to your VPS (your own SSH key or password for initial setup):
+
 ```bash
 ssh user@your-vps-ip
 ```
 
 2. Create project directory:
+
 ```bash
 sudo mkdir -p /opt/shiftedblog
 sudo chown $USER:$USER /opt/shiftedblog
 cd /opt/shiftedblog
 ```
 
-3. Clone the repository:
+3. Clone the repository (after [git deploy key](#ssh-key-access-no-passwords) is installed):
+
 ```bash
-git clone https://github.com/yourusername/shiftedblog.git .
+git clone git@github.com-shiftedblog:askopintsev/shiftedblog.git .
 ```
+
+Or clone via HTTPS for first-time setup only, then switch with `install-server-git-access.sh`.
 
 4. Set up environment variables:
 ```bash
@@ -148,11 +189,12 @@ chmod +x deploy.sh
 
 ### GitHub Actions Setup
 
-1. Add repository secrets in GitHub:
+1. Add repository secrets in GitHub (see [SSH key access](#ssh-key-access-no-passwords)):
    - `VPS_HOST`: Your VPS IP address
    - `VPS_USERNAME`: SSH username
-   - `VPS_SSH_KEY`: Private SSH key
+   - `VPS_SSH_KEY`: Private SSH key from `generate-vps-deploy-key.sh`
    - `VPS_PORT`: SSH port (usually 22)
+   - `DOPPLER_TOKEN`: Doppler service token for production secrets
 
 2. Push to main branch to trigger deployment:
 ```bash

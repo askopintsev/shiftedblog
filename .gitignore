@@ -89,6 +89,9 @@ venv.bak/
 # sftp configuration file
 sftp-config.json
 
+# Local deploy / git SSH keys (never commit)
+scripts/ssh/keys/
+
 # Package control specific files Package
 Control.last-run
 Control.ca-list
