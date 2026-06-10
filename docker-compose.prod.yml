@@ -28,6 +28,7 @@ services:
       - ./media:/app/media
       - ./templates:/app/templates
       - ./backups:/backups
+      - ./logs:/app/logs
     env_file:
       - .env
     networks:
