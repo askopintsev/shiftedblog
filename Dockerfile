@@ -74,8 +74,8 @@ RUN chmod +x /app/entrypoint.prod.sh
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Switch to non-root user
-USER appuser
+# Entrypoint runs as root to fix bind-mount permissions, then drops to appuser.
+USER root
 
 # Expose port
 EXPOSE 8000

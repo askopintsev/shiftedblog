@@ -8,6 +8,9 @@ echo "Starting deployment..."
 # Pull latest changes
 git pull origin master
 
+# Ensure writable log/backups dirs exist before bind mounts
+mkdir -p logs backups
+
 # Stop existing containers
 docker compose -f docker-compose.prod.yml down
 

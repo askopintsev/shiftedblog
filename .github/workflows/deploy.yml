@@ -91,6 +91,9 @@ jobs:
           echo "First few lines of .env (without values):"
           head -5 .env | sed 's/=.*/=***/'
           
+          # Ensure writable log/backups dirs exist before bind mounts
+          mkdir -p logs backups
+
           # Stop existing containers
           docker compose -f docker-compose.prod.yml down || echo "No containers to stop"
           
