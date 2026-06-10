@@ -10,6 +10,7 @@ git pull origin master
 
 # Ensure writable log/backups dirs exist before bind mounts
 mkdir -p logs backups
+chown -R 1000:1000 logs backups 2>/dev/null || chmod -R a+rwX logs backups
 
 # Stop existing containers
 docker compose -f docker-compose.prod.yml down

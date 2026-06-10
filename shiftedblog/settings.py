@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -63,8 +64,32 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # File logging: default ``<project>/logs/``. Override if the UID cannot write there
 # (docker-compose ``web`` as HOST_UID vs image-owned ``/app/logs``).
-_log_dir_env = os.environ.get("SHIFTED_BLOG_LOG_DIR", "").strip()
-LOG_DIR = os.path.abspath(_log_dir_env) if _log_dir_env else str(BASE_DIR / "logs")
+_FALLBACK_LOG_DIR = "/tmp/shiftedblog_logs"
+
+
+def _resolve_log_dir() -> str:
+    requested = os.environ.get("SHIFTED_BLOG_LOG_DIR", "").strip()
+    preferred = os.path.abspath(requested) if requested else str(BASE_DIR / "logs")
+    for candidate in (preferred, _FALLBACK_LOG_DIR):
+        try:
+            os.makedirs(candidate, exist_ok=True)
+            probe = Path(candidate) / ".write_probe"
+            probe.write_text("", encoding="utf-8")
+            probe.unlink()
+            if candidate != preferred:
+                print(
+                    f"WARNING: log directory {preferred!r} is not writable; "
+                    f"using {candidate!r}",
+                    file=sys.stderr,
+                )
+            return candidate
+        except OSError:
+            continue
+    os.makedirs(_FALLBACK_LOG_DIR, exist_ok=True)
+    return _FALLBACK_LOG_DIR
+
+
+LOG_DIR = _resolve_log_dir()
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -729,6 +754,3 @@ LOGGING = {
         "level": "INFO",
     },
 }
-
-# Ensure logs directory exists
-os.makedirs(LOG_DIR, exist_ok=True)

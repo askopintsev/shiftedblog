@@ -49,10 +49,12 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && ldconfig
 
-RUN useradd -m -r appuser && \
-   mkdir /app && \
-   mkdir -p /backups && \
-   chown -R appuser /app /backups
+# UID 1000 matches typical VPS deploy users so bind-mounted ./logs is writable.
+RUN groupadd -g 1000 appuser && \
+    useradd -m -u 1000 -g appuser -s /bin/bash appuser && \
+    mkdir /app && \
+    mkdir -p /backups && \
+    chown -R appuser:appuser /app /backups
 
 # Copy the Python dependencies from the builder stage (minor version must match FROM above).
 COPY --from=builder /usr/local/lib/python3.14/site-packages/ /usr/local/lib/python3.14/site-packages/
