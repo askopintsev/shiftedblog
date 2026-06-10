@@ -144,6 +144,8 @@ chmod 600 ~/.ssh/shiftedblog_git_deploy
 
 **3. Optional: disable password SSH** after keys work — see `scripts/ssh/sshd-disable-password-auth.snippet`.
 
+**4. Set a random admin URL** in Doppler (`ADMIN_URL`) — see `scripts/security/generate-admin-url.sh`.
+
 Generated keys are stored in `scripts/ssh/keys/` (gitignored). Never commit private keys.
 
 ### Server Setup
@@ -224,13 +226,17 @@ git push origin master
 
 ## Security Features
 
-- Two-factor authentication
-- Rate limiting with django-axes
-- CSRF protection
-- XSS protection
-- Secure headers
-- Password validation
-- Session security
+- Two-factor authentication (django-two-factor-auth)
+- Brute-force lockout (django-axes) with admin unlock and lockout emails
+- Rate limiting (nginx + django-ratelimit)
+- Session rotation on login and configurable session idle timeout
+- CSRF / XSS protection and secure headers (HSTS, CSP)
+- Secrets rotation reminders in admin
+- CI static analysis (`bandit`) and dependency audit (`pip-audit`)
+
+Operations guide: [docs/security-runbook.md](docs/security-runbook.md)
+
+Production admin path: set a random `ADMIN_URL` in Doppler (`./scripts/security/generate-admin-url.sh`).
 
 ## File Structure
 

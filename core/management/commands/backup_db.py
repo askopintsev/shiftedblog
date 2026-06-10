@@ -68,14 +68,38 @@ class Command(BaseCommand):
         # Step 1: Database backup
         if not skip_db:
             assert db_password is not None  # validated above
+            assert db_name is not None
+            assert db_user is not None
+            pg_host = db_host or "db"
             backup_file = f"{backup_dir}/{db_name}_{method}_{timestamp}.sql.gz"
             os.environ["PGPASSWORD"] = db_password
             try:
-                cmd = (
-                    f"pg_dump -h {db_host} -U {db_user} {db_name} "
-                    f"| gzip > {backup_file}"
-                )
-                subprocess.check_call(cmd, shell=True)
+                with open(backup_file, "wb") as outfile:
+                    dump = subprocess.Popen(
+                        [
+                            "pg_dump",
+                            "-h",
+                            pg_host,
+                            "-U",
+                            db_user,
+                            db_name,
+                        ],
+                        stdout=subprocess.PIPE,
+                    )
+                    gzip_proc = subprocess.Popen(
+                        ["gzip"],
+                        stdin=dump.stdout,
+                        stdout=outfile,
+                    )
+                    if dump.stdout is not None:
+                        dump.stdout.close()
+                    gzip_rc = gzip_proc.wait()
+                    dump_rc = dump.wait()
+                if dump_rc != 0 or gzip_rc != 0:
+                    raise subprocess.CalledProcessError(
+                        returncode=dump_rc or gzip_rc,
+                        cmd="pg_dump | gzip",
+                    )
                 self.stdout.write(
                     self.style.SUCCESS(f"DB backup completed: {backup_file}")
                 )
@@ -94,8 +118,9 @@ class Command(BaseCommand):
                 parent = os.path.dirname(media_root)
                 dirname = os.path.basename(media_root)
                 try:
-                    cmd = f"tar -czf {media_archive} -C {parent} {dirname}"
-                    subprocess.check_call(cmd, shell=True)
+                    subprocess.check_call(
+                        ["tar", "-czf", media_archive, "-C", parent, dirname]
+                    )
                     self.stdout.write(
                         self.style.SUCCESS(f"Media backup completed: {media_archive}")
                     )

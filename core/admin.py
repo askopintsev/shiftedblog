@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import json
 
+from axes.models import AccessAttempt
+from axes.utils import reset
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 from core.models import Credential, Network, TelegramNetworkSettings, User
@@ -106,9 +108,37 @@ class UserAdmin(BaseUserAdmin):
         "last_name",
         "is_staff",
         "is_active",
+        "axes_lockout_status",
         "date_joined",
     )
     list_filter = ("is_staff", "is_active", "is_superuser")
     search_fields = ("email", "first_name", "last_name")
     ordering = ("-date_joined",)
-    readonly_fields = ("date_joined",)
+    readonly_fields = ("date_joined", "axes_lockout_status")
+    actions = ("unlock_axes_lockout",)
+
+    @admin.display(description="Axes lockout")
+    def axes_lockout_status(self, obj: User) -> str:
+        if not obj.email:
+            return "—"
+        attempts = AccessAttempt.objects.filter(username=obj.email)
+        if not attempts.exists():
+            return "No failures"
+        total = sum(a.failures_since_start for a in attempts)
+        return f"{attempts.count()} record(s), {total} failure(s)"
+
+    @admin.action(description="Unlock account (clear axes lockout)")
+    def unlock_axes_lockout(self, request, queryset):
+        unlocked = 0
+        for user in queryset:
+            removed = reset(username=user.email)
+            if removed:
+                unlocked += 1
+        if unlocked:
+            self.message_user(
+                request,
+                f"Cleared axes lockout for {unlocked} user(s).",
+                messages.SUCCESS,
+            )
+        else:
+            self.message_user(request, "No axes records to clear.", messages.INFO)

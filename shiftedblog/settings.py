@@ -118,7 +118,7 @@ INSTALLED_APPS = [
     "two_factor",
     "taggit",
     "django_ckeditor_5",
-    "core",
+    "core.apps.CoreConfig",
     "team",
     "editor",
     "blog",
@@ -165,6 +165,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "blog.context_processors.nav_categories",
+                "core.context_processors.admin_security_warnings",
             ],
         },
     },
@@ -388,7 +389,7 @@ else:
     )
 
 # HSTS (HTTP Strict Transport Security)
-# Default: 1 year (31536000 seconds) in production, 0 in development
+# 31536000 = 1 year (production default). Set 0 to disable (development only).
 SECURE_HSTS_SECONDS = get_int_env(
     "SECURE_HSTS_SECONDS", 31536000 if IS_PRODUCTION else 0
 )
@@ -608,6 +609,33 @@ AXES_LOCKOUT_TEMPLATE = (
     "two_factor/lockout.html"  # Optional: create custom lockout template
 )
 AXES_LOCKOUT_URL = None  # Use default lockout view
+# Behind nginx reverse proxy: use client IP from X-Forwarded-For / X-Real-IP.
+AXES_IPWARE_PROXY_COUNT = get_int_env("AXES_IPWARE_PROXY_COUNT", 1)
+AXES_IPWARE_PROXY_ORDER = os.environ.get("AXES_IPWARE_PROXY_ORDER", "left-most")
+AXES_IPWARE_META_PRECEDENCE_ORDER = (
+    "HTTP_X_FORWARDED_FOR",
+    "HTTP_X_REAL_IP",
+    "REMOTE_ADDR",
+)
+
+# Email (lockout alerts, security reports). Optional in development.
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
+)
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_PORT = get_int_env("EMAIL_PORT", 587)
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = get_bool_env("EMAIL_USE_TLS", True)
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@localhost")
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "")
+
+# Optional metadata for secrets rotation reminders (ISO date YYYY-MM-DD in Doppler).
+SECRET_KEY_ROTATED_AT = os.environ.get("SECRET_KEY_ROTATED_AT", "").strip()
+CREDENTIALS_ENCRYPTION_KEY_ROTATED_AT = os.environ.get(
+    "CREDENTIALS_ENCRYPTION_KEY_ROTATED_AT", ""
+).strip()
+SECRETS_ROTATION_MAX_AGE_DAYS = get_int_env("SECRETS_ROTATION_MAX_AGE_DAYS", 90)
 
 # Logging configuration for security events
 LOGGING = {

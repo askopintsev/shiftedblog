@@ -1,0 +1,12 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+{% if admin_security_warnings %}
+<ul class="messagelist">
+    {% for warning in admin_security_warnings %}
+    <li class="warning">{{ warning }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+{{ block.super }}
+{% endblock %}

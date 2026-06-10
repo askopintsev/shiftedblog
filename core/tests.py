@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 import json
+from datetime import date
+from unittest.mock import patch
 
 from cryptography.fernet import Fernet
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 
 from core import crypto
 from core.fields import FernetEncryptedTextField
 from core.models import Credential, Network
+from core.security_warnings import collect_secrets_rotation_warnings
+from core.signals import rotate_session_on_login
 
 _FERNET_TEST_KEY = Fernet.generate_key().decode("ascii")
 
@@ -45,3 +50,58 @@ class CredentialStorageTests(TestCase):
         field = FernetEncryptedTextField()
         with self.assertRaises(ValidationError):
             field.from_db_value("not-json-and-not-fernet", None, None)
+
+
+class SecurityWarningsTests(TestCase):
+    @override_settings(
+        SECRET_KEY_ROTATED_AT="2020-01-01",
+        CREDENTIALS_ENCRYPTION_KEY_ROTATED_AT="2020-01-01",
+        SECRETS_ROTATION_MAX_AGE_DAYS=90,
+    )
+    def test_collect_warnings_for_aged_secret_metadata(self):
+        warnings = collect_secrets_rotation_warnings(today=date(2026, 6, 1))
+        self.assertTrue(any("SECRET_KEY" in item for item in warnings))
+        self.assertTrue(any("CREDENTIALS_ENCRYPTION_KEY" in item for item in warnings))
+
+
+class SessionRotationTests(TestCase):
+    def test_rotate_session_on_login_cycles_session_key(self):
+        user_model = get_user_model()
+        user = user_model.objects.create_user(  # pyright: ignore[reportAttributeAccessIssue]
+            email="staff@example.com",
+            password="test-password-12",
+            is_staff=True,
+        )
+        from django.contrib.sessions.backends.db import SessionStore
+
+        session = SessionStore()
+        session.create()
+        old_key = session.session_key
+
+        factory = RequestFactory()
+        request = factory.get("/")
+        request.session = session
+
+        rotate_session_on_login(sender=None, request=request, user=user)
+
+        self.assertNotEqual(session.session_key, old_key)
+
+
+class LockoutEmailTests(TestCase):
+    @override_settings(
+        ADMIN_EMAIL="admin@example.com", DEFAULT_FROM_EMAIL="noreply@test"
+    )
+    @patch("core.signals.send_mail")
+    def test_handle_user_locked_out_sends_admin_email(self, send_mail_mock):
+        from core.signals import handle_user_locked_out
+
+        factory = RequestFactory()
+        request = factory.post("/login/")
+        handle_user_locked_out(
+            sender=None,
+            request=request,
+            username="user@example.com",
+            ip_address="203.0.113.10",
+        )
+        send_mail_mock.assert_called_once()
+        self.assertIn("user@example.com", send_mail_mock.call_args.kwargs["message"])
