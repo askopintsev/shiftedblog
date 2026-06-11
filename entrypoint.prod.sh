@@ -5,9 +5,25 @@ APP_USER=appuser
 LOG_MOUNT=/app/logs
 FALLBACK_LOG_DIR=/tmp/shiftedblog_logs
 
-mkdir -p "${LOG_MOUNT}" "${FALLBACK_LOG_DIR}" /backups
-chown -R "${APP_USER}:${APP_USER}" "${LOG_MOUNT}" "${FALLBACK_LOG_DIR}" /backups 2>/dev/null || true
-chmod -R u+rwX "${LOG_MOUNT}" /backups 2>/dev/null || chmod -R a+rwX "${LOG_MOUNT}" /backups 2>/dev/null || true
+# Bind-mounted dirs the appuser must write (collectstatic, uploads, logs, backups).
+WRITABLE_MOUNTS=(
+  "${LOG_MOUNT}"
+  /app/static
+  /app/media
+  /backups
+  "${FALLBACK_LOG_DIR}"
+)
+
+fix_mount_permissions() {
+  local mount="$1"
+  mkdir -p "${mount}"
+  chown -R "${APP_USER}:${APP_USER}" "${mount}" 2>/dev/null || true
+  chmod -R u+rwX "${mount}" 2>/dev/null || chmod -R a+rwX "${mount}" 2>/dev/null || true
+}
+
+for mount in "${WRITABLE_MOUNTS[@]}"; do
+  fix_mount_permissions "${mount}"
+done
 
 for logfile in security.log authentication.log; do
   path="${LOG_MOUNT}/${logfile}"
@@ -22,7 +38,7 @@ done
 log_dir_env=""
 if ! runuser -u "${APP_USER}" -- test -w "${LOG_MOUNT}"; then
   echo "WARNING: ${LOG_MOUNT} is not writable by ${APP_USER}; using ${FALLBACK_LOG_DIR}" >&2
-  chown -R "${APP_USER}:${APP_USER}" "${FALLBACK_LOG_DIR}"
+  fix_mount_permissions "${FALLBACK_LOG_DIR}"
   log_dir_env="export SHIFTED_BLOG_LOG_DIR=${FALLBACK_LOG_DIR};"
 fi
 
