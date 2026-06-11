@@ -29,6 +29,25 @@ Exit code `1` means threshold alerts were detected (see command output).
 
 Lockout notifications are emailed to `ADMIN_EMAIL` when SMTP is configured.
 
+### Beget SMTP (VPS + smtp.beget.com)
+
+Per [Beget mail docs](https://beget.com/ru/kb/how-to/mail/obshhie-svedeniya):
+
+| Setting | Value |
+|---------|--------|
+| `EMAIL_HOST` | `smtp.beget.com` |
+| `EMAIL_PORT` | `465` |
+| `EMAIL_USE_SSL` | `True` |
+| `EMAIL_USE_TLS` | `False` |
+| `EMAIL_HOST_USER` | Full Beget mailbox (e.g. `noreply@shiftedstuff.ru`) |
+| `EMAIL_HOST_PASSWORD` | Mailbox password from Beget panel |
+| `DEFAULT_FROM_EMAIL` | Same as `EMAIL_HOST_USER` |
+| `ADMIN_EMAIL` | Where alerts are received (can be any address) |
+
+`Connection unexpectedly closed` usually means wrong port/TLS mode (587+TLS instead of 465+SSL).
+
+**Docker Compose `.env`:** escape `$` in passwords as `$$` or Compose strips `$E` etc. and breaks SMTP auth.
+
 ## Rate limiting layers
 
 | Layer | Config | Logs |

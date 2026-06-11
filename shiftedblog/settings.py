@@ -660,7 +660,9 @@ EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
 EMAIL_PORT = get_int_env("EMAIL_PORT", 587)
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+# Beget and many hosts use 465 + SSL; 587 uses STARTTLS. Only one should be True.
 EMAIL_USE_TLS = get_bool_env("EMAIL_USE_TLS", True)
+EMAIL_USE_SSL = get_bool_env("EMAIL_USE_SSL", False)
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@localhost")
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "")
 
