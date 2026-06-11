@@ -7,7 +7,7 @@ FALLBACK_LOG_DIR=/tmp/shiftedblog_logs
 
 mkdir -p "${LOG_MOUNT}" "${FALLBACK_LOG_DIR}" /backups
 chown -R "${APP_USER}:${APP_USER}" "${LOG_MOUNT}" "${FALLBACK_LOG_DIR}" /backups 2>/dev/null || true
-chmod -R u+rwX "${LOG_MOUNT}" /backups 2>/dev/null || true
+chmod -R u+rwX "${LOG_MOUNT}" /backups 2>/dev/null || chmod -R a+rwX "${LOG_MOUNT}" /backups 2>/dev/null || true
 
 for logfile in security.log authentication.log; do
   path="${LOG_MOUNT}/${logfile}"

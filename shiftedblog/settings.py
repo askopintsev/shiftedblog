@@ -65,17 +65,28 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # File logging: default ``<project>/logs/``. Override if the UID cannot write there
 # (docker-compose ``web`` as HOST_UID vs image-owned ``/app/logs``).
 _FALLBACK_LOG_DIR = "/tmp/shiftedblog_logs"
+_LOG_FILENAMES = ("security.log", "authentication.log")
+
+
+def _log_dir_is_usable(log_dir: str) -> bool:
+    try:
+        os.makedirs(log_dir, exist_ok=True)
+        probe = Path(log_dir) / ".write_probe"
+        probe.write_text("", encoding="utf-8")
+        probe.unlink()
+        for name in _LOG_FILENAMES:
+            with (Path(log_dir) / name).open("a", encoding="utf-8"):
+                pass
+        return True
+    except OSError:
+        return False
 
 
 def _resolve_log_dir() -> str:
     requested = os.environ.get("SHIFTED_BLOG_LOG_DIR", "").strip()
     preferred = os.path.abspath(requested) if requested else str(BASE_DIR / "logs")
     for candidate in (preferred, _FALLBACK_LOG_DIR):
-        try:
-            os.makedirs(candidate, exist_ok=True)
-            probe = Path(candidate) / ".write_probe"
-            probe.write_text("", encoding="utf-8")
-            probe.unlink()
+        if _log_dir_is_usable(candidate):
             if candidate != preferred:
                 print(
                     f"WARNING: log directory {preferred!r} is not writable; "
@@ -83,8 +94,6 @@ def _resolve_log_dir() -> str:
                     file=sys.stderr,
                 )
             return candidate
-        except OSError:
-            continue
     os.makedirs(_FALLBACK_LOG_DIR, exist_ok=True)
     return _FALLBACK_LOG_DIR
 
@@ -662,95 +671,121 @@ CREDENTIALS_ENCRYPTION_KEY_ROTATED_AT = os.environ.get(
 ).strip()
 SECRETS_ROTATION_MAX_AGE_DAYS = get_int_env("SECRETS_ROTATION_MAX_AGE_DAYS", 90)
 
-# Logging configuration for security events
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "verbose": {
-            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
-            "style": "{",
-        },
-        "security": {
-            "format": "{levelname} {asctime} [{module}] {message}",
-            "style": "{",
-        },
-        "security_detailed": {
-            "format": "{levelname} {asctime} [{module}] {message}",
-            "style": "{",
-        },
-    },
-    "handlers": {
+def _rotating_file_handler(filename: str, formatter: str) -> dict:
+    return {
+        "class": "logging.handlers.RotatingFileHandler",
+        "filename": filename,
+        "maxBytes": 1024 * 1024 * 10,  # 10 MB
+        "backupCount": 5,
+        "formatter": formatter,
+    }
+
+
+def _build_logging() -> dict:
+    handlers: dict = {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "verbose",
         },
-        "security_file": {
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": os.path.join(LOG_DIR, "security.log"),
-            "maxBytes": 1024 * 1024 * 10,  # 10 MB
-            "backupCount": 5,
-            "formatter": "security",
+    }
+    security_handlers = ["console"]
+    auth_handlers = ["console"]
+
+    security_path = os.path.join(LOG_DIR, "security.log")
+    try:
+        with open(security_path, "a", encoding="utf-8"):
+            pass
+        handlers["security_file"] = _rotating_file_handler(security_path, "security")
+        security_handlers.append("security_file")
+    except OSError:
+        print(
+            f"WARNING: cannot write {security_path!r}; security file logging disabled",
+            file=sys.stderr,
+        )
+
+    auth_path = os.path.join(LOG_DIR, "authentication.log")
+    try:
+        with open(auth_path, "a", encoding="utf-8"):
+            pass
+        handlers["auth_file"] = _rotating_file_handler(auth_path, "security_detailed")
+        auth_handlers.append("auth_file")
+    except OSError:
+        print(
+            f"WARNING: cannot write {auth_path!r}; auth file logging disabled",
+            file=sys.stderr,
+        )
+
+    axes_handlers = list(dict.fromkeys([*security_handlers, *auth_handlers]))
+
+    return {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "verbose": {
+                "format": (
+                    "{levelname} {asctime} {module} "
+                    "{process:d} {thread:d} {message}"
+                ),
+                "style": "{",
+            },
+            "security": {
+                "format": "{levelname} {asctime} [{module}] {message}",
+                "style": "{",
+            },
+            "security_detailed": {
+                "format": "{levelname} {asctime} [{module}] {message}",
+                "style": "{",
+            },
         },
-        "auth_file": {
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": os.path.join(LOG_DIR, "authentication.log"),
-            "maxBytes": 1024 * 1024 * 10,  # 10 MB
-            "backupCount": 5,
-            "formatter": "security_detailed",
+        "handlers": handlers,
+        "loggers": {
+            "django.security": {
+                "handlers": security_handlers,
+                "level": "WARNING",
+                "propagate": False,
+            },
+            "axes": {
+                "handlers": axes_handlers,
+                "level": "INFO",
+                "propagate": False,
+            },
+            "django_ratelimit": {
+                "handlers": security_handlers,
+                "level": "WARNING",
+                "propagate": False,
+            },
+            "django_otp": {
+                "handlers": auth_handlers,
+                "level": "INFO",
+                "propagate": False,
+            },
+            "two_factor": {
+                "handlers": auth_handlers,
+                "level": "INFO",
+                "propagate": False,
+            },
+            "django.contrib.auth": {
+                "handlers": auth_handlers,
+                "level": "INFO",
+                "propagate": False,
+            },
+            "django.request": {
+                "handlers": security_handlers,
+                "level": "ERROR",
+                "propagate": False,
+            },
+            "django.server": {
+                "handlers": ["console"],
+                "level": "ERROR",
+                "propagate": False,
+            },
         },
-    },
-    "loggers": {
-        # Django security events (CSRF, XSS, etc.)
-        "django.security": {
-            "handlers": ["console", "security_file"],
-            "level": "WARNING",
-            "propagate": False,
-        },
-        # django-axes: Failed login attempts, lockouts
-        "axes": {
-            "handlers": ["console", "security_file", "auth_file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        # django-ratelimit: Rate limiting events
-        "django_ratelimit": {
-            "handlers": ["console", "security_file"],
-            "level": "WARNING",
-            "propagate": False,
-        },
-        # Two-factor authentication events
-        "django_otp": {
-            "handlers": ["console", "auth_file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        "two_factor": {
-            "handlers": ["console", "auth_file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        # Authentication events (login, logout, etc.)
-        "django.contrib.auth": {
-            "handlers": ["console", "auth_file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        # Request errors (4xx, 5xx)
-        "django.request": {
-            "handlers": ["console", "security_file"],
-            "level": "ERROR",
-            "propagate": False,
-        },
-        # Server errors
-        "django.server": {
+        "root": {
             "handlers": ["console"],
-            "level": "ERROR",
-            "propagate": False,
+            "level": "INFO",
         },
-    },
-    "root": {
-        "handlers": ["console"],
-        "level": "INFO",
-    },
-}
+    }
+
+
+# Logging configuration for security events
+LOGGING = _build_logging()

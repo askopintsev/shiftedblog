@@ -97,9 +97,14 @@ jobs:
 
           # Stop existing containers
           docker compose -f docker-compose.prod.yml down || echo "No containers to stop"
-          
-          # Build and start
-          docker compose -f docker-compose.prod.yml build --no-cache
+
+          # Free disk before build (small VPS fills up with old images/build cache)
+          docker builder prune -af || true
+          docker image prune -af || true
+          df -h / /var/lib/docker 2>/dev/null || df -h /
+
+          # Build and start (layer cache keeps disk use lower than --no-cache)
+          docker compose -f docker-compose.prod.yml build
           docker compose -f docker-compose.prod.yml up -d
           
           # Verify deployment
