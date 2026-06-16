@@ -10,6 +10,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 import sys
+import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -64,7 +65,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # File logging: default ``<project>/logs/``. Override if the UID cannot write there
 # (docker-compose ``web`` as HOST_UID vs image-owned ``/app/logs``).
-_FALLBACK_LOG_DIR = "/tmp/shiftedblog_logs"
+_FALLBACK_LOG_DIR = os.path.join(tempfile.gettempdir(), "shiftedblog_logs")
 _LOG_FILENAMES = ("security.log", "authentication.log")
 
 
