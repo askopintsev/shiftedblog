@@ -673,6 +673,7 @@ CREDENTIALS_ENCRYPTION_KEY_ROTATED_AT = os.environ.get(
 ).strip()
 SECRETS_ROTATION_MAX_AGE_DAYS = get_int_env("SECRETS_ROTATION_MAX_AGE_DAYS", 90)
 
+
 def _rotating_file_handler(filename: str, formatter: str) -> dict:
     return {
         "class": "logging.handlers.RotatingFileHandler",
@@ -725,8 +726,7 @@ def _build_logging() -> dict:
         "formatters": {
             "verbose": {
                 "format": (
-                    "{levelname} {asctime} {module} "
-                    "{process:d} {thread:d} {message}"
+                    "{levelname} {asctime} {module} {process:d} {thread:d} {message}"
                 ),
                 "style": "{",
             },
