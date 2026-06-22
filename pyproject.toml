@@ -34,6 +34,11 @@ dev = [
     "ruff>=0.15.10",
 ]
 
+[tool.uv]
+constraint-dependencies = [
+    "msgpack>=1.2.1",
+]
+
 [tool.bandit]
 exclude_dirs = [".venv", "venv", "build", "dist"]
 skips = ["B101", "B308", "B703", "B608"]
