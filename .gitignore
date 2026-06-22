@@ -101,6 +101,12 @@ GitHub.sublime-settings
 
 editor/static/img/favicons/*.ico
 editor/static/img/favicons/*.png
+editor-ui/
+editor-ui/node_modules/
+editor-ui/dist/
+editor-ui/playwright-report/
+editor-ui/test-results/
+
 static_blog/img/template/**
 staticfiles/
 

@@ -1,6 +1,6 @@
 # Stage 1
 # Debian Bookworm (stable) — reliable mirrors vs. default slim on newer Debian (e.g. trixie).
-FROM python:3.15.0b2-slim-bookworm AS builder
+FROM python:3.13-slim-bookworm AS builder
 
 # Set work directory
 RUN mkdir /app
@@ -10,12 +10,13 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Install system dependencies (Pillow / psycopg2 build)
+# Install system dependencies (Pillow / psycopg2 / cffi build)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         postgresql-client \
         build-essential \
         libpq-dev \
+        libffi-dev \
         curl \
         libjpeg-dev \
         zlib1g-dev \
@@ -33,12 +34,13 @@ COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Stage 2
-FROM python:3.15.0b2-slim-bookworm
+FROM python:3.13-slim-bookworm
 
 # PostgreSQL client + runtime libs for Pillow (PIL/django_ckeditor_5)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         postgresql-client \
+        libffi8 \
         libjpeg62-turbo \
         zlib1g \
         libwebp7 \
@@ -57,7 +59,7 @@ RUN groupadd -g 1000 appuser && \
     chown -R appuser:appuser /app /backups
 
 # Copy the Python dependencies from the builder stage (minor version must match FROM above).
-COPY --from=builder /usr/local/lib/python3.14/site-packages/ /usr/local/lib/python3.14/site-packages/
+COPY --from=builder /usr/local/lib/python3.13/site-packages/ /usr/local/lib/python3.13/site-packages/
 COPY --from=builder /usr/local/bin/ /usr/local/bin/
 
 # Set work directory
