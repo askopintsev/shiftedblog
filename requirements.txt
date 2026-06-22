@@ -280,9 +280,9 @@ qrcode==7.4.2 \
     # via
     #   django-two-factor-auth
     #   shiftedblog
-redis==7.1.0 \
-    --hash=sha256:23c52b208f92b56103e17c5d06bdc1a6c2c0b3106583985a76a18f83b265de2b \
-    --hash=sha256:b1cc3cfa5a2cb9c2ab3ba700864fb0ad75617b41f01352ce5779dabf6d5f9c3c
+redis==8.0.0 \
+    --hash=sha256:a00c5355432051ac14e593b8b197fc76c887ee12d55a0984f69328a1115fdc49 \
+    --hash=sha256:c938c18338585009f0bc310f4c7e4e4b4d37639356c4ac072cedf3af570c8dc7
     # via
     #   django-redis
     #   shiftedblog
