@@ -1,6 +1,19 @@
+# Stage 0: Editor UI build
+FROM node:22-bookworm AS editor-ui-builder
+WORKDIR /editor-ui
+COPY editor-ui/package.json editor-ui/package-lock.json* ./
+RUN npm ci || npm install
+COPY editor-ui/ ./
+RUN npm run build
+
+# Keep PYTHON_VERSION in sync with CI (.github/workflows/deploy.yml) and pyproject.toml.
+ARG PYTHON_VERSION=3.14
+
 # Stage 1
 # Debian Bookworm (stable) — reliable mirrors vs. default slim on newer Debian (e.g. trixie).
-FROM python:3.14-slim-bookworm AS builder
+FROM python:${PYTHON_VERSION}-slim-bookworm AS builder
+
+ARG PYTHON_VERSION
 
 # Set work directory
 RUN mkdir /app
@@ -34,7 +47,9 @@ COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Stage 2
-FROM python:3.14-slim-bookworm
+FROM python:${PYTHON_VERSION}-slim-bookworm
+
+ARG PYTHON_VERSION
 
 # PostgreSQL client + runtime libs for Pillow (PIL/django_ckeditor_5)
 RUN apt-get update \
@@ -58,8 +73,8 @@ RUN groupadd -g 1000 appuser && \
     mkdir -p /backups && \
     chown -R appuser:appuser /app /backups
 
-# Copy the Python dependencies from the builder stage (minor version must match FROM above).
-COPY --from=builder /usr/local/lib/python3.13/site-packages/ /usr/local/lib/python3.13/site-packages/
+# Copy the Python dependencies from the builder stage (PYTHON_VERSION must match FROM above).
+COPY --from=builder /usr/local/lib/python${PYTHON_VERSION}/site-packages/ /usr/local/lib/python${PYTHON_VERSION}/site-packages/
 COPY --from=builder /usr/local/bin/ /usr/local/bin/
 
 # Set work directory
@@ -70,6 +85,7 @@ ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu
 
 # Copy project files
 COPY --chown=appuser:appuser . .
+COPY --from=editor-ui-builder --chown=appuser:appuser /editor-ui/dist /editor-ui/dist
 
 # Make entry file executable
 RUN chmod +x /app/entrypoint.prod.sh

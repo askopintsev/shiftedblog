@@ -89,7 +89,7 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.pyright]
-pythonVersion = "3.13"
+pythonVersion = "3.14"
 typeCheckingMode = "basic"
 include = ["blog", "core", "editor", "sender", "shiftedblog", "team", "manage.py", "templates"]
 exclude = [
