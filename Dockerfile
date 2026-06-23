@@ -1,3 +1,6 @@
+# Keep PYTHON_VERSION in sync with CI (.github/workflows/deploy.yml) and pyproject.toml.
+ARG PYTHON_VERSION=3.14
+
 # Stage 0: Editor UI build
 FROM node:22-bookworm AS editor-ui-builder
 WORKDIR /editor-ui
@@ -5,9 +8,6 @@ COPY editor-ui/package.json editor-ui/package-lock.json* ./
 RUN npm ci || npm install
 COPY editor-ui/ ./
 RUN npm run build
-
-# Keep PYTHON_VERSION in sync with CI (.github/workflows/deploy.yml) and pyproject.toml.
-ARG PYTHON_VERSION=3.14
 
 # Stage 1
 # Debian Bookworm (stable) — reliable mirrors vs. default slim on newer Debian (e.g. trixie).
@@ -47,6 +47,7 @@ COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Stage 2
+ARG PYTHON_VERSION
 FROM python:${PYTHON_VERSION}-slim-bookworm
 
 ARG PYTHON_VERSION
