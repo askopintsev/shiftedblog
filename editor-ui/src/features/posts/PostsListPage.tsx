@@ -42,6 +42,8 @@ export function PostsListPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["posts"] }),
   });
 
+  const siteMutationPending = sitePublish.isPending || siteUnpublish.isPending;
+
   return (
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
@@ -76,20 +78,21 @@ export function PostsListPage() {
               <th className="px-4 py-3">Заголовок</th>
               <th className="px-4 py-3">Статус</th>
               <th className="px-4 py-3">Обновлён</th>
+              <th className="px-4 py-3">Показывать на сайте</th>
               <th className="px-4 py-3">Действия</th>
             </tr>
           </thead>
           <tbody>
             {isLoading && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-text-muted">
+                <td colSpan={5} className="px-4 py-8 text-center text-text-muted">
                   Загрузка…
                 </td>
               </tr>
             )}
             {isError && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-red-600">
+                <td colSpan={5} className="px-4 py-8 text-center text-red-600">
                   Не удалось загрузить посты:{" "}
                   {error instanceof Error ? error.message : "ошибка API"}
                 </td>
@@ -97,7 +100,7 @@ export function PostsListPage() {
             )}
             {!isLoading && !isError && !data?.results.length && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-text-muted">
+                <td colSpan={5} className="px-4 py-8 text-center text-text-muted">
                   Постов не найдено.
                 </td>
               </tr>
@@ -124,29 +127,45 @@ export function PostsListPage() {
                   {new Date(post.updated).toLocaleString("ru-RU")}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <Link to={`/posts/${post.id}`} className="text-accent">
-                      Редактировать
-                    </Link>
-                    {post.status === "published" && !post.is_on_site && (
-                      <button
-                        type="button"
-                        className="text-green-700"
-                        onClick={() => sitePublish.mutate(post.id)}
-                      >
-                        На сайт
-                      </button>
-                    )}
-                    {post.is_on_site && (
-                      <button
-                        type="button"
-                        className="text-red-600"
-                        onClick={() => siteUnpublish.mutate(post.id)}
-                      >
-                        С сайта
-                      </button>
-                    )}
-                  </div>
+                  {post.status === "published" ? (
+                    <div className="flex items-center gap-2">
+                      {post.is_on_site ? (
+                        <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">
+                          Да
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="text-xs text-accent hover:underline disabled:opacity-60"
+                          disabled={siteMutationPending}
+                          onClick={() => sitePublish.mutate(post.id)}
+                        >
+                          Да
+                        </button>
+                      )}
+                      {!post.is_on_site ? (
+                        <span className="rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-semibold text-gray-800">
+                          Нет
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="text-xs text-accent hover:underline disabled:opacity-60"
+                          disabled={siteMutationPending}
+                          onClick={() => siteUnpublish.mutate(post.id)}
+                        >
+                          Нет
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-text-muted">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  <Link to={`/posts/${post.id}`} className="text-accent hover:underline">
+                    Редактировать
+                  </Link>
                 </td>
               </tr>
             ))}
