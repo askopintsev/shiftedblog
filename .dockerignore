@@ -66,4 +66,5 @@ test_*
 # Local development
 *.sqlite3
 media/
-staticfiles/ 
+staticfiles/
+editor-ui/ 

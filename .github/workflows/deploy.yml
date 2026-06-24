@@ -49,7 +49,7 @@ jobs:
           token: ${{ secrets.DOPPLER_TOKEN }}
           project: shifted_blog
           config: prd
-          command: secrets download --no-file --format=env > .env
+          command: secrets download --no-file --format=env > secrets.env
 
     - name: Deploy to VPS
       uses: appleboy/ssh-action@v1.2.5
@@ -81,15 +81,17 @@ jobs:
           # Set up Doppler authentication
           echo "${{ secrets.DOPPLER_TOKEN }}" | doppler configure set token
           
-          # Create .env file from Doppler secrets
-          doppler secrets download --no-file --format=env > .env
+          # secrets.env is passed to containers via env_file; avoid .env in project root
+          # because Compose auto-interpolates it and breaks values containing $ (e.g. passwords).
+          doppler secrets download --no-file --format=env > secrets.env
+          rm -f .env
           
-          # Verify .env file was created
-          echo "Checking .env file:"
-          ls -la .env
-          echo "File size: $(wc -c < .env)"
-          echo "First few lines of .env (without values):"
-          head -5 .env | sed 's/=.*/=***/'
+          # Verify secrets.env was created
+          echo "Checking secrets.env file:"
+          ls -la secrets.env
+          echo "File size: $(wc -c < secrets.env)"
+          echo "First few lines of secrets.env (without values):"
+          head -5 secrets.env | sed 's/=.*/=***/'
           
           # Ensure writable bind-mount dirs exist before containers start
           mkdir -p logs backups static media static_blog

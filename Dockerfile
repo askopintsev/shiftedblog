@@ -1,14 +1,6 @@
 # Keep PYTHON_VERSION in sync with CI (.github/workflows/deploy.yml) and pyproject.toml.
 ARG PYTHON_VERSION=3.14
 
-# Stage 0: Editor UI build
-FROM node:22-bookworm AS editor-ui-builder
-WORKDIR /editor-ui
-COPY editor-ui/package.json editor-ui/package-lock.json* ./
-RUN npm ci || npm install
-COPY editor-ui/ ./
-RUN npm run build
-
 # Stage 1
 # Debian Bookworm (stable) — reliable mirrors vs. default slim on newer Debian (e.g. trixie).
 FROM python:${PYTHON_VERSION}-slim-bookworm AS builder
@@ -86,7 +78,6 @@ ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu
 
 # Copy project files
 COPY --chown=appuser:appuser . .
-COPY --from=editor-ui-builder --chown=appuser:appuser /editor-ui/dist /editor-ui/dist
 
 # Make entry file executable
 RUN chmod +x /app/entrypoint.prod.sh
