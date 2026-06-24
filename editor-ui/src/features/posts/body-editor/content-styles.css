@@ -1,0 +1,59 @@
+/* WYSIWYG parity with post_admin_editor.css and public post detail */
+
+.post-body-editor .ck-editor__editable,
+.post-body-editor .ck-content {
+  min-height: 300px;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 1.125rem;
+  line-height: 1.85;
+  color: #212529;
+}
+
+.post-body-editor .ck-editor__editable p,
+.post-body-editor .ck-content p {
+  margin-bottom: 1.75rem;
+  line-height: 1.85;
+  text-align: justify;
+}
+
+.post-body-editor .ck-editor__editable h1,
+.post-body-editor .ck-editor__editable h2,
+.post-body-editor .ck-editor__editable h3,
+.post-body-editor .ck-editor__editable h4 {
+  margin-top: 2.75rem;
+  margin-bottom: 1.25rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+}
+
+.post-body-editor .ck-editor__editable h3 {
+  font-size: 1.75rem;
+}
+
+.post-body-editor .ck-editor__editable h4 {
+  font-size: 1.5rem;
+}
+
+.post-body-editor .ck-editor__editable blockquote {
+  border-left: 4px solid #e2e6e9;
+  padding-left: 1.5rem;
+  margin: 2.5rem 0;
+  font-style: italic;
+  color: #495057;
+}
+
+.post-body-editor .ck-sticky-panel__content,
+.post-body-editor .ck-toolbar {
+  border-radius: 8px 8px 0 0 !important;
+}
+
+.post-body-editor .ck-editor__main {
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
+  border: 1px solid #e2e6e9;
+  background: #fff;
+}
