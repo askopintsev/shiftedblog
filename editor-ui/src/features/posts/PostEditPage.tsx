@@ -42,6 +42,30 @@ function toApiPayload(form: PostFormState) {
   };
 }
 
+function postToForm(post: PostDetail): PostFormState {
+  return {
+    title: post.title ?? "",
+    body: post.body ?? "",
+    status: post.status,
+    short_description: post.short_description ?? "",
+    cover_description: post.cover_description ?? "",
+    slug: post.slug ?? "",
+    category_id: post.category?.id ?? null,
+    tags: formatTagsInput(post.tags ?? []),
+  };
+}
+
+const emptyFormState = (): PostFormState => ({
+  title: "",
+  body: "",
+  status: "draft",
+  short_description: "",
+  cover_description: "",
+  slug: "",
+  category_id: null,
+  tags: "",
+});
+
 const PostBodyEditor = lazy(() =>
   import("@/features/posts/body-editor/PostBodyEditor").then((module) => ({
     default: module.PostBodyEditor,
@@ -61,6 +85,11 @@ export function PostEditPage() {
   const [coverError, setCoverError] = useState<string | null>(null);
   const draftRestored = useRef(false);
   const slugEditedRef = useRef(false);
+  const hydratedPostIdRef = useRef<string | null>(null);
+  const tagsTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const saveBarRef = useRef<HTMLDivElement | null>(null);
+  const [toolbarStickyTop, setToolbarStickyTop] = useState(0);
+  const [isFormReady, setIsFormReady] = useState(isNew);
 
   const { data, isLoading } = useQuery({
     queryKey: ["post", id],
@@ -69,47 +98,68 @@ export function PostEditPage() {
       apiFetch<{ ok: boolean; post: PostDetail }>(`/posts/${id}/`),
   });
 
+  const post = data?.post;
+  const postMatchesRoute =
+    isNew || (post != null && String(post.id) === String(id));
+
   const categoriesQuery = useQuery({
     queryKey: ["categories"],
     queryFn: () =>
       apiFetch<{ ok: boolean; results: Category[] }>("/categories/"),
   });
 
-  const [form, setForm] = useState<PostFormState>({
-    title: "",
-    body: "",
-    status: "draft",
-    short_description: "",
-    cover_description: "",
-    slug: "",
-    category_id: null,
-    tags: "",
-  });
+  const [form, setForm] = useState<PostFormState>(emptyFormState);
 
   useEffect(() => {
-    if (data?.post) {
-      slugEditedRef.current = true;
-      setForm({
-        title: data.post.title ?? "",
-        body: data.post.body ?? "",
-        status: data.post.status,
-        short_description: data.post.short_description ?? "",
-        cover_description: data.post.cover_description ?? "",
-        slug: data.post.slug ?? "",
-        category_id: data.post.category?.id ?? null,
-        tags: formatTagsInput(data.post.tags ?? []),
-      });
+    draftRestored.current = false;
+    hydratedPostIdRef.current = null;
+    slugEditedRef.current = false;
+    setIsFormReady(isNew);
+    if (isNew) {
+      setForm(emptyFormState());
     }
-  }, [data?.post]);
+  }, [id, isNew]);
 
   useEffect(() => {
-    if (isNew || !id || draftRestored.current || !data?.post) return;
-    draftRestored.current = true;
-    const restored = tryRestoreDraftFromLocal(id, data.post.body ?? "");
-    if (restored) {
-      setForm((f) => ({ ...f, body: restored }));
+    if (isNew || !id || !post || !postMatchesRoute) return;
+    if (hydratedPostIdRef.current === id) return;
+
+    hydratedPostIdRef.current = id;
+    slugEditedRef.current = true;
+
+    let nextForm = postToForm(post);
+    if (!draftRestored.current) {
+      draftRestored.current = true;
+      const restored = tryRestoreDraftFromLocal(id, post.body ?? "");
+      if (restored) {
+        nextForm = { ...nextForm, body: restored };
+      }
     }
-  }, [data?.post, id, isNew]);
+
+    setForm(nextForm);
+    setIsFormReady(true);
+  }, [id, isNew, post, postMatchesRoute]);
+
+  useEffect(() => {
+    const textarea = tagsTextareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, [form.tags]);
+
+  useEffect(() => {
+    const saveBar = saveBarRef.current;
+    if (!saveBar) return;
+
+    const updateToolbarStickyTop = () => {
+      setToolbarStickyTop(saveBar.getBoundingClientRect().height);
+    };
+
+    updateToolbarStickyTop();
+    const observer = new ResizeObserver(updateToolbarStickyTop);
+    observer.observe(saveBar);
+    return () => observer.disconnect();
+  }, [focusMode, saveError, savedAt, isNew, form.status]);
 
   const formRef = useRef(form);
   formRef.current = form;
@@ -233,9 +283,25 @@ export function PostEditPage() {
   });
 
   const updateForm = useCallback(
-    (next: PostFormState) => {
-      setForm(next);
-      scheduleAutosave(next.body);
+    (patch: Partial<PostFormState>) => {
+      setForm((current) => {
+        const next = { ...current, ...patch };
+        if (patch.body !== undefined && patch.body !== current.body) {
+          scheduleAutosave(next.body);
+        }
+        return next;
+      });
+    },
+    [scheduleAutosave],
+  );
+
+  const updateBody = useCallback(
+    (body: string) => {
+      setForm((current) => {
+        if (current.body === body) return current;
+        scheduleAutosave(body);
+        return { ...current, body };
+      });
     },
     [scheduleAutosave],
   );
@@ -243,15 +309,13 @@ export function PostEditPage() {
   const updateTitle = useCallback(
     (title: string) => {
       setSaveError(null);
-      updateForm({
-        ...formRef.current,
+      setForm((current) => ({
+        ...current,
         title,
-        slug: slugEditedRef.current
-          ? formRef.current.slug
-          : slugifySegment(title),
-      });
+        slug: slugEditedRef.current ? current.slug : slugifySegment(title),
+      }));
     },
-    [updateForm],
+    [],
   );
 
   const updateSlug = useCallback((slug: string) => {
@@ -269,7 +333,7 @@ export function PostEditPage() {
     }
   }, [navigate, saveMutation]);
 
-  if (!isNew && isLoading) {
+  if (!isNew && (isLoading || !isFormReady || !postMatchesRoute)) {
     return <div className="p-6">Загрузка…</div>;
   }
 
@@ -333,7 +397,10 @@ export function PostEditPage() {
       )}
       <div className="flex min-w-0 flex-1">
         <div className="flex-1 p-6">
-          <div className="mb-4 flex items-center justify-between gap-4">
+          <div
+            ref={saveBarRef}
+            className="sticky top-0 z-40 -mx-6 mb-4 flex items-center justify-between gap-4 border-b border-border bg-surface/95 px-6 py-2 backdrop-blur supports-[backdrop-filter]:bg-surface/85"
+          >
             <div className="min-w-0 text-sm text-text-muted">
               {saveError ? (
                 <span className="text-red-600">{saveError}</span>
@@ -344,9 +411,9 @@ export function PostEditPage() {
               )}
             </div>
             <div className="flex gap-2">
-              {!isNew && data?.post?.draft_preview_url && (
+              {!isNew && post?.draft_preview_url && (
                 <a
-                  href={publicUrl(data.post.draft_preview_url)}
+                  href={publicUrl(post.draft_preview_url)}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex h-9 items-center rounded-lg border border-border px-3 text-sm text-accent hover:bg-surface-muted"
@@ -404,9 +471,11 @@ export function PostEditPage() {
             <section aria-label="Текст поста" className="min-h-[420px]">
               <Suspense fallback={<PostBodyEditorFallback />}>
                 <PostBodyEditor
+                  key={id}
                   value={form.body}
-                  onChange={(body) => updateForm({ ...form, body })}
-                  galleryImages={data?.post?.gallery_images ?? []}
+                  onChange={updateBody}
+                  toolbarStickyTop={toolbarStickyTop}
+                  galleryImages={post?.gallery_images ?? []}
                   postId={!isNew && id ? Number(id) : undefined}
                   onGalleryUploaded={() => {
                     if (!id) return;
@@ -430,7 +499,7 @@ export function PostEditPage() {
               <select
                 value={form.status}
                 onChange={(e) =>
-                  setForm({ ...form, status: e.target.value as PostStatus })
+                  updateForm({ status: e.target.value as PostStatus })
                 }
                 className="mt-1 w-full rounded-lg border border-border px-2 py-1.5"
               >
@@ -448,7 +517,7 @@ export function PostEditPage() {
             </label>
             {!isNew && form.status === "published" && (
               <div className="mb-3 text-sm">
-                {data?.post?.is_on_site ? (
+                {post?.is_on_site ? (
                   <button
                     type="button"
                     className="text-red-600"
@@ -477,7 +546,7 @@ export function PostEditPage() {
                 <>
                   <ImageFileInput
                     buttonLabel={
-                      data?.post?.cover_image_url
+                      post?.cover_image_url
                         ? "Заменить обложку"
                         : "Загрузить обложку"
                     }
@@ -491,10 +560,10 @@ export function PostEditPage() {
                   ) : null}
                 </>
               )}
-              {data?.post?.cover_image_url && (
+              {post?.cover_image_url && (
                 <div className="mt-2 space-y-2">
                   <img
-                    src={mediaUrl(data.post.cover_image_url)}
+                    src={mediaUrl(post.cover_image_url)}
                     alt="Cover"
                     className="max-h-32 rounded-lg object-cover"
                   />
@@ -516,7 +585,7 @@ export function PostEditPage() {
               <textarea
                 value={form.cover_description}
                 onChange={(e) =>
-                  setForm({ ...form, cover_description: e.target.value })
+                  updateForm({ cover_description: e.target.value })
                 }
                 rows={2}
                 placeholder="Краткое описание изображения"
@@ -531,7 +600,7 @@ export function PostEditPage() {
               <textarea
                 value={form.short_description}
                 onChange={(e) =>
-                  setForm({ ...form, short_description: e.target.value })
+                  updateForm({ short_description: e.target.value })
                 }
                 rows={3}
                 placeholder="Короткий анонс поста"
@@ -559,8 +628,7 @@ export function PostEditPage() {
                 value={form.category_id ?? ""}
                 onChange={(e) => {
                   setSaveError(null);
-                  setForm({
-                    ...form,
+                  updateForm({
                     category_id: e.target.value ? Number(e.target.value) : null,
                   });
                 }}
@@ -579,14 +647,16 @@ export function PostEditPage() {
             </label>
             <label className="block text-sm">
               Теги
-              <input
+              <textarea
+                ref={tagsTextareaRef}
                 value={form.tags}
                 onChange={(e) => {
                   setSaveError(null);
-                  setForm({ ...form, tags: e.target.value });
+                  updateForm({ tags: e.target.value });
                 }}
+                rows={2}
                 placeholder="news, django"
-                className="mt-1 w-full rounded-lg border border-border px-2 py-1.5"
+                className="mt-1 min-h-16 w-full resize-none overflow-hidden rounded-lg border border-border px-2 py-1.5"
               />
               <p className="mt-1 text-xs text-text-muted">
                 Введите теги через запятую.

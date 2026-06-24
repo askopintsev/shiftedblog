@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { CKEditor } from "@ckeditor/ckeditor5-react";
 import {
   Alignment,
@@ -51,20 +52,23 @@ import { normalizeImageFileForUpload } from "@/lib/imageUpload";
 import { mediaUrl } from "@/lib/mediaUrl";
 import { ckeditorConfig } from "./ckeditor.config";
 import { EmojiPalette } from "./components/EmojiPalette";
+import { GalleryInsertButton } from "./components/GalleryInsertButton";
+import { BodyBasicStatsRail } from "./components/BodyBasicStatsRail";
 import { BodyStatsBar } from "./components/BodyStatsBar";
 import {
   encodeGalleryMarkers,
   GalleryMarkerPlugin,
-  insertGalleryMarker,
   refreshGalleryMarkers,
 } from "./galleryMarkerPlugin";
 import { useDefaultJustify } from "./hooks/useDefaultJustify";
+import { useElementVisible } from "./hooks/useElementVisible";
 import type { Editor, EditorConfig } from "ckeditor5";
 
 interface PostBodyEditorProps {
   value: string;
   onChange: (html: string) => void;
   onStatsHtml?: (html: string) => void;
+  toolbarStickyTop?: number;
   galleryImages?: GalleryImage[];
   postId?: number;
   onGalleryUploaded?: () => void;
@@ -131,11 +135,16 @@ export function PostBodyEditor({
   value,
   onChange,
   onStatsHtml,
+  toolbarStickyTop = 0,
   galleryImages = [],
   postId,
   onGalleryUploaded,
 }: PostBodyEditorProps) {
   const editorRef = useRef<Editor | null>(null);
+  const mainStatsRef = useRef<HTMLDivElement | null>(null);
+  const extraToolbarHostRef = useRef<HTMLElement | null>(null);
+  const mainStatsVisible = useElementVisible(mainStatsRef);
+  const [extraToolbarEl, setExtraToolbarEl] = useState<HTMLElement | null>(null);
   const [localGalleryImages, setLocalGalleryImages] =
     useState<GalleryImage[]>(galleryImages);
   const [editorError, setEditorError] = useState<string | null>(null);
@@ -222,6 +231,36 @@ export function PostBodyEditor({
   );
 
   const { attachJustify } = useDefaultJustify();
+
+  const mountExtraToolbar = useCallback((editor: Editor) => {
+    const editorElement = editor.ui.view.element;
+    if (!editorElement) return;
+
+    const stickyContent = editorElement.querySelector<HTMLElement>(
+      ".ck-sticky-panel__content",
+    );
+    if (!stickyContent) return;
+
+    let host = stickyContent.querySelector<HTMLElement>(
+      ".post-body-editor-extra-toolbar",
+    );
+    if (!host) {
+      host = document.createElement("div");
+      host.className = "post-body-editor-extra-toolbar";
+      stickyContent.insertBefore(host, stickyContent.firstChild);
+    }
+
+    extraToolbarHostRef.current = host;
+    setExtraToolbarEl(host);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      extraToolbarHostRef.current?.remove();
+      extraToolbarHostRef.current = null;
+      setExtraToolbarEl(null);
+    };
+  }, []);
 
   useEffect(() => {
     setLocalGalleryImages(galleryImages);
@@ -413,72 +452,77 @@ export function PostBodyEditor({
     [deleteGalleryImage, postId, uploadGalleryFiles],
   );
 
+  const extraToolbar = (
+    <div className="post-body-editor-extra-toolbar__actions">
+      <GalleryInsertButton editorRef={editorRef} />
+      <EmojiPalette
+        onInsert={(_editor, text) => {
+          const editor = editorRef.current;
+          if (!editor) return;
+          editor.model.change((writer) => {
+            const pos = editor.model.document.selection.getFirstPosition();
+            if (pos) {
+              writer.insertText(text, pos);
+            }
+          });
+          editor.editing.view.focus();
+        }}
+      />
+    </div>
+  );
+
   return (
     <div className="post-body-editor mx-auto w-full max-w-[760px] space-y-3">
-      <BodyStatsBar html={value} onHtmlChange={onStatsHtml} />
-      <div className="post-body-editor-shell overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
-        <div className="flex items-center justify-end gap-2 border-b border-border bg-surface-muted px-3 py-2">
-          <button
-            type="button"
-            className="inline-flex h-9 items-center rounded-lg border border-border bg-surface px-3 text-sm"
-            onClick={() => {
-              const editor = editorRef.current;
-              if (!editor) return;
-              const raw = window.prompt("Номер галереи", "1");
-              if (raw === null) return;
-              insertGalleryMarker(editor, Number(raw));
-            }}
-          >
-            Добавить галерею
-          </button>
-          <EmojiPalette
-            onInsert={(_editor, text) => {
-              const editor = editorRef.current;
-              if (!editor) return;
-              editor.model.change((writer) => {
-                const pos = editor.model.document.selection.getFirstPosition();
-                if (pos) {
-                  writer.insertText(text, pos);
-                }
-              });
-              editor.editing.view.focus();
-            }}
-          />
+      <div ref={mainStatsRef}>
+        <BodyStatsBar html={value} onHtmlChange={onStatsHtml} />
+      </div>
+      <div
+        className="post-body-editor-layout"
+        style={
+          {
+            "--post-editor-toolbar-top": `${toolbarStickyTop}px`,
+          } as CSSProperties
+        }
+      >
+        {!mainStatsVisible && <BodyBasicStatsRail html={value} />}
+        <div className="post-body-editor-shell rounded-xl border border-border bg-surface shadow-sm">
+          {extraToolbarEl && createPortal(extraToolbar, extraToolbarEl)}
+          {editorError ? (
+            <div className="px-4 py-8 text-sm text-red-600">{editorError}</div>
+          ) : (
+            <CKEditor
+              key={galleryEditorKey}
+              editor={ClassicEditor}
+              data={editorData}
+              config={editorConfig}
+              onReady={(editor: Editor) => {
+                editorRef.current = editor;
+                setEditorError(null);
+                mountExtraToolbar(editor);
+                attachJustify(editor);
+                editor.editing.view.change((writer) => {
+                  const root = editor.editing.view.document.getRoot();
+                  if (root) {
+                    writer.setAttribute("spellcheck", "true", root);
+                    writer.setAttribute("lang", "ru", root);
+                  }
+                });
+                editor.plugins.get("FileRepository").createUploadAdapter = (
+                  loader: { file: Promise<File | null> },
+                ) => CustomUploadAdapter(loader);
+                attachGalleryDropHandlers(editor);
+              }}
+              onChange={(_event, editor) => {
+                onChange(editor.getData());
+              }}
+              onError={(error) => {
+                setEditorError(
+                  error instanceof Error ? error.message : "Не удалось загрузить редактор.",
+                );
+              }}
+            />
+          )}
         </div>
-        {editorError ? (
-          <div className="px-4 py-8 text-sm text-red-600">{editorError}</div>
-        ) : (
-          <CKEditor
-            key={galleryEditorKey}
-            editor={ClassicEditor}
-            data={editorData}
-            config={editorConfig}
-            onReady={(editor: Editor) => {
-              editorRef.current = editor;
-              setEditorError(null);
-              attachJustify(editor);
-              editor.editing.view.change((writer) => {
-                const root = editor.editing.view.document.getRoot();
-                if (root) {
-                  writer.setAttribute("spellcheck", "true", root);
-                  writer.setAttribute("lang", "ru", root);
-                }
-              });
-              editor.plugins.get("FileRepository").createUploadAdapter = (
-                loader: { file: Promise<File | null> },
-              ) => CustomUploadAdapter(loader);
-              attachGalleryDropHandlers(editor);
-            }}
-            onChange={(_event, editor) => {
-              onChange(editor.getData());
-            }}
-            onError={(error) => {
-              setEditorError(
-                error instanceof Error ? error.message : "Не удалось загрузить редактор.",
-              );
-            }}
-          />
-        )}
       </div>
     </div>
   );
