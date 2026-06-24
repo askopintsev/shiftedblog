@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import io
 from typing import Any
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.files.uploadedfile import UploadedFile
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from PIL import Image, UnidentifiedImageError
 from rest_framework import status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.request import Request
@@ -37,16 +40,34 @@ def _form_errors_response(exc: DjangoValidationError) -> Response:
     )
 
 
+def _gallery_image_upload_error(image: UploadedFile) -> str | None:
+    if image.size == 0:
+        return "Uploaded image is empty."
+    raw = image.read()
+    image.seek(0)
+    try:
+        with Image.open(io.BytesIO(raw)) as opened:
+            opened.verify()
+    except (OSError, UnidentifiedImageError):
+        return "Upload a valid image."
+    finally:
+        image.seek(0)
+    return None
+
+
 def _write_data_from_request(data: dict[str, Any]) -> dict[str, Any]:
     mapped: dict[str, Any] = {}
     field_map = {
         "author_id": "author",
         "category_id": "category",
         "series_ids": "series",
+        "cover_image_clear": "cover_image-clear",
     }
     for key, value in data.items():
+        if key == "cover_image_clear" and not value:
+            continue
         target = field_map.get(key, key)
-        mapped[target] = value
+        mapped[target] = "on" if key == "cover_image_clear" else value
     return mapped
 
 
@@ -74,9 +95,10 @@ class PostListCreateView(APIView):
         data.setdefault("author", request.user.pk)
         data.setdefault("status", "draft")
         try:
-            instance = validate_post_data(None, data)
+            validated = validate_post_data(None, data)
+            instance = validated.instance
             instance.author = instance.author or request.user
-            save_post(instance)
+            save_post(validated)
         except DjangoValidationError as exc:
             return _form_errors_response(exc)
         out = PostDetailSerializer(instance, context={"request": request})
@@ -108,8 +130,8 @@ class PostDetailView(APIView):
         if "cover_image" in request.FILES:
             data["cover_image"] = request.FILES["cover_image"]
         try:
-            instance = validate_post_data(post, data)
-            save_post(instance)
+            validated = validate_post_data(post, data)
+            instance = save_post(validated)
         except DjangoValidationError as exc:
             return _form_errors_response(exc)
         out = PostDetailSerializer(instance, context={"request": request})
@@ -126,8 +148,8 @@ class PostAutosaveView(APIView):
         write_ser.is_valid(raise_exception=True)
         data = _write_data_from_request(write_ser.validated_data)
         try:
-            instance = validate_post_data(post, data)
-            save_post(instance, record_history=True)
+            validated = validate_post_data(post, data)
+            instance = save_post(validated, record_history=True)
         except DjangoValidationError as exc:
             return _form_errors_response(exc)
         return Response({"ok": True, "updated": instance.updated.isoformat()})
@@ -243,6 +265,9 @@ class PostGalleryListCreateView(APIView):
         image = request.FILES.get("image")
         if not image:
             return Response({"ok": False, "error": "image required"}, status=400)
+        image_error = _gallery_image_upload_error(image)
+        if image_error:
+            return Response({"ok": False, "error": image_error}, status=400)
         obj = PostGalleryImage.objects.create(
             post=post,
             gallery_key=int(request.data.get("gallery_key") or 1),

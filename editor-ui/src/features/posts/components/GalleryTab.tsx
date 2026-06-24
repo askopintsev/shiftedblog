@@ -2,6 +2,9 @@ import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, apiUpload } from "@/api/client";
 import type { GalleryImage } from "@/api/types";
+import { ImageFileInput } from "@/components/ImageFileInput";
+import { normalizeImageFileForUpload } from "@/lib/imageUpload";
+import { mediaUrl } from "@/lib/mediaUrl";
 
 interface GalleryTabProps {
   postId: number;
@@ -22,9 +25,10 @@ export function GalleryTab({ postId }: GalleryTabProps) {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: (file: File) => {
+    mutationFn: async (file: File) => {
+      const uploadFile = await normalizeImageFileForUpload(file);
       const fd = new FormData();
-      fd.append("image", file);
+      fd.append("image", uploadFile);
       fd.append("gallery_key", String(galleryKey));
       if (caption) fd.append("caption", caption);
       return apiUpload<{ ok: boolean; gallery: GalleryImage }>(
@@ -95,22 +99,20 @@ export function GalleryTab({ postId }: GalleryTabProps) {
             className="ml-2 rounded-lg border border-border px-2 py-1"
           />
         </label>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          className="text-sm"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) uploadMutation.mutate(file);
-          }}
+        <ImageFileInput
+          inputRef={fileRef}
+          buttonLabel="Добавить в галерею"
+          hint="JPEG, PNG или WebP"
+          loading={uploadMutation.isPending}
+          className="min-w-[220px] flex-1"
+          onFileSelect={(file) => uploadMutation.mutate(file)}
         />
       </div>
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {images.map((img) => (
           <li key={img.id} className="rounded-lg border border-border p-2">
             <img
-              src={img.image_url}
+              src={mediaUrl(img.image_url)}
               alt={img.caption || `Gallery ${img.gallery_key}`}
               className="mb-2 max-h-40 w-full rounded object-cover"
             />

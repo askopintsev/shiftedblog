@@ -1,15 +1,47 @@
 /* WYSIWYG parity with post_admin_editor.css and public post detail */
 
+.post-body-editor-shell .ck.ck-editor {
+  border: 0 !important;
+}
+
+.post-body-editor-shell .ck.ck-editor__top .ck-sticky-panel .ck-sticky-panel__content {
+  border: 0 !important;
+}
+
+.post-body-editor-shell .ck.ck-toolbar {
+  border: 0 !important;
+  border-bottom: 1px solid var(--color-border, #e2e6e9) !important;
+  border-radius: 0 !important;
+  background: #f8f9fa !important;
+  padding: 0.35rem 0.5rem !important;
+}
+
+.post-body-editor-shell .ck.ck-toolbar .ck-toolbar__items {
+  flex-wrap: wrap;
+  gap: 0.125rem;
+}
+
+.post-body-editor-shell .ck.ck-button {
+  border-radius: 6px;
+}
+
+.post-body-editor-shell .ck.ck-editor__main > .ck-editor__editable {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
 .post-body-editor .ck-editor__editable,
 .post-body-editor .ck-content {
-  min-height: 300px;
-  max-width: 700px;
-  margin-left: auto;
-  margin-right: auto;
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 360px;
+  padding: 1.5rem 1.75rem !important;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
   font-size: 1.125rem;
   line-height: 1.85;
   color: #212529;
+  font-weight: 400;
+  letter-spacing: -0.01em;
 }
 
 .post-body-editor .ck-editor__editable p,
@@ -22,7 +54,15 @@
 .post-body-editor .ck-editor__editable h1,
 .post-body-editor .ck-editor__editable h2,
 .post-body-editor .ck-editor__editable h3,
-.post-body-editor .ck-editor__editable h4 {
+.post-body-editor .ck-editor__editable h4,
+.post-body-editor .ck-editor__editable h5,
+.post-body-editor .ck-editor__editable h6,
+.post-body-editor .ck-content h1,
+.post-body-editor .ck-content h2,
+.post-body-editor .ck-content h3,
+.post-body-editor .ck-content h4,
+.post-body-editor .ck-content h5,
+.post-body-editor .ck-content h6 {
   margin-top: 2.75rem;
   margin-bottom: 1.25rem;
   font-weight: 600;
@@ -30,30 +70,241 @@
   letter-spacing: -0.02em;
 }
 
-.post-body-editor .ck-editor__editable h3 {
+.post-body-editor .ck-editor__editable h3,
+.post-body-editor .ck-content h3 {
   font-size: 1.75rem;
 }
 
-.post-body-editor .ck-editor__editable h4 {
+.post-body-editor .ck-editor__editable h4,
+.post-body-editor .ck-content h4 {
   font-size: 1.5rem;
 }
 
-.post-body-editor .ck-editor__editable blockquote {
+.post-body-editor .ck-editor__editable blockquote,
+.post-body-editor .ck-content blockquote {
   border-left: 4px solid #e2e6e9;
   padding-left: 1.5rem;
   margin: 2.5rem 0;
   font-style: italic;
   color: #495057;
+  font-size: 1.0625rem;
+  line-height: 1.8;
 }
 
-.post-body-editor .ck-sticky-panel__content,
-.post-body-editor .ck-toolbar {
-  border-radius: 8px 8px 0 0 !important;
+.post-body-editor .ck-editor__editable ul,
+.post-body-editor .ck-editor__editable ol,
+.post-body-editor .ck-content ul,
+.post-body-editor .ck-content ol {
+  margin-bottom: 1.75rem;
+  padding-left: 2rem;
+  line-height: 1.85;
 }
 
-.post-body-editor .ck-editor__main {
-  border-radius: 0 0 12px 12px;
-  overflow: hidden;
-  border: 1px solid #e2e6e9;
-  background: #fff;
+.post-body-editor .ck-editor__editable li,
+.post-body-editor .ck-content li {
+  margin-bottom: 0.75rem;
+  line-height: 1.85;
+}
+
+.post-body-editor .ck-editor__editable img,
+.post-body-editor .ck-content img {
+  display: block;
+  width: 98% !important;
+  max-width: 98% !important;
+  height: auto !important;
+  margin: 2rem auto;
+  border-radius: 4px;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+
+.post-body-editor .ck-editor__editable img:hover,
+.post-body-editor .ck-content img:hover {
+  opacity: 0.9;
+}
+
+.post-body-editor .ck-editor__editable figure,
+.post-body-editor .ck-content figure {
+  width: 100%;
+  max-width: 100%;
+  margin: 2rem 0;
+  box-sizing: border-box;
+}
+
+.post-body-editor .ck-editor__editable figure.image,
+.post-body-editor .ck-editor__editable figure.image-style-align-left,
+.post-body-editor .ck-editor__editable figure.image-style-align-right,
+.post-body-editor .ck-editor__editable figure.image-style-align-center,
+.post-body-editor .ck-editor__editable figure.image_resized,
+.post-body-editor .ck-content figure.image,
+.post-body-editor .ck-content figure.image-style-align-left,
+.post-body-editor .ck-content figure.image-style-align-right,
+.post-body-editor .ck-content figure.image-style-align-center,
+.post-body-editor .ck-content figure.image_resized {
+  width: 98% !important;
+  max-width: 98% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  text-align: center !important;
+  float: none !important;
+}
+
+.post-body-editor .ck-editor__editable figure img,
+.post-body-editor .ck-content figure img {
+  display: block;
+  width: 98% !important;
+  max-width: 98% !important;
+  height: auto !important;
+  margin: 0 auto !important;
+  box-sizing: border-box;
+}
+
+.post-body-editor .ck-editor__editable figure img[style],
+.post-body-editor .ck-content figure img[style] {
+  width: 98% !important;
+  max-width: 98% !important;
+  aspect-ratio: auto !important;
+}
+
+.post-body-editor .ck-editor__editable figcaption,
+.post-body-editor .ck-content figcaption {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  color: #6c757d;
+  text-align: center;
+}
+
+.post-body-editor .ck-editor__editable.ck-focused {
+  outline: none !important;
+  box-shadow: inset 0 0 0 2px rgb(12 99 228 / 0.15) !important;
+}
+
+.post-body-editor .ck.ck-editor__editable:not(.ck-editor__nested-editable).ck-focused {
+  border-color: transparent !important;
+}
+
+.post-body-editor .ck.ck-placeholder::before {
+  color: #6c757d;
+}
+
+.post-body-editor .ck-gallery-marker {
+  display: block;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #212529;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.post-body-editor .ck-gallery-marker--dragover {
+  border-color: #0c63e4;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgb(12 99 228 / 0.12);
+}
+
+.post-body-editor .ck-gallery-marker--uploading {
+  cursor: progress;
+  opacity: 0.78;
+}
+
+.post-body-editor .ck-gallery-marker--error {
+  border-color: #dc3545;
+  background: #fff5f5;
+}
+
+.post-body-editor .ck-gallery-marker__title {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.post-body-editor .ck-gallery-marker__code {
+  margin-top: 0.25rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+.post-body-editor .ck-gallery-marker__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.post-body-editor .ck-gallery-marker__item {
+  position: relative;
+  margin: 0;
+}
+
+.post-body-editor .ck-gallery-marker__thumb {
+  width: 100%;
+  height: 72px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.post-body-editor .ck-gallery-marker__delete {
+  position: absolute;
+  right: 0.25rem;
+  top: 0.25rem;
+  display: inline-flex;
+  width: 1.5rem;
+  height: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(33 37 41 / 0.78);
+  color: #fff;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.post-body-editor .ck-gallery-marker__item:hover .ck-gallery-marker__delete,
+.post-body-editor .ck-gallery-marker__delete:focus-visible {
+  opacity: 1;
+}
+
+.post-body-editor .ck-gallery-marker__delete:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.post-body-editor .ck-gallery-marker__thumb--local {
+  outline: 2px solid rgb(12 99 228 / 0.25);
+}
+
+.post-body-editor .ck-gallery-marker__more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+  border-radius: 8px;
+  background: #e9ecef;
+  font-weight: 600;
+  color: #495057;
+}
+
+.post-body-editor .ck-gallery-marker__empty {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+
+.post-body-editor .ck-gallery-marker__message {
+  margin-top: 0.75rem;
+  border-radius: 8px;
+  background: #fff5f5;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: #dc3545;
 }

@@ -10,10 +10,14 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
-  server: {
+    server: {
     port: 5173,
     proxy: {
       "/api": {
+        target: "http://localhost:8888",
+        changeOrigin: false,
+      },
+      "/media": {
         target: "http://localhost:8888",
         changeOrigin: false,
       },
@@ -21,5 +25,14 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("ckeditor5") || id.includes("@ckeditor")) {
+            return "ckeditor";
+          }
+        },
+      },
+    },
   },
 });

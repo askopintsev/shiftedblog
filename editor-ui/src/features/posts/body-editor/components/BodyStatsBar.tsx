@@ -11,6 +11,32 @@ function formatNum(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u202f");
 }
 
+type TextQualityResponse = {
+  ok: boolean;
+  overall?: { score: number };
+  scores?: Record<string, { score: number }>;
+};
+
+function metricScore(
+  scores: TextQualityResponse["scores"],
+  key: string,
+): number | "-" {
+  return scores?.[key]?.score ?? "-";
+}
+
+function formatQualityLine(data: TextQualityResponse): string {
+  if (!data.ok || !data.overall || !data.scores) return "";
+  return [
+    `Качество текста: ${data.overall.score}`,
+    `Читаемость: ${metricScore(data.scores, "readability")}`,
+    `Спам: ${metricScore(data.scores, "spam_words")}`,
+    `Водность: ${metricScore(data.scores, "waterness")}`,
+    `Орфография: ${metricScore(data.scores, "orthography")}`,
+    `Пунктуация: ${metricScore(data.scores, "punctuation")}`,
+    `Опечатки: ${metricScore(data.scores, "typos")}`,
+  ].join(" · ");
+}
+
 interface BodyStatsBarProps {
   html: string;
   onHtmlChange?: (html: string) => void;
@@ -41,11 +67,7 @@ export function BodyStatsBar({ html, onHtmlChange }: BodyStatsBarProps) {
     }
     const timer = window.setTimeout(async () => {
       try {
-        const data = await apiFetch<{
-          ok: boolean;
-          overall?: { score: number };
-          scores?: Record<string, { score: number }>;
-        }>("/posts/text-quality/", {
+        const data = await apiFetch<TextQualityResponse>("/posts/text-quality/", {
           method: "POST",
           body: JSON.stringify({
             schema_version: "1.0",
@@ -55,11 +77,7 @@ export function BodyStatsBar({ html, onHtmlChange }: BodyStatsBarProps) {
             text: html,
           }),
         });
-        if (data.ok && data.overall && data.scores) {
-          setQualityLine(
-            `Качество: ${data.overall.score} · Читаемость: ${data.scores.readability?.score ?? "-"} · Орфография: ${data.scores.orthography?.score ?? "-"}`,
-          );
-        }
+        setQualityLine(formatQualityLine(data));
       } catch {
         setQualityLine("");
       }

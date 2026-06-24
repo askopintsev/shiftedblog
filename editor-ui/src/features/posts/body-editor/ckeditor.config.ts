@@ -49,6 +49,7 @@ export const ckeditorToolbarItems = [
 ];
 
 export const ckeditorConfig = {
+  licenseKey: "GPL",
   toolbar: {
     items: ckeditorToolbarItems,
     shouldNotGroupWhenFull: true,

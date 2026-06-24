@@ -7,6 +7,7 @@ from typing import Any
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from api.editor.media_urls import relative_media_url
 from blog.models import SitePublication
 from editor.models import Category, Post, PostGalleryImage, Series
 
@@ -64,12 +65,7 @@ class PostGallerySerializer(serializers.ModelSerializer):
         fields = ("id", "gallery_key", "image", "image_url", "caption", "order")
 
     def get_image_url(self, obj: PostGalleryImage) -> str:
-        if obj.image:
-            request = self.context.get("request")
-            if request:
-                return request.build_absolute_uri(obj.image.url)
-            return obj.image.url
-        return ""
+        return relative_media_url(obj.image)
 
 
 class PostDetailSerializer(serializers.ModelSerializer):
@@ -87,10 +83,7 @@ class PostDetailSerializer(serializers.ModelSerializer):
         allow_null=True,
         required=False,
     )
-    tags = serializers.ListField(
-        child=serializers.CharField(max_length=100),
-        required=False,
-    )
+    tags = serializers.StringRelatedField(many=True, required=False)
     series_ids = serializers.PrimaryKeyRelatedField(
         queryset=Series.objects.all(),
         many=True,
@@ -101,6 +94,7 @@ class PostDetailSerializer(serializers.ModelSerializer):
     series = SeriesSerializer(many=True, read_only=True)
     gallery_images = PostGallerySerializer(many=True, read_only=True)
     cover_image_url = serializers.SerializerMethodField()
+    cover_image = serializers.SerializerMethodField()
     draft_preview_url = serializers.SerializerMethodField()
     is_on_site = serializers.SerializerMethodField()
 
@@ -136,12 +130,11 @@ class PostDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ("uuid", "views", "published", "created", "updated")
 
     def get_cover_image_url(self, obj: Post) -> str:
-        if obj.cover_image:
-            request = self.context.get("request")
-            if request:
-                return request.build_absolute_uri(obj.cover_image.url)
-            return obj.cover_image.url
-        return ""
+        return relative_media_url(obj.cover_image)
+
+    def get_cover_image(self, obj: Post) -> str | None:
+        url = relative_media_url(obj.cover_image)
+        return url or None
 
     def get_draft_preview_url(self, obj: Post) -> str:
         request = self.context.get("request")
@@ -202,3 +195,4 @@ class PostWriteSerializer(serializers.Serializer):
     )
     cover_image_credits = serializers.CharField(required=False, allow_blank=True)
     cover_description = serializers.CharField(required=False, allow_blank=True)
+    cover_image_clear = serializers.BooleanField(required=False)

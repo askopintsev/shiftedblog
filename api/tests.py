@@ -1,12 +1,23 @@
 """Editor API tests."""
 
+import io
+
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from PIL import Image
 from rest_framework.test import APIClient
 
 from editor.models import Post
 
 User = get_user_model()
+
+
+def _minimal_jpeg_upload(name: str = "cover.jpg") -> SimpleUploadedFile:
+    buffer = io.BytesIO()
+    Image.new("RGB", (8, 8), color="red").save(buffer, format="JPEG")
+    buffer.seek(0)
+    return SimpleUploadedFile(name, buffer.read(), content_type="image/jpeg")
 
 
 class EditorApiAuthTests(TestCase):
@@ -75,6 +86,92 @@ class EditorApiPostTests(TestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 400)
+
+    def test_patch_cover_image(self):
+        post = Post.objects.create(
+            author=self.user,
+            title="Cover test",
+            slug="cover-test",
+            body="<p>Body</p>",
+            status="draft",
+        )
+        response = self.client.patch(
+            f"/api/editor/v1/posts/{post.pk}/",
+            {"cover_image": _minimal_jpeg_upload()},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, 200)
+        post.refresh_from_db()
+        self.assertTrue(post.cover_image.name)
+        self.assertTrue(response.json()["post"]["cover_image_url"].startswith("/media/"))
+
+    def test_gallery_upload_rejects_invalid_image(self):
+        post = Post.objects.create(
+            author=self.user,
+            title="Bad gallery upload",
+            slug="bad-gallery-upload",
+            body="<p>Body</p>",
+            status="draft",
+        )
+        response = self.client.post(
+            f"/api/editor/v1/posts/{post.pk}/gallery/",
+            {
+                "gallery_key": "1",
+                "image": SimpleUploadedFile(
+                    "broken.jpg",
+                    b"not an image",
+                    content_type="image/jpeg",
+                ),
+            },
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()["ok"])
+        self.assertEqual(Post.objects.get(pk=post.pk).gallery_images.count(), 0)
+
+    def test_clear_cover_image(self):
+        post = Post.objects.create(
+            author=self.user,
+            title="Clear cover test",
+            slug="clear-cover-test",
+            body="<p>Body</p>",
+            status="draft",
+            cover_image=_minimal_jpeg_upload(),
+        )
+        self.assertTrue(post.cover_image.name)
+        response = self.client.patch(
+            f"/api/editor/v1/posts/{post.pk}/",
+            {"cover_image_clear": True},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        post.refresh_from_db()
+        self.assertFalse(post.cover_image.name)
+        self.assertEqual(response.json()["post"]["cover_image_url"], "")
+
+    def test_patch_tags(self):
+        post = Post.objects.create(
+            author=self.user,
+            title="Tags test",
+            slug="tags-test",
+            body="<p>Body</p>",
+            status="draft",
+        )
+        response = self.client.patch(
+            f"/api/editor/v1/posts/{post.pk}/",
+            {"tags": ["news", "django", "анимация"]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        post.refresh_from_db()
+        self.assertEqual(
+            sorted(post.tags.names()),
+            ["django", "news", "анимация"],
+        )
+        self.assertEqual(
+            sorted(response.json()["post"]["tags"]),
+            ["django", "news", "анимация"],
+        )
 
     def test_openapi_schema(self):
         response = self.client.get("/api/editor/v1/schema/")

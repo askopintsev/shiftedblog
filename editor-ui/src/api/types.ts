@@ -17,11 +17,17 @@ export interface PostListItem {
   slug: string;
   status: PostStatus;
   author: { id: number; email: string; first_name: string; last_name: string };
-  category: { id: number; name: string; slug: string } | null;
+  category: Category | null;
   tags: string[];
   updated: string;
   published: string | null;
   is_on_site: boolean;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
 }
 
 export interface PostDetail extends PostListItem {

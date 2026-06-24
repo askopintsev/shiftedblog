@@ -80,6 +80,12 @@ class PostAdminForm(forms.ModelForm):
             cls = self.fields[fname].widget.attrs.get("class", "")
             self.fields[fname].widget.attrs["class"] = f"{cls} post-seo-field".strip()
 
+        views_field = self.fields.get("views")
+        if views_field is not None:
+            views_field.required = False
+            if not self.instance.pk and views_field.initial in (None, ""):
+                views_field.initial = 0
+
     def clean_body(self) -> str:
         body = (self.cleaned_data.get("body") or "").strip()
         if not body:

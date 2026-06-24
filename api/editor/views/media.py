@@ -5,7 +5,6 @@ from __future__ import annotations
 import datetime
 import os
 
-from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from rest_framework.parsers import MultiPartParser
@@ -14,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.editor.permissions import IsStaffUser
+from api.editor.media_urls import relative_media_path
 
 
 class MediaUploadView(APIView):
@@ -31,9 +31,7 @@ class MediaUploadView(APIView):
         date_path = datetime.datetime.now().strftime("%Y/%m/%d")
         filename = f"img/post/{date_path}/{uploaded.name}"
         file_path = default_storage.save(filename, ContentFile(uploaded.read()))
-        url = f"{settings.MEDIA_URL}{file_path}"
-        if request:
-            url = request.build_absolute_uri(url)
+        url = relative_media_path(default_storage.url(file_path))
         return Response(
             {
                 "url": url,

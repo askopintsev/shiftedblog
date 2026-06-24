@@ -1,15 +1,52 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, apiUpload } from "@/api/client";
-import type { PostDetail, PostStatus } from "@/api/types";
-import { PostBodyEditor } from "@/features/posts/body-editor/PostBodyEditor";
+import { ArrowLeft, Focus, History } from "lucide-react";
+import { apiFetch, apiUpload, ApiError } from "@/api/client";
+import type { Category, PostDetail, PostStatus } from "@/api/types";
+import { PostBodyEditorFallback } from "@/features/posts/body-editor/PostBodyEditorFallback";
 import { GalleryTab } from "@/features/posts/components/GalleryTab";
+import { ImageFileInput } from "@/components/ImageFileInput";
 import {
   tryRestoreDraftFromLocal,
   useAutosave,
 } from "@/features/posts/hooks/useAutosave";
+import { formatApiErrors } from "@/lib/formatApiErrors";
+import { mediaUrl } from "@/lib/mediaUrl";
+import { publicUrl } from "@/lib/publicUrl";
+import { slugifySegment } from "@/lib/slugifySegment";
+import { formatTagsInput, parseTagsInput } from "@/lib/tagsInput";
 import { cn } from "@/lib/utils";
+
+type PostFormState = {
+  title: string;
+  body: string;
+  status: PostStatus;
+  short_description: string;
+  cover_description: string;
+  slug: string;
+  category_id: number | null;
+  tags: string;
+};
+
+function toApiPayload(form: PostFormState) {
+  return {
+    title: form.title,
+    body: form.body,
+    status: form.status,
+    short_description: form.short_description,
+    cover_description: form.cover_description,
+    slug: form.slug,
+    category_id: form.category_id,
+    tags: parseTagsInput(form.tags),
+  };
+}
+
+const PostBodyEditor = lazy(() =>
+  import("@/features/posts/body-editor/PostBodyEditor").then((module) => ({
+    default: module.PostBodyEditor,
+  })),
+);
 
 export function PostEditPage() {
   const { id } = useParams();
@@ -20,7 +57,10 @@ export function PostEditPage() {
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"editor" | "gallery">("editor");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [coverError, setCoverError] = useState<string | null>(null);
   const draftRestored = useRef(false);
+  const slugEditedRef = useRef(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["post", id],
@@ -29,22 +69,35 @@ export function PostEditPage() {
       apiFetch<{ ok: boolean; post: PostDetail }>(`/posts/${id}/`),
   });
 
-  const [form, setForm] = useState({
+  const categoriesQuery = useQuery({
+    queryKey: ["categories"],
+    queryFn: () =>
+      apiFetch<{ ok: boolean; results: Category[] }>("/categories/"),
+  });
+
+  const [form, setForm] = useState<PostFormState>({
     title: "",
     body: "",
-    status: "draft" as PostStatus,
+    status: "draft",
     short_description: "",
+    cover_description: "",
     slug: "",
+    category_id: null,
+    tags: "",
   });
 
   useEffect(() => {
     if (data?.post) {
+      slugEditedRef.current = true;
       setForm({
         title: data.post.title ?? "",
         body: data.post.body ?? "",
         status: data.post.status,
         short_description: data.post.short_description ?? "",
+        cover_description: data.post.cover_description ?? "",
         slug: data.post.slug ?? "",
+        category_id: data.post.category?.id ?? null,
+        tags: formatTagsInput(data.post.tags ?? []),
       });
     }
   }, [data?.post]);
@@ -60,31 +113,42 @@ export function PostEditPage() {
 
   const formRef = useRef(form);
   formRef.current = form;
-  const getPayload = useCallback(() => formRef.current, []);
+  const getPayload = useCallback(() => toApiPayload(formRef.current), []);
 
   const { scheduleAutosave } = useAutosave(id, isNew, getPayload, () =>
     setSavedAt(new Date()),
   );
 
   const saveMutation = useMutation({
-    mutationFn: async (payload: typeof form) => {
+    mutationFn: async (payload: PostFormState) => {
+      const body = JSON.stringify(toApiPayload(payload));
       if (isNew) {
         return apiFetch<{ ok: boolean; post: PostDetail }>("/posts/", {
           method: "POST",
-          body: JSON.stringify(payload),
+          body,
         });
       }
       return apiFetch<{ ok: boolean; post: PostDetail }>(`/posts/${id}/`, {
         method: "PATCH",
-        body: JSON.stringify(payload),
+        body,
       });
     },
     onSuccess: (res) => {
+      setSaveError(null);
       setSavedAt(new Date());
       queryClient.invalidateQueries({ queryKey: ["posts"] });
       if (isNew && res.post?.id) {
         navigate(`/posts/${res.post.id}`, { replace: true });
+      } else if (id) {
+        queryClient.invalidateQueries({ queryKey: ["post", id] });
       }
+    },
+    onError: (error) => {
+      if (error instanceof ApiError) {
+        setSaveError(formatApiErrors(error.payload));
+        return;
+      }
+      setSaveError("Не удалось сохранить.");
     },
   });
 
@@ -99,8 +163,36 @@ export function PostEditPage() {
       );
     },
     onSuccess: () => {
+      setCoverError(null);
       queryClient.invalidateQueries({ queryKey: ["post", id] });
       setSavedAt(new Date());
+    },
+    onError: (error) => {
+      if (error instanceof ApiError) {
+        setCoverError(formatApiErrors(error.payload));
+        return;
+      }
+      setCoverError("Не удалось загрузить обложку.");
+    },
+  });
+
+  const clearCoverMutation = useMutation({
+    mutationFn: () =>
+      apiFetch<{ ok: boolean; post: PostDetail }>(`/posts/${id}/`, {
+        method: "PATCH",
+        body: JSON.stringify({ cover_image_clear: true }),
+      }),
+    onSuccess: () => {
+      setCoverError(null);
+      queryClient.invalidateQueries({ queryKey: ["post", id] });
+      setSavedAt(new Date());
+    },
+    onError: (error) => {
+      if (error instanceof ApiError) {
+        setCoverError(formatApiErrors(error.payload));
+        return;
+      }
+      setCoverError("Не удалось очистить обложку.");
     },
   });
 
@@ -120,7 +212,7 @@ export function PostEditPage() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
-        saveMutation.mutate(form);
+        saveMutation.mutate(formRef.current);
       }
       if (e.key === "Escape" && focusMode) {
         setFocusMode(false);
@@ -128,7 +220,7 @@ export function PostEditPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [focusMode, form, saveMutation]);
+  }, [focusMode, saveMutation]);
 
   const historyQuery = useQuery({
     queryKey: ["post-history", id],
@@ -141,12 +233,41 @@ export function PostEditPage() {
   });
 
   const updateForm = useCallback(
-    (next: typeof form) => {
+    (next: PostFormState) => {
       setForm(next);
       scheduleAutosave(next.body);
     },
     [scheduleAutosave],
   );
+
+  const updateTitle = useCallback(
+    (title: string) => {
+      setSaveError(null);
+      updateForm({
+        ...formRef.current,
+        title,
+        slug: slugEditedRef.current
+          ? formRef.current.slug
+          : slugifySegment(title),
+      });
+    },
+    [updateForm],
+  );
+
+  const updateSlug = useCallback((slug: string) => {
+    slugEditedRef.current = true;
+    setSaveError(null);
+    setForm((current) => ({ ...current, slug }));
+  }, []);
+
+  const saveAndReturnToPosts = useCallback(async () => {
+    try {
+      await saveMutation.mutateAsync(formRef.current);
+      navigate("/posts");
+    } catch {
+      /* saveMutation.onError renders the error message */
+    }
+  }, [navigate, saveMutation]);
 
   if (!isNew && isLoading) {
     return <div className="p-6">Загрузка…</div>;
@@ -156,77 +277,104 @@ export function PostEditPage() {
     form.status === "ready_to_publish" || form.status === "published";
 
   return (
-    <div className="flex min-h-full">
+    <div
+      className={cn(
+        "flex min-h-full",
+        focusMode &&
+          "fixed inset-0 z-40 min-h-screen overflow-y-auto bg-surface-muted",
+      )}
+    >
       {!focusMode && (
-        <div className="flex w-12 flex-col items-center gap-2 border-r border-border bg-surface py-4">
-          <Link to="/posts" className="text-xs text-text-muted">
-            ←
-          </Link>
+        <div className="flex w-16 shrink-0 flex-col items-center gap-3 border-r border-border bg-surface px-2 py-4">
+          <button
+            type="button"
+            title="К списку постов"
+            aria-label="К списку постов"
+            disabled={saveMutation.isPending}
+            className="inline-flex size-10 items-center justify-center rounded-xl border border-border bg-surface-muted text-text-secondary shadow-sm transition hover:border-accent hover:bg-accent/5 hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => {
+              void saveAndReturnToPosts();
+            }}
+          >
+            <ArrowLeft className="size-4" aria-hidden />
+          </button>
           {!isNew && (
             <button
               type="button"
               title="История"
-              className="text-xs text-text-muted"
+              aria-label="История"
+              className="inline-flex size-10 items-center justify-center rounded-xl border border-border bg-surface-muted text-text-secondary shadow-sm transition hover:border-accent hover:bg-accent/5 hover:text-accent"
               onClick={() => setHistoryOpen(true)}
             >
-              H
+              <History className="size-4" aria-hidden />
             </button>
           )}
           <button
             type="button"
             title="Фокус"
-            className="text-xs text-text-muted"
+            aria-label="Фокус"
+            className="inline-flex size-10 items-center justify-center rounded-xl border border-border bg-surface-muted text-text-secondary shadow-sm transition hover:border-accent hover:bg-accent/5 hover:text-accent"
             onClick={() => setFocusMode(true)}
           >
-            ⛶
+            <Focus className="size-4" aria-hidden />
           </button>
         </div>
       )}
       {focusMode && (
-        <button
-          type="button"
-          className="fixed right-4 top-4 z-50 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm"
-          onClick={() => setFocusMode(false)}
-        >
-          Выйти из фокуса (Esc)
-        </button>
+        <div className="fixed left-1/2 top-4 z-50 -translate-x-1/2">
+          <button
+            type="button"
+            className="rounded-full border border-border bg-surface/95 px-4 py-2 text-sm text-text-secondary shadow-lg backdrop-blur transition hover:border-accent hover:text-accent"
+            onClick={() => setFocusMode(false)}
+          >
+            Выйти из фокуса · Esc
+          </button>
+        </div>
       )}
       <div className="flex min-w-0 flex-1">
         <div className="flex-1 p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="text-sm text-text-muted">
-              {savedAt
-                ? `Сохранено ${savedAt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`
-                : "Не сохранено"}
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div className="min-w-0 text-sm text-text-muted">
+              {saveError ? (
+                <span className="text-red-600">{saveError}</span>
+              ) : savedAt ? (
+                `Сохранено ${savedAt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`
+              ) : (
+                "Не сохранено"
+              )}
             </div>
             <div className="flex gap-2">
               {!isNew && data?.post?.draft_preview_url && (
                 <a
-                  href={data.post.draft_preview_url}
+                  href={publicUrl(data.post.draft_preview_url)}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-sm text-accent"
+                  className="inline-flex h-9 items-center rounded-lg border border-border px-3 text-sm text-accent hover:bg-surface-muted"
                 >
                   Превью
                 </a>
               )}
               {!isNew && form.status === "ready_to_publish" && (
-                <Link to="/publish" className="text-sm text-accent">
+                <Link
+                  to="/publish"
+                  className="inline-flex h-9 items-center rounded-lg border border-border px-3 text-sm text-accent hover:bg-surface-muted"
+                >
                   Публикация →
                 </Link>
               )}
               <button
                 type="button"
-                onClick={() => saveMutation.mutate(form)}
-                className="rounded-lg bg-accent px-4 py-2 text-sm text-white"
+                disabled={saveMutation.isPending}
+                onClick={() => saveMutation.mutate(formRef.current)}
+                className="inline-flex h-9 items-center rounded-lg bg-accent px-4 text-sm text-white disabled:opacity-60"
               >
-                Сохранить
+                {saveMutation.isPending ? "Сохранение…" : "Сохранить"}
               </button>
             </div>
           </div>
           <input
             value={form.title}
-            onChange={(e) => updateForm({ ...form, title: e.target.value })}
+            onChange={(e) => updateTitle(e.target.value)}
             placeholder="Заголовок"
             className={cn(
               "mb-4 w-full border-0 bg-transparent text-3xl font-semibold outline-none",
@@ -247,16 +395,29 @@ export function PostEditPage() {
                       : "border-transparent text-text-muted",
                   )}
                 >
-                  {tab === "editor" ? "Редактор" : "Галерея"}
+                  {tab === "editor" ? "Редактор" : "Галерии"}
                 </button>
               ))}
             </div>
           )}
           {activeTab === "editor" && (
-            <PostBodyEditor
-              value={form.body}
-              onChange={(body) => updateForm({ ...form, body })}
-            />
+            <section aria-label="Текст поста" className="min-h-[420px]">
+              <Suspense fallback={<PostBodyEditorFallback />}>
+                <PostBodyEditor
+                  value={form.body}
+                  onChange={(body) => updateForm({ ...form, body })}
+                  galleryImages={data?.post?.gallery_images ?? []}
+                  postId={!isNew && id ? Number(id) : undefined}
+                  onGalleryUploaded={() => {
+                    if (!id) return;
+                    queryClient.invalidateQueries({ queryKey: ["post", id] });
+                    queryClient.invalidateQueries({
+                      queryKey: ["post-gallery", Number(id)],
+                    });
+                  }}
+                />
+              </Suspense>
+            </section>
           )}
           {activeTab === "gallery" && !isNew && id && (
             <GalleryTab postId={Number(id)} />
@@ -306,50 +467,130 @@ export function PostEditPage() {
                 )}
               </div>
             )}
-            <label className="mb-3 block text-sm">
-              Обложка
-              <input
-                type="file"
-                accept="image/*"
-                disabled={isNew}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) coverMutation.mutate(file);
-                }}
-                className={cn(
-                  "mt-1 block w-full text-xs",
-                  publishReady && "rounded-lg border border-warning p-1",
-                )}
-              />
-              {data?.post?.cover_image_url && (
-                <img
-                  src={data.post.cover_image_url}
-                  alt="Cover"
-                  className="mt-2 max-h-32 rounded-lg object-cover"
-                />
+            <div className="mb-3">
+              <div className="mb-1 text-sm">Обложка</div>
+              {isNew ? (
+                <p className="rounded-lg border border-dashed border-border bg-surface-muted px-3 py-3 text-xs text-text-muted">
+                  Сохраните пост, чтобы загрузить обложку.
+                </p>
+              ) : (
+                <>
+                  <ImageFileInput
+                    buttonLabel={
+                      data?.post?.cover_image_url
+                        ? "Заменить обложку"
+                        : "Загрузить обложку"
+                    }
+                    hint="JPEG, PNG или WebP"
+                    loading={coverMutation.isPending}
+                    className={cn(publishReady && "rounded-lg ring-1 ring-warning")}
+                    onFileSelect={(file) => coverMutation.mutate(file)}
+                  />
+                  {coverError ? (
+                    <p className="mt-2 text-xs text-red-600">{coverError}</p>
+                  ) : null}
+                </>
               )}
+              {data?.post?.cover_image_url && (
+                <div className="mt-2 space-y-2">
+                  <img
+                    src={mediaUrl(data.post.cover_image_url)}
+                    alt="Cover"
+                    className="max-h-32 rounded-lg object-cover"
+                  />
+                  <button
+                    type="button"
+                    disabled={clearCoverMutation.isPending}
+                    className="text-xs text-red-600 disabled:opacity-60"
+                    onClick={() => clearCoverMutation.mutate()}
+                  >
+                    {clearCoverMutation.isPending
+                      ? "Очищаем…"
+                      : "Очистить обложку"}
+                  </button>
+                </div>
+              )}
+            </div>
+            <label className="mb-3 block text-sm">
+              Описание обложки
+              <textarea
+                value={form.cover_description}
+                onChange={(e) =>
+                  setForm({ ...form, cover_description: e.target.value })
+                }
+                rows={2}
+                placeholder="Краткое описание изображения"
+                className="mt-1 w-full rounded-lg border border-border px-2 py-1.5"
+              />
+              <p className="mt-1 text-xs text-text-muted">
+                Используется как описание изображения обложки.
+              </p>
             </label>
             <label className="mb-3 block text-sm">
-              Краткое описание (SEO)
+              Краткое описание
               <textarea
                 value={form.short_description}
                 onChange={(e) =>
                   setForm({ ...form, short_description: e.target.value })
                 }
                 rows={3}
+                placeholder="Короткий анонс поста"
                 className={cn(
                   "mt-1 w-full rounded-lg border border-border px-2 py-1.5",
                   publishReady && "border-warning",
                 )}
               />
+              <p className="mt-1 text-xs text-text-muted">
+                Используется для SEO, карточек и превью в соцсетях.
+              </p>
             </label>
-            <label className="block text-sm">
+            <label className="mb-3 block text-sm">
               Slug
               <input
                 value={form.slug}
-                onChange={(e) => setForm({ ...form, slug: e.target.value })}
+                onChange={(e) => updateSlug(e.target.value)}
+                placeholder="Заполнится из заголовка"
                 className="mt-1 w-full rounded-lg border border-border px-2 py-1.5"
               />
+            </label>
+            <label className="mb-3 block text-sm">
+              Категория
+              <select
+                value={form.category_id ?? ""}
+                onChange={(e) => {
+                  setSaveError(null);
+                  setForm({
+                    ...form,
+                    category_id: e.target.value ? Number(e.target.value) : null,
+                  });
+                }}
+                className="mt-1 w-full rounded-lg border border-border px-2 py-1.5"
+              >
+                <option value="">Без категории</option>
+                {(categoriesQuery.data?.results ?? []).map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              {categoriesQuery.isLoading ? (
+                <p className="mt-1 text-xs text-text-muted">Загрузка категорий…</p>
+              ) : null}
+            </label>
+            <label className="block text-sm">
+              Теги
+              <input
+                value={form.tags}
+                onChange={(e) => {
+                  setSaveError(null);
+                  setForm({ ...form, tags: e.target.value });
+                }}
+                placeholder="news, django"
+                className="mt-1 w-full rounded-lg border border-border px-2 py-1.5"
+              />
+              <p className="mt-1 text-xs text-text-muted">
+                Введите теги через запятую.
+              </p>
             </label>
           </aside>
         )}
