@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "@/api/client";
+import { apiFetch, fetchCsrf, resetCsrfToken } from "@/api/client";
 import type { User } from "@/api/types";
 
 interface MeResponse {
@@ -19,6 +19,7 @@ export function useAuth() {
     queryKey: ["auth", "me"],
     queryFn: () => apiFetch<MeResponse>("/auth/me/"),
     retry: false,
+    refetchOnWindowFocus: false,
   });
 
   const loginMutation = useMutation({
@@ -44,15 +45,30 @@ export function useAuth() {
   });
 
   const logoutMutation = useMutation({
-    mutationFn: () =>
-      apiFetch<{ ok: boolean }>("/auth/logout/", { method: "POST" }),
+    mutationFn: async () => {
+      await fetchCsrf();
+      return apiFetch<{ ok: boolean }>("/auth/logout/", { method: "POST" });
+    },
     onSuccess: () => {
+      resetCsrfToken();
+      loginMutation.reset();
+      verify2faMutation.reset();
       queryClient.setQueryData(["auth", "me"], null);
+      queryClient.removeQueries({ queryKey: ["auth", "me"] });
     },
   });
 
+  const user =
+    (meQuery.isSuccess ? meQuery.data?.user : null) ??
+    loginMutation.data?.user ??
+    null;
+  const pending2fa =
+    loginMutation.data?.step === "2fa" ||
+    (Boolean(user?.has_2fa) && !user?.is_verified);
+
   return {
-    user: meQuery.data?.user ?? null,
+    user,
+    pending2fa,
     loading: meQuery.isLoading,
     login: loginMutation,
     verify2fa: verify2faMutation,

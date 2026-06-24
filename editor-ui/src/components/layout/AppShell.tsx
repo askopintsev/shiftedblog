@@ -1,4 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { resetCsrfToken } from "@/api/client";
 import {
   FileText,
   Link2,
@@ -37,14 +39,27 @@ const navGroups = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  async function handleLogout() {
+    try {
+      await logout.mutateAsync();
+    } catch {
+      resetCsrfToken();
+      queryClient.setQueryData(["auth", "me"], null);
+      queryClient.removeQueries({ queryKey: ["auth", "me"] });
+    } finally {
+      navigate("/login", { replace: true });
+    }
+  }
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-surface">
-        <div className="border-b border-border px-4 py-5">
+    <div className="flex h-screen overflow-hidden">
+      <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-border bg-surface">
+        <div className="shrink-0 border-b border-border px-4 py-5">
           <span className="text-sm font-semibold tracking-tight">Shifted Editor</span>
         </div>
-        <nav className="flex-1 space-y-6 p-3">
+        <nav className="min-h-0 flex-1 space-y-6 overflow-y-auto p-3">
           {navGroups.map((group) => (
             <div key={group.label}>
               <div className="mb-2 px-2 text-xs font-semibold uppercase text-text-muted">
@@ -75,23 +90,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           ))}
         </nav>
-        <div className="border-t border-border p-3">
+        <div className="shrink-0 border-t border-border p-3">
           <div className="mb-2 truncate px-2 text-xs text-text-muted">{user?.email}</div>
           <button
             type="button"
-            onClick={async () => {
-              await logout.mutateAsync();
-              navigate("/login");
-            }}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-surface-muted"
+            onClick={() => void handleLogout()}
+            disabled={logout.isPending}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-surface-muted disabled:opacity-60"
           >
             <LogOut className="h-4 w-4" />
             Выйти
           </button>
         </div>
       </aside>
-      <main className="flex min-w-0 flex-1 flex-col">
-        <div className="flex-1 overflow-auto">{children}</div>
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
       </main>
     </div>
   );

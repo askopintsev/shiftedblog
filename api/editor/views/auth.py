@@ -15,12 +15,12 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.editor.permissions import IsStaffUser
+from api.editor.permissions import IsAuthenticatedStaff, IsStaffUser, client_user_is_verified
 
 User = get_user_model()
 
 
-def _user_payload(user: User) -> dict:
+def _user_payload(user: User, request: Request) -> dict:
     return {
         "id": user.pk,
         "email": user.email,
@@ -28,7 +28,7 @@ def _user_payload(user: User) -> dict:
         "last_name": user.last_name,
         "is_staff": user.is_staff,
         "is_superuser": user.is_superuser,
-        "is_verified": getattr(user, "is_verified", lambda: True)(),
+        "is_verified": client_user_is_verified(request, user),
         "has_2fa": user_has_device(user),
     }
 
@@ -61,8 +61,20 @@ class LoginView(APIView):
             )
         login(request, user)
         if user_has_device(user):
-            return Response({"ok": True, "step": "2fa", "user": _user_payload(user)})
-        return Response({"ok": True, "step": "complete", "user": _user_payload(user)})
+            return Response(
+                {
+                    "ok": True,
+                    "step": "2fa",
+                    "user": _user_payload(user, request),
+                },
+            )
+        return Response(
+            {
+                "ok": True,
+                "step": "complete",
+                "user": _user_payload(user, request),
+            },
+        )
 
 
 class TwoFactorVerifyView(APIView):
@@ -78,11 +90,11 @@ class TwoFactorVerifyView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         otp_login(request, device)
-        return Response({"ok": True, "user": _user_payload(request.user)})
+        return Response({"ok": True, "user": _user_payload(request.user, request)})
 
 
 class LogoutView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def post(self, request: Request) -> Response:
         logout(request)
@@ -90,10 +102,10 @@ class LogoutView(APIView):
 
 
 class MeView(APIView):
-    permission_classes = [IsStaffUser]
+    permission_classes = [IsAuthenticatedStaff]
 
     def get(self, request: Request) -> Response:
-        return Response({"ok": True, "user": _user_payload(request.user)})
+        return Response({"ok": True, "user": _user_payload(request.user, request)})
 
 
 class SessionKeepaliveView(APIView):

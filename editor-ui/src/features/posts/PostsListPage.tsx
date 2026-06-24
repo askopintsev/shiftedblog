@@ -22,7 +22,7 @@ export function PostsListPage() {
   const [status, setStatus] = useState("");
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["posts", status],
     queryFn: () => {
       const q = status ? `?status=${status}` : "";
@@ -84,6 +84,21 @@ export function PostsListPage() {
               <tr>
                 <td colSpan={4} className="px-4 py-8 text-center text-text-muted">
                   Загрузка…
+                </td>
+              </tr>
+            )}
+            {isError && (
+              <tr>
+                <td colSpan={4} className="px-4 py-8 text-center text-red-600">
+                  Не удалось загрузить посты:{" "}
+                  {error instanceof Error ? error.message : "ошибка API"}
+                </td>
+              </tr>
+            )}
+            {!isLoading && !isError && !data?.results.length && (
+              <tr>
+                <td colSpan={4} className="px-4 py-8 text-center text-text-muted">
+                  Постов не найдено.
                 </td>
               </tr>
             )}

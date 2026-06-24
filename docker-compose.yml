@@ -35,6 +35,7 @@ services:
       - ./sender:/app/sender
       - ./team:/app/team
       - ./shiftedblog:/app/shiftedblog
+      - ./api:/app/api
       - ./manage.py:/app/manage.py
       - ./templates:/app/templates
       - ./static:/app/staticfiles

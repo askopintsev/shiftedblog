@@ -6,6 +6,10 @@ export function getCsrfToken(): string {
   return csrfToken;
 }
 
+export function resetCsrfToken(): void {
+  csrfToken = "";
+}
+
 export async function fetchCsrf(): Promise<string> {
   const res = await fetch(`${API_BASE}/auth/csrf/`, { credentials: "include" });
   const data = (await res.json()) as { csrfToken: string };

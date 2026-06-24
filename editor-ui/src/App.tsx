@@ -12,7 +12,7 @@ import { PublishPage } from "@/features/publish/PublishPage";
 import { SessionKeepalive } from "@/features/auth/SessionKeepalive";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, pending2fa } = useAuth();
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-text-muted">
@@ -20,7 +20,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (!user?.is_staff || (user.has_2fa && !user.is_verified)) {
+  if (!user?.is_staff || pending2fa) {
     return <Navigate to="/login" replace />;
   }
   return <>{children}</>;

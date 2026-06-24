@@ -93,3 +93,15 @@ class EditorApiPostTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json().get("ok"))
+
+    def test_list_posts_after_login(self):
+        csrf = self.client.get("/api/editor/v1/auth/csrf/").json()["csrfToken"]
+        self.client.post(
+            "/api/editor/v1/auth/login/",
+            {"email": "staff@example.com", "password": "test-pass-123"},
+            format="json",
+            HTTP_X_CSRFTOKEN=csrf,
+        )
+        response = self.client.get("/api/editor/v1/posts/")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])

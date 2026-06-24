@@ -4,22 +4,24 @@ import { useAuth } from "./useAuth";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { user, login, verify2fa } = useAuth();
-  const needs2fa = user?.has_2fa && !user?.is_verified;
+  const { user, pending2fa, login, verify2fa } = useAuth();
 
   useEffect(() => {
-    if (user?.is_staff && user.is_verified) {
+    if (user?.is_staff && user.is_verified && !pending2fa) {
       navigate("/posts", { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, pending2fa, navigate]);
 
   async function onLoginSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    await login.mutateAsync({
+    const result = await login.mutateAsync({
       email: String(fd.get("email") ?? ""),
       password: String(fd.get("password") ?? ""),
     });
+    if (result.step === "complete" && result.user.is_verified) {
+      navigate("/posts", { replace: true });
+    }
   }
 
   async function on2faSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -36,8 +38,11 @@ export function LoginPage() {
           <h1 className="text-xl font-semibold">Shifted Blog Editor</h1>
           <p className="mt-1 text-sm text-text-muted">Вход для редакторов</p>
         </div>
-        {needs2fa ? (
+        {pending2fa ? (
           <form onSubmit={on2faSubmit} className="space-y-4">
+            <p className="text-sm text-text-muted">
+              Введите код из приложения аутентификации.
+            </p>
             <label className="block text-sm font-medium">
               Код 2FA
               <input
@@ -47,9 +52,13 @@ export function LoginPage() {
                 required
               />
             </label>
+            {verify2fa.isError && (
+              <p className="text-sm text-red-600">Неверный код.</p>
+            )}
             <button
               type="submit"
-              className="w-full rounded-lg bg-accent px-4 py-2 text-white"
+              disabled={verify2fa.isPending}
+              className="w-full rounded-lg bg-accent px-4 py-2 text-white disabled:opacity-60"
             >
               Подтвердить
             </button>
@@ -81,7 +90,8 @@ export function LoginPage() {
             )}
             <button
               type="submit"
-              className="w-full rounded-lg bg-accent px-4 py-2 text-white"
+              disabled={login.isPending}
+              className="w-full rounded-lg bg-accent px-4 py-2 text-white disabled:opacity-60"
             >
               Войти
             </button>
