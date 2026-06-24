@@ -83,3 +83,10 @@ Default `security_auth_report` thresholds:
 - One username from >3 IPs in the window
 
 Adjust with `--ip-threshold` and `--username-ip-threshold`.
+
+## Editor subdomain (`editor.*`)
+
+1. Set `EDITOR_URL`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` (include editor origin), and cookie domain vars in Doppler (see `env.example`).
+2. Ensure TLS cert covers `editor.shiftedstuff.ru` (SAN or separate cert).
+3. After deploy, verify login at `EDITOR_URL/login` and API session from browser devtools (`/api/editor/v1/auth/me/`).
+4. Keep Django admin as fallback; link **Open new editor** appears on Posts changelist when `EDITOR_URL` is set.

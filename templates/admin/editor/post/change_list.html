@@ -7,4 +7,9 @@
   <a href="{{ sender_publish_url }}" class="historylink">{% trans "Multi-channel publish" %}</a>
 </li>
 {% endif %}
+{% if editor_ui_url %}
+<li>
+  <a href="{{ editor_ui_url }}/posts" class="historylink" target="_blank" rel="noopener">{% trans "Open new editor" %}</a>
+</li>
+{% endif %}
 {% endblock %}

@@ -158,6 +158,10 @@ INSTALLED_APPS = [
     "editor",
     "blog",
     "sender",
+    "rest_framework",
+    "corsheaders",
+    "drf_spectacular",
+    "api.apps.ApiConfig",
 ]
 
 # django-taggit 6.x: unidecode is used only when this flag is True (not automatic).
@@ -165,6 +169,7 @@ TAGGIT_STRIP_UNICODE_WHEN_SLUGIFYING = True
 
 _MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "editor.middleware.PostDetailViewCountMiddleware",
@@ -422,6 +427,15 @@ else:
     CSRF_TRUSTED_ORIGINS = (
         [] if IS_PRODUCTION else ["http://localhost:8000", "http://127.0.0.1:8000"]
     )
+
+if not IS_PRODUCTION:
+    for _origin in (
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:8888",
+    ):
+        if _origin not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(_origin)
 
 # HSTS (HTTP Strict Transport Security)
 # 31536000 = 1 year (production default). Set 0 to disable (development only).
@@ -792,3 +806,41 @@ def _build_logging() -> dict:
 
 # Logging configuration for security events
 LOGGING = _build_logging()
+
+# Editor SPA API (DRF)
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Shifted Blog Editor API",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+}
+
+# Cross-subdomain editor SPA (see env.example)
+EDITOR_URL = os.environ.get("EDITOR_URL", "http://localhost:5173").rstrip("/")
+_cors_origins = os.environ.get("CORS_ALLOWED_ORIGINS", "")
+if _cors_origins:
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins.split(",") if o.strip()]
+else:
+    CORS_ALLOWED_ORIGINS = (
+        [] if IS_PRODUCTION else ["http://localhost:5173", "http://127.0.0.1:5173"]
+    )
+CORS_ALLOW_CREDENTIALS = True
+
+_session_domain = os.environ.get("SESSION_COOKIE_DOMAIN", "").strip()
+if _session_domain:
+    SESSION_COOKIE_DOMAIN = _session_domain
+    CSRF_COOKIE_DOMAIN = os.environ.get("CSRF_COOKIE_DOMAIN", _session_domain).strip()
+    SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "None")
+    CSRF_COOKIE_SAMESITE = os.environ.get("CSRF_COOKIE_SAMESITE", "None")
