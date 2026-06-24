@@ -105,3 +105,32 @@ class LockoutEmailTests(TestCase):
         )
         send_mail_mock.assert_called_once()
         self.assertIn("user@example.com", send_mail_mock.call_args.kwargs["message"])
+
+
+class DevCanonicalHostMiddlewareTests(TestCase):
+    def test_redirects_zero_host_to_localhost(self):
+        response = self.client.get("/", HTTP_HOST="0.0.0.0:8888")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "http://localhost:8888/")
+
+    def test_redirects_loopback_ip_to_localhost(self):
+        response = self.client.get("/about/", HTTP_HOST="127.0.0.1:8888")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "http://localhost:8888/about/")
+
+    def test_keeps_localhost_unchanged(self):
+        response = self.client.get("/", HTTP_HOST="localhost:8888")
+        self.assertEqual(response.status_code, 200)
+
+    def test_api_paths_skip_redirect(self):
+        response = self.client.post(
+            "/api/editor/v1/auth/logout/",
+            HTTP_HOST="127.0.0.1:8888",
+        )
+        self.assertNotEqual(response.status_code, 302)
+
+    @override_settings(IS_PRODUCTION=True)
+    def test_skips_redirect_in_production(self):
+        response = self.client.get("/", HTTP_HOST="0.0.0.0:8888")
+        self.assertEqual(response.status_code, 200)
+

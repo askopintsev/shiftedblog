@@ -2,8 +2,17 @@ const API_BASE = import.meta.env.VITE_API_BASE ?? "/api/editor/v1";
 
 let csrfToken = "";
 
+function readCsrfFromCookie(): string {
+  const match = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+function resolveCsrfToken(): string {
+  return csrfToken || readCsrfFromCookie();
+}
+
 export function getCsrfToken(): string {
-  return csrfToken;
+  return resolveCsrfToken();
 }
 
 export function resetCsrfToken(): void {
@@ -13,7 +22,7 @@ export function resetCsrfToken(): void {
 export async function fetchCsrf(): Promise<string> {
   const res = await fetch(`${API_BASE}/auth/csrf/`, { credentials: "include" });
   const data = (await res.json()) as { csrfToken: string };
-  csrfToken = data.csrfToken;
+  csrfToken = data.csrfToken || readCsrfFromCookie();
   return csrfToken;
 }
 
@@ -28,25 +37,48 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch<T>(
+async function request(
   path: string,
   options: RequestInit = {},
-): Promise<T> {
-  if (!csrfToken && !path.includes("/auth/csrf")) {
+): Promise<Response> {
+  if (!resolveCsrfToken() && !path.includes("/auth/csrf")) {
     await fetchCsrf();
   }
   const headers = new Headers(options.headers);
   if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
-  if (csrfToken && options.method && options.method !== "GET") {
-    headers.set("X-CSRFToken", csrfToken);
+  const method = options.method ?? "GET";
+  const csrf = resolveCsrfToken();
+  if (csrf && method !== "GET") {
+    headers.set("X-CSRFToken", csrf);
   }
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     credentials: "include",
     headers,
   });
+  if (res.status === 403 && method !== "GET" && !path.includes("/auth/csrf")) {
+    await fetchCsrf();
+    const retryHeaders = new Headers(headers);
+    const retryCsrf = resolveCsrfToken();
+    if (retryCsrf) {
+      retryHeaders.set("X-CSRFToken", retryCsrf);
+    }
+    return fetch(`${API_BASE}${path}`, {
+      ...options,
+      credentials: "include",
+      headers: retryHeaders,
+    });
+  }
+  return res;
+}
+
+export async function apiFetch<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const res = await request(path, options);
   if (res.status === 204) {
     return undefined as T;
   }
@@ -66,19 +98,10 @@ export async function apiUpload<T>(
   formData: FormData,
   method: "POST" | "PATCH" = "POST",
 ): Promise<T> {
-  if (!csrfToken) {
+  if (!resolveCsrfToken()) {
     await fetchCsrf();
   }
-  const headers = new Headers();
-  if (csrfToken) {
-    headers.set("X-CSRFToken", csrfToken);
-  }
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    body: formData,
-    credentials: "include",
-    headers,
-  });
+  const res = await request(path, { method, body: formData });
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new ApiError(

@@ -169,6 +169,7 @@ TAGGIT_STRIP_UNICODE_WHEN_SLUGIFYING = True
 
 _MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "core.middleware.DevCanonicalHostMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",

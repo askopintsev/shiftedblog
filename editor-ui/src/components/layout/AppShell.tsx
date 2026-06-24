@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { resetCsrfToken } from "@/api/client";
 import {
@@ -38,7 +38,6 @@ const navGroups = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   async function handleLogout() {
@@ -49,7 +48,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       queryClient.setQueryData(["auth", "me"], null);
       queryClient.removeQueries({ queryKey: ["auth", "me"] });
     } finally {
-      navigate("/login", { replace: true });
+      window.location.assign("/login");
     }
   }
 

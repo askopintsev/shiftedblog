@@ -28,7 +28,8 @@ export function useAuth() {
         method: "POST",
         body: JSON.stringify(body),
       }),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      await fetchCsrf();
       queryClient.setQueryData(["auth", "me"], { ok: true, user: data.user });
     },
   });
@@ -39,7 +40,8 @@ export function useAuth() {
         method: "POST",
         body: JSON.stringify({ token }),
       }),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      await fetchCsrf();
       queryClient.setQueryData(["auth", "me"], data);
     },
   });

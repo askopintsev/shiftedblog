@@ -1,16 +1,26 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./useAuth";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { user, pending2fa, login, verify2fa } = useAuth();
+  const { user, pending2fa, loading, login, verify2fa } = useAuth();
+  const [otpToken, setOtpToken] = useState("");
 
   useEffect(() => {
+    if (loading) {
+      return;
+    }
     if (user?.is_staff && user.is_verified && !pending2fa) {
       navigate("/posts", { replace: true });
     }
-  }, [user, pending2fa, navigate]);
+  }, [user, pending2fa, loading, navigate]);
+
+  useEffect(() => {
+    if (pending2fa) {
+      setOtpToken("");
+    }
+  }, [pending2fa]);
 
   async function onLoginSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -19,6 +29,7 @@ export function LoginPage() {
       email: String(fd.get("email") ?? ""),
       password: String(fd.get("password") ?? ""),
     });
+    e.currentTarget.reset();
     if (result.step === "complete" && result.user.is_verified) {
       navigate("/posts", { replace: true });
     }
@@ -26,8 +37,8 @@ export function LoginPage() {
 
   async function on2faSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    await verify2fa.mutateAsync(String(fd.get("token") ?? ""));
+    await verify2fa.mutateAsync(otpToken.trim());
+    setOtpToken("");
     navigate("/posts", { replace: true });
   }
 
@@ -39,7 +50,7 @@ export function LoginPage() {
           <p className="mt-1 text-sm text-text-muted">Вход для редакторов</p>
         </div>
         {pending2fa ? (
-          <form onSubmit={on2faSubmit} className="space-y-4">
+          <form key="2fa-form" onSubmit={on2faSubmit} className="space-y-4" autoComplete="off">
             <p className="text-sm text-text-muted">
               Введите код из приложения аутентификации.
             </p>
@@ -47,7 +58,14 @@ export function LoginPage() {
               Код 2FA
               <input
                 name="token"
+                type="text"
+                inputMode="numeric"
                 autoComplete="one-time-code"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                value={otpToken}
+                onChange={(e) => setOtpToken(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-border px-3 py-2"
                 required
               />
@@ -64,7 +82,7 @@ export function LoginPage() {
             </button>
           </form>
         ) : (
-          <form onSubmit={onLoginSubmit} className="space-y-4">
+          <form key="login-form" onSubmit={onLoginSubmit} className="space-y-4">
             <label className="block text-sm font-medium">
               Email
               <input
