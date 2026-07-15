@@ -67,4 +67,10 @@ test_*
 *.sqlite3
 media/
 staticfiles/
-editor-ui/ 
+
+# Editor SPA (keep source; exclude local build artifacts)
+editor-ui/node_modules/
+editor-ui/dist/
+editor-ui/playwright-report/
+editor-ui/test-results/
+editor-ui/.vite/ 
