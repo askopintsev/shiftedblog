@@ -12,8 +12,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.editor.permissions import IsStaffUser
 from api.editor.media_urls import relative_media_path
+from api.editor.permissions import IsStaffUser
 
 
 class MediaUploadView(APIView):
