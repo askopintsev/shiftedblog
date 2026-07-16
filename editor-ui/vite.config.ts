@@ -11,6 +11,7 @@ export default defineConfig({
     },
   },
     server: {
+    host: "127.0.0.1",
     port: 5173,
     proxy: {
       "/api": {
@@ -22,6 +23,10 @@ export default defineConfig({
         changeOrigin: false,
       },
     },
+  },
+  preview: {
+    host: "127.0.0.1",
+    port: 5173,
   },
   build: {
     outDir: "dist",
