@@ -33,7 +33,7 @@ from sender.services.url_helpers import post_og_image_absolute_url
 
 def _public_page_cache(key_prefix: str):
     timeout = getattr(settings, "POST_PAGE_CACHE_TIMEOUT", 0)
-    if timeout <= 0:
+    if timeout <= 0 or settings.DEBUG or not getattr(settings, "IS_PRODUCTION", True):
 
         def _noop(view):
             return view

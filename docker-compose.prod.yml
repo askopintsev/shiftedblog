@@ -49,6 +49,7 @@ services:
       - ./templates:/templates:ro
       - ./nginx/ssl:/etc/nginx/ssl
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./editor-ui/dist:/editor-ui/dist:ro
     ports:
       - "80:8000"
       - "443:443"

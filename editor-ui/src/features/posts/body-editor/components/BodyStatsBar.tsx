@@ -1,0 +1,90 @@
+import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/api/client";
+import { formatStatNum, htmlToPlain } from "./bodyTextStats";
+
+type TextQualityResponse = {
+  ok: boolean;
+  overall?: { score: number };
+  scores?: Record<string, { score: number }>;
+};
+
+function metricScore(
+  scores: TextQualityResponse["scores"],
+  key: string,
+): number | "-" {
+  return scores?.[key]?.score ?? "-";
+}
+
+function formatQualityLine(data: TextQualityResponse): string {
+  if (!data.ok || !data.overall || !data.scores) return "";
+  return [
+    `Качество текста: ${data.overall.score}`,
+    `Читаемость: ${metricScore(data.scores, "readability")}`,
+    `Спам: ${metricScore(data.scores, "spam_words")}`,
+    `Водность: ${metricScore(data.scores, "waterness")}`,
+    `Орфография: ${metricScore(data.scores, "orthography")}`,
+    `Пунктуация: ${metricScore(data.scores, "punctuation")}`,
+    `Опечатки: ${metricScore(data.scores, "typos")}`,
+  ].join(" · ");
+}
+
+interface BodyStatsBarProps {
+  html: string;
+  onHtmlChange?: (html: string) => void;
+}
+
+export function BodyStatsBar({ html, onHtmlChange }: BodyStatsBarProps) {
+  const [qualityLine, setQualityLine] = useState("");
+
+  const stats = useMemo(() => {
+    const plain = htmlToPlain(html);
+    const words = plain ? plain.split(/\s+/).filter(Boolean).length : 0;
+    return {
+      chars: plain.length,
+      charsNoSpaces: plain.replace(/ /g, "").length,
+      words,
+      minutes: Math.max(1, Math.round(words / 200)),
+    };
+  }, [html]);
+
+  useEffect(() => {
+    onHtmlChange?.(html);
+  }, [html, onHtmlChange]);
+
+  useEffect(() => {
+    if (!html.trim()) {
+      setQualityLine("");
+      return;
+    }
+    const timer = window.setTimeout(async () => {
+      try {
+        const data = await apiFetch<TextQualityResponse>("/posts/text-quality/", {
+          method: "POST",
+          body: JSON.stringify({
+            schema_version: "1.0",
+            locale: "ru-RU",
+            content_format: "html",
+            enable_extra_metrics: true,
+            text: html,
+          }),
+        });
+        setQualityLine(formatQualityLine(data));
+      } catch {
+        setQualityLine("");
+      }
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [html]);
+
+  return (
+    <div className="rounded-lg border border-border bg-surface-muted px-3 py-2 text-xs text-text-secondary">
+      <div>
+        Символов: <strong>{formatStatNum(stats.chars)}</strong> (без пробелов:{" "}
+        <strong>{formatStatNum(stats.charsNoSpaces)}</strong>) · Слов:{" "}
+        <strong>{formatStatNum(stats.words)}</strong> · Время чтения: ~
+        <strong>{stats.minutes}</strong> мин
+      </div>
+      {qualityLine && <div className="mt-1">{qualityLine}</div>}
+    </div>
+  );
+}

@@ -36,8 +36,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -114,3 +114,9 @@ staticfiles/
 zen_*
 
 .cursor
+
+# Editor SPA
+editor-ui/node_modules/
+editor-ui/dist/
+editor-ui/playwright-report/
+editor-ui/test-results/

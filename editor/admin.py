@@ -2,6 +2,7 @@ import json
 from typing import ClassVar
 from uuid import UUID, uuid4
 
+from django.conf import settings
 from django.contrib import admin
 from django.http import HttpRequest, JsonResponse
 from django.shortcuts import get_object_or_404
@@ -97,6 +98,7 @@ class PostAdmin(admin.ModelAdmin):
     def changelist_view(self, request, extra_context=None):
         merged = dict(extra_context or {})
         merged["sender_publish_url"] = reverse("sender_publish_workflow")
+        merged["editor_ui_url"] = getattr(settings, "EDITOR_URL", "")
         return super().changelist_view(request, extra_context=merged)
 
     def changeform_view(

@@ -1,11 +1,14 @@
 [project]
 name = "shiftedblog"
-version = "0.3.4"
+version = "0.4.0"
 description = "Automated blogging tool"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "django>=6.0.6",
+    "django>=6.0.7",
+    "django-cors-headers>=4.7.0",
+    "djangorestframework>=3.16.0",
+    "drf-spectacular>=0.29.0",
     "django-axes>=8.1.0",
     "django-ckeditor-5>=0.2.18",
     "django-ratelimit>=4.1.0",
@@ -13,7 +16,7 @@ dependencies = [
     "django-taggit>=6.1.0",
     "django-two-factor-auth>=1.18.0",
     "phonenumbers>=9.0.28",
-    "pillow>=11.2.1",
+    "pillow>=12.3.0",
     "psycopg2-binary>=2.9.10",
     "python-dotenv>=1.2.2",
     "qrcode>=7.4.2",
@@ -81,6 +84,7 @@ ignore = [
 "editor/views.py" = ["RUF001"]
 "editor/models/post.py" = ["RUF001"]
 "blog/views.py" = ["RUF001"]
+"api/**" = ["RUF012"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -91,7 +95,7 @@ line-ending = "auto"
 [tool.pyright]
 pythonVersion = "3.14"
 typeCheckingMode = "basic"
-include = ["blog", "core", "editor", "sender", "shiftedblog", "team", "manage.py", "templates"]
+include = ["api", "blog", "core", "editor", "sender", "shiftedblog", "team", "manage.py", "templates"]
 exclude = [
     ".git",
     ".venv",
@@ -117,3 +121,14 @@ reportUnnecessaryCast = true
 reportUnnecessaryComparison = true
 # Django: resolve from project root
 extraPaths = ["."]
+# DRF views use Request wrappers; relax typing for the api app.
+[[tool.pyright.executionEnvironments]]
+root = "api"
+reportArgumentType = "none"
+reportAttributeAccessIssue = "none"
+reportOperatorIssue = "none"
+reportOptionalMemberAccess = "none"
+reportOptionalSubscript = "none"
+reportIndexIssue = "none"
+reportCallIssue = "none"
+reportInvalidTypeArguments = "none"

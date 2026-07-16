@@ -10,6 +10,7 @@ from django.contrib import admin
 from django.contrib.sitemaps.views import sitemap
 from django.urls import include, path
 from django.views.generic import TemplateView
+from drf_spectacular.views import SpectacularAPIView
 from two_factor.urls import urlpatterns as tf_urlpatterns
 
 import core.urls  # noqa: F401 - loads admin site customization
@@ -64,6 +65,12 @@ urlpatterns = [
     path("account/two_factor/qrcode/", RateLimitedQRGeneratorView.as_view(), name="qr"),
     # two_factor.urls: (pattern_list, 'two_factor'); include() needs 2-tuple
     path("", include((tf_urlpatterns[0], tf_urlpatterns[1]))),
+    path(
+        "api/editor/v1/schema/",
+        SpectacularAPIView.as_view(),
+        name="editor_api_schema",
+    ),
+    path("api/editor/v1/", include("api.editor.urls")),
     path("robots.txt", robots_txt),
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
 ]

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+if ! command -v uv >/dev/null 2>&1; then
+  echo "pre-commit: uv is required. Install it from https://docs.astral.sh/uv/"
+  exit 1
+fi
+
+PATHS=(api blog core editor sender shiftedblog team manage.py templates)
+
+echo "pre-commit: ruff format check"
+uv run --extra dev --python 3.14 ruff format --check "${PATHS[@]}"
+
+echo "pre-commit: ruff lint"
+uv run --extra dev --python 3.14 ruff check --ignore RUF001 "${PATHS[@]}"
+
+echo "pre-commit: pyright"
+uv run --extra dev --python 3.14 pyright "${PATHS[@]}"
+
+echo "pre-commit: bandit"
+uv run --extra dev --python 3.14 bandit -c pyproject.toml -r blog core editor sender shiftedblog team -ll -x '**/migrations/*'
