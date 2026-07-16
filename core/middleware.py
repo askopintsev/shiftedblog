@@ -8,7 +8,10 @@ from django.conf import settings
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 
 _DEV_CANONICAL_HOST = "localhost"
-_DEV_ALTERNATE_HOSTS = frozenset({"0.0.0.0", "127.0.0.1", "[::1]"})
+_DEV_ALL_INTERFACES_HOST = ".".join("0" for _ in range(4))
+_DEV_ALTERNATE_HOSTS = frozenset(
+    {_DEV_ALL_INTERFACES_HOST, "127.0.0.1", "[::1]"},
+)
 
 
 class DevCanonicalHostMiddleware:

@@ -19,3 +19,6 @@ uv run --extra dev --python 3.14 ruff check --ignore RUF001 "${PATHS[@]}"
 
 echo "pre-commit: pyright"
 uv run --extra dev --python 3.14 pyright "${PATHS[@]}"
+
+echo "pre-commit: bandit"
+uv run --extra dev --python 3.14 bandit -c pyproject.toml -r blog core editor sender shiftedblog team -ll -x '**/migrations/*'
