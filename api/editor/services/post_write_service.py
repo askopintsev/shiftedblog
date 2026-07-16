@@ -34,7 +34,9 @@ def _extract_uploaded_files(form_data: dict[str, Any]) -> dict[str, UploadedFile
 def _normalize_form_tags(form_data: dict[str, Any]) -> None:
     value = form_data.get("tags")
     if isinstance(value, list):
-        form_data["tags"] = ", ".join(str(tag).strip() for tag in value if str(tag).strip())
+        form_data["tags"] = ", ".join(
+            str(tag).strip() for tag in value if str(tag).strip()
+        )
 
 
 def validate_post_data(

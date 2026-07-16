@@ -15,7 +15,11 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.editor.permissions import IsAuthenticatedStaff, IsStaffUser, client_user_is_verified
+from api.editor.permissions import (
+    IsAuthenticatedStaff,
+    IsStaffUser,
+    client_user_is_verified,
+)
 
 User = get_user_model()
 

@@ -103,7 +103,9 @@ class EditorApiPostTests(TestCase):
         self.assertEqual(response.status_code, 200)
         post.refresh_from_db()
         self.assertTrue(post.cover_image.name)
-        self.assertTrue(response.json()["post"]["cover_image_url"].startswith("/media/"))
+        self.assertTrue(
+            response.json()["post"]["cover_image_url"].startswith("/media/")
+        )
 
     def test_gallery_upload_rejects_invalid_image(self):
         post = Post.objects.create(

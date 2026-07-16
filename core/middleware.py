@@ -30,6 +30,8 @@ class DevCanonicalHostMiddleware:
             return self.get_response(request)
 
         port = host.split(":", 1)[1] if ":" in host else ""
-        canonical_host = _DEV_CANONICAL_HOST if not port else f"{_DEV_CANONICAL_HOST}:{port}"
+        canonical_host = (
+            _DEV_CANONICAL_HOST if not port else f"{_DEV_CANONICAL_HOST}:{port}"
+        )
         target = f"{request.scheme}://{canonical_host}{request.get_full_path()}"
         return HttpResponseRedirect(target)

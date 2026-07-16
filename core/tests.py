@@ -133,4 +133,3 @@ class DevCanonicalHostMiddlewareTests(TestCase):
     def test_skips_redirect_in_production(self):
         response = self.client.get("/", HTTP_HOST="0.0.0.0:8888")
         self.assertEqual(response.status_code, 200)
-
