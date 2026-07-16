@@ -8,7 +8,7 @@ def staff_user_is_verified(user) -> bool:
         return True
     verified = getattr(user, "is_verified", None)
     if callable(verified):
-        return verified()
+        return bool(verified())
     return False
 
 
@@ -18,7 +18,7 @@ def client_user_is_verified(request, user) -> bool:
         return True
     verified = getattr(user, "is_verified", None)
     if callable(verified):
-        return verified()
+        return bool(verified())
     from django_otp import DEVICE_ID_SESSION_KEY
 
     return DEVICE_ID_SESSION_KEY in request.session
