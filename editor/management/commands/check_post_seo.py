@@ -41,6 +41,33 @@ def _find_canonical_hrefs(html: str) -> list[str]:
     return hrefs
 
 
+def _find_meta_property_contents(html: str, prop: str) -> list[str]:
+    prop_lower = prop.lower()
+    contents: list[str] = []
+    for m in _META_TAG_RE.finditer(html):
+        attrs = _attrs_dict(m.group(1))
+        if (attrs.get("property") or "").lower() == prop_lower and "content" in attrs:
+            contents.append(attrs["content"].strip())
+    return contents
+
+
+def _find_meta_name_contents(html: str, name: str) -> list[str]:
+    name_lower = name.lower()
+    contents: list[str] = []
+    for m in _META_TAG_RE.finditer(html):
+        attrs = _attrs_dict(m.group(1))
+        if (attrs.get("name") or "").lower() == name_lower and "content" in attrs:
+            contents.append(attrs["content"].strip())
+    return contents
+
+
+def _path_from_absolute_url(url: str) -> str | None:
+    parsed = urlparse(url)
+    if not parsed.path:
+        return None
+    return parsed.path
+
+
 def _find_robots_meta_contents(html: str) -> list[str]:
     contents: list[str] = []
     for m in _META_TAG_RE.finditer(html):
@@ -177,6 +204,46 @@ class Command(BaseCommand):
                             f"{post.slug!r}: published page must not use "
                             f'noindex/nofollow in <meta name="robots"> '
                             f"(got content={rv!r})"
+                        )
+
+                if post.cover_image:
+                    og_urls = _find_meta_property_contents(content, "og:image")
+                    if len(og_urls) != 1:
+                        errors.append(
+                            f"{post.slug!r}: expected exactly one og:image meta tag, "
+                            f"found {len(og_urls)}"
+                        )
+                    else:
+                        og_path = _path_from_absolute_url(og_urls[0])
+                        if og_path is None:
+                            errors.append(
+                                f"{post.slug!r}: og:image URL {og_urls[0]!r} "
+                                f"has no path"
+                            )
+                        else:
+                            og_response = cast(
+                                HttpResponse,
+                                client.get(og_path, secure=secure),
+                            )
+                            if og_response.status_code != 200:
+                                errors.append(
+                                    f"{post.slug!r}: og:image endpoint HTTP "
+                                    f"{og_response.status_code} (expected 200)"
+                                )
+                            elif (
+                                og_response.get("Content-Type", "").split(";")[0]
+                                != "image/jpeg"
+                            ):
+                                errors.append(
+                                    f"{post.slug!r}: og:image Content-Type must be "
+                                    f"image/jpeg"
+                                )
+
+                    twitter_images = _find_meta_name_contents(content, "twitter:image")
+                    if len(twitter_images) != 1:
+                        errors.append(
+                            f"{post.slug!r}: expected exactly one twitter:image meta "
+                            f"tag, found {len(twitter_images)}"
                         )
 
                 ld_blocks = _parse_ld_json_blocks(content)
