@@ -223,9 +223,9 @@ django-cors-headers==4.9.0 \
     --hash=sha256:15c7f20727f90044dcee2216a9fd7303741a864865f0c3657e28b7056f61b449 \
     --hash=sha256:fe5d7cb59fdc2c8c646ce84b727ac2bca8912a247e6e68e1fb507372178e59e8
     # via shiftedblog
-django-formtools==2.6.1 \
-    --hash=sha256:2848516dc66a7acde1cb595d225b30c1b837528948cad32bf0faafc6d8cc7af8 \
-    --hash=sha256:603ebc69a4b76b9bf38534f6e0245face007c7ed31bdfa073f8bf45cff5d7122
+django-formtools==2.7 \
+    --hash=sha256:06e4ab1f9c999f5b2ec6670cb2d51b77117599f4f17c5855f38de158b1c7f247 \
+    --hash=sha256:52b30c08571108023937e4b5d96a5cc35282ff0a2e51630aeea00e27d723d3ac
     # via django-two-factor-auth
 django-otp==1.7.0 \
     --hash=sha256:406d2d7f797dc313569270e06d6c360c7d986c9f653eab80b190d663ed5f1133 \
