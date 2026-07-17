@@ -52,10 +52,17 @@ FROM python:${PYTHON_VERSION}-slim-bookworm
 
 ARG PYTHON_VERSION
 
-# PostgreSQL client + runtime libs for Pillow (PIL/django_ckeditor_5)
+# PostgreSQL client major version must match the db service image (postgres:17).
 RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates gnupg \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+        | gpg --dearmor -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
+        > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
     && apt-get install -y --no-install-recommends \
-        postgresql-client \
+        postgresql-client-17 \
         libffi8 \
         libjpeg62-turbo \
         zlib1g \

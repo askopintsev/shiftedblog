@@ -100,8 +100,23 @@ class Command(BaseCommand):
                         returncode=dump_rc or gzip_rc,
                         cmd="pg_dump | gzip",
                     )
+                backup_size = os.path.getsize(backup_file)
+                if backup_size < 128:
+                    os.remove(backup_file)
+                    self.stdout.write(
+                        self.style.ERROR(
+                            f"DB backup file too small ({backup_size} bytes); "
+                            "pg_dump likely failed (check client/server version match)."
+                        )
+                    )
+                    raise subprocess.CalledProcessError(
+                        returncode=1,
+                        cmd="pg_dump | gzip",
+                    )
                 self.stdout.write(
-                    self.style.SUCCESS(f"DB backup completed: {backup_file}")
+                    self.style.SUCCESS(
+                        f"DB backup completed: {backup_file} ({backup_size} bytes)"
+                    )
                 )
                 backup_files.append(backup_file)
             except subprocess.CalledProcessError as e:
