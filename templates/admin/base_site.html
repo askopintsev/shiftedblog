@@ -1,5 +1,12 @@
 {% extends "admin/base.html" %}
 
+{% load static %}
+
+{% block extrahead %}
+{{ block.super }}
+<script defer src="{% static 'editor/js/post_admin_session_keepalive.js' %}"></script>
+{% endblock %}
+
 {% block content %}
 {% if admin_security_warnings %}
 <ul class="messagelist">
