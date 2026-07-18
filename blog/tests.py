@@ -138,6 +138,15 @@ class PostSocialShareImageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "image/jpeg")
         self.assertTrue(response.content.startswith(b"\xff\xd8"))
+        with Image.open(io.BytesIO(response.content)) as im:
+            self.assertEqual(im.size, (1200, 630))
+
+    def test_detail_page_og_image_dimensions_match_meta(self):
+        response = self.client.get(
+            reverse("blog:post_detail", args=[self.post.slug]),
+        )
+        self.assertContains(response, 'property="og:image:width" content="1200"')
+        self.assertContains(response, 'property="og:image:height" content="630"')
 
 
 class FeedLentaTests(TestCase):

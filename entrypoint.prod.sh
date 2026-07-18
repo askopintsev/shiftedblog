@@ -47,6 +47,8 @@ set -euo pipefail
 ${log_dir_env}
 python manage.py collectstatic --noinput
 python manage.py migrate --noinput
-exec python -m gunicorn --bind 0.0.0.0:8000 --workers 3 shiftedblog.wsgi:application \
+exec python -m gunicorn --bind 0.0.0.0:8000 --workers \${GUNICORN_WORKERS:-2} shiftedblog.wsgi:application \
+  --timeout \${GUNICORN_TIMEOUT:-120} --graceful-timeout 30 \
+  --max-requests \${GUNICORN_MAX_REQUESTS:-500} --max-requests-jitter 50 \
   --access-logfile - --error-logfile - --log-level info
 "

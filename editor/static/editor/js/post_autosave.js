@@ -206,6 +206,11 @@
                 persistDraftToLocal(getBodyContent());
                 return;
             }
+            if (response.status >= 502 && response.status <= 504) {
+                showSessionLostBanner();
+                persistDraftToLocal(getBodyContent());
+                return;
+            }
             if (response.type === 'opaqueredirect' ||
                 response.status === 302 || response.status === 303 ||
                 response.status === 307 || response.status === 308) {

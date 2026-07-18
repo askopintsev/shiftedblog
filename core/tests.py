@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import date
+from typing import cast
 from unittest.mock import patch
 
 from cryptography.fernet import Fernet
@@ -12,8 +13,11 @@ from django.test import RequestFactory, TestCase, override_settings
 from core import crypto
 from core.fields import FernetEncryptedTextField
 from core.models import Credential, Network
+from core.models.user import UserManager
 from core.security_warnings import collect_secrets_rotation_warnings
 from core.signals import rotate_session_on_login
+
+User = get_user_model()
 
 _FERNET_TEST_KEY = Fernet.generate_key().decode("ascii")
 
@@ -133,3 +137,23 @@ class DevCanonicalHostMiddlewareTests(TestCase):
     def test_skips_redirect_in_production(self):
         response = self.client.get("/", HTTP_HOST="0.0.0.0:8888")
         self.assertEqual(response.status_code, 200)
+
+
+class AdminSessionKeepaliveTests(TestCase):
+    def setUp(self):
+        self.staff = cast(UserManager, User.objects).create_user(
+            email="staff@example.com",
+            password="secret12345",
+            is_staff=True,
+        )
+
+    @override_settings(ADMIN_URL="mellon")
+    def test_keepalive_requires_staff(self):
+        response = self.client.get("/mellon/session-keepalive/")
+        self.assertEqual(response.status_code, 302)
+
+    @override_settings(ADMIN_URL="mellon")
+    def test_keepalive_refreshes_staff_session(self):
+        self.client.force_login(self.staff)
+        response = self.client.get("/mellon/session-keepalive/")
+        self.assertEqual(response.status_code, 204)

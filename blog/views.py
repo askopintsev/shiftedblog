@@ -24,6 +24,8 @@ from editor.forms import SearchForm
 from editor.image_upload import (
     build_share_jpeg_from_cover_bytes,
     read_cover_bytes,
+    share_jpeg_has_social_dimensions,
+    social_share_image_size,
     social_share_storage_name,
 )
 from editor.models import Category, PostSlugRedirect
@@ -272,6 +274,8 @@ def post_detail(request, slug):
             "next_post": next_post,
             "current_series": current_series,
             "post_og_image_url": post_og_image_absolute_url(post, request),
+            "post_og_image_width": social_share_image_size()[0],
+            "post_og_image_height": social_share_image_size()[1],
         },
     )
 
@@ -288,7 +292,8 @@ def post_og_image(request, slug: str) -> HttpResponse:
     if default_storage.exists(share_name):
         with default_storage.open(share_name, "rb") as share_file:
             data = share_file.read()
-        return _jpeg_image_response(data)
+        if share_jpeg_has_social_dimensions(data):
+            return _jpeg_image_response(data)
 
     try:
         raw = read_cover_bytes(post.cover_image)

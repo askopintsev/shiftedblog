@@ -226,6 +226,11 @@ DATABASES = {
         "NAME": db_name,
         "USER": db_user,
         "PASSWORD": db_pass,
+        "CONN_MAX_AGE": get_int_env("DB_CONN_MAX_AGE", 600),
+        "CONN_HEALTH_CHECKS": True,
+        "OPTIONS": {
+            "connect_timeout": get_int_env("DB_CONNECT_TIMEOUT", 10),
+        },
     }
 }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -239,6 +244,10 @@ CACHES = {
         "LOCATION": os.environ.get("REDIS_URL", "redis://redis:6379/1"),
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "SOCKET_CONNECT_TIMEOUT": get_int_env("REDIS_SOCKET_CONNECT_TIMEOUT", 5),
+            "SOCKET_TIMEOUT": get_int_env("REDIS_SOCKET_TIMEOUT", 5),
+            "RETRY_ON_TIMEOUT": True,
+            "CONNECTION_POOL_KWARGS": {"max_connections": 20},
         },
         "KEY_PREFIX": "shiftedblog",
         "TIMEOUT": 300,  # Default timeout: 5 minutes

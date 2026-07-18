@@ -17,6 +17,13 @@ if TYPE_CHECKING:
 
 _HAS_AVIF = bool(features.check("avif"))
 
+SOCIAL_SHARE_WIDTH = 1200
+SOCIAL_SHARE_HEIGHT = 630
+
+
+def social_share_image_size() -> tuple[int, int]:
+    return SOCIAL_SHARE_WIDTH, SOCIAL_SHARE_HEIGHT
+
 
 def _max_edge() -> int:
     return int(getattr(settings, "IMAGE_UPLOAD_MAX_EDGE", 2560))
@@ -83,9 +90,26 @@ def social_share_storage_name(cover_storage_name: str) -> str:
     return f"{directory}/{share_filename}" if directory else share_filename
 
 
+def _crop_and_resize_for_social(im: Image.Image) -> Image.Image:
+    """Center-crop to Open Graph / X card ratio and resize for link previews."""
+    target_w, target_h = social_share_image_size()
+    target_ratio = target_w / target_h
+    width, height = im.size
+    current_ratio = width / height
+    if current_ratio > target_ratio:
+        new_width = int(height * target_ratio)
+        left = (width - new_width) // 2
+        im = im.crop((left, 0, left + new_width, height))
+    elif current_ratio < target_ratio:
+        new_height = int(width / target_ratio)
+        top = (height - new_height) // 2
+        im = im.crop((0, top, width, top + new_height))
+    return im.resize((target_w, target_h), Image.Resampling.LANCZOS)
+
+
 def encode_image_as_share_jpeg(im: Image.Image) -> bytes:
     """Return JPEG bytes sized for social link previews."""
-    rgb = _flatten_for_jpeg(im)
+    rgb = _flatten_for_jpeg(_crop_and_resize_for_social(im))
     buf = io.BytesIO()
     rgb.save(
         buf,
@@ -127,6 +151,14 @@ def build_share_jpeg_from_cover_bytes(raw: bytes) -> bytes:
             else:
                 im = im.convert("RGBA" if "transparency" in im.info else "RGB")
         return encode_image_as_share_jpeg(im)
+
+
+def share_jpeg_has_social_dimensions(data: bytes) -> bool:
+    try:
+        with Image.open(io.BytesIO(data)) as im:
+            return im.size == social_share_image_size()
+    except OSError:
+        return False
 
 
 def _encode_delivery(im: Image.Image, stem: str) -> tuple[str, ContentFile]:
