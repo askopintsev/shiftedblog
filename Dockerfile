@@ -2,7 +2,7 @@
 ARG PYTHON_VERSION=3.14
 
 # Stage 0: Editor UI build
-FROM node:22-bookworm AS editor-ui-builder
+FROM node:26-bookworm AS editor-ui-builder
 WORKDIR /editor-ui
 COPY editor-ui/package.json editor-ui/package-lock.json* ./
 RUN npm ci || npm install
