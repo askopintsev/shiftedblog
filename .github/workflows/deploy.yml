@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -19,9 +21,8 @@ jobs:
       - name: Reject legacy pip-only dependency updates
         if: github.event_name == 'pull_request'
         run: |
-          BASE="${{ github.event.pull_request.base.sha }}"
-          HEAD="${{ github.event.pull_request.head.sha }}"
-          CHANGED="$(git diff --name-only "$BASE" "$HEAD")"
+          git fetch --no-tags origin "${{ github.event.pull_request.base.ref }}"
+          CHANGED="$(git diff --name-only "origin/${{ github.event.pull_request.base.ref }}...HEAD")"
           if echo "$CHANGED" | grep -qx 'requirements.txt'; then
             if ! echo "$CHANGED" | grep -qxE 'pyproject.toml|uv.lock'; then
               echo "requirements.txt changed without pyproject.toml or uv.lock."
