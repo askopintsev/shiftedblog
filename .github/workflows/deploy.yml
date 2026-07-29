@@ -16,12 +16,21 @@ jobs:
           enable-cache: true
       - name: Sync dependencies
         run: uv sync --frozen --extra dev --python 3.14
-      - name: Check requirements.txt matches uv.lock
+      - name: Reject legacy pip-only dependency updates
+        if: github.event_name == 'pull_request'
         run: |
-          uv export --no-dev -o requirements.txt.check
-          tail -n +3 requirements.txt > requirements.body
-          tail -n +3 requirements.txt.check > requirements.check.body
-          diff -u requirements.body requirements.check.body
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          CHANGED="$(git diff --name-only "$BASE" "$HEAD")"
+          if echo "$CHANGED" | grep -qx 'requirements.txt'; then
+            if ! echo "$CHANGED" | grep -qxE 'pyproject.toml|uv.lock'; then
+              echo "requirements.txt changed without pyproject.toml or uv.lock."
+              echo "Close legacy dependabot/pip/* PRs; use uv.lock updates instead."
+              exit 1
+            fi
+          fi
+      - name: Check requirements.txt matches uv.lock
+        run: ./scripts/check-requirements-export.sh
       - name: Run Ruff format check
         run: uv run ruff format --check api blog core editor sender shiftedblog team manage.py templates
       - name: Run Ruff lint

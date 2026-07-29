@@ -3,7 +3,8 @@
 
 version: 2
 updates:
-  # Python (pyproject.toml + uv.lock; regenerate requirements.txt after merge)
+  # Python: uv.lock is the source of truth; requirements.txt is exported for Docker.
+  # Do not merge open dependabot/pip/* PRs — close them; uv PRs sync requirements.txt in CI.
   - package-ecosystem: "uv"
     directory: "/"
     schedule:

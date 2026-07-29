@@ -12,16 +12,9 @@ fi
 PATHS=(api blog core editor sender shiftedblog team manage.py templates)
 
 if git diff --cached --name-only | grep -qE '^(pyproject\.toml|uv\.lock)$'; then
-  echo "pre-commit: requirements.txt export check"
-  uv export --no-dev -o requirements.txt.check
-  tail -n +3 requirements.txt > requirements.body
-  tail -n +3 requirements.txt.check > requirements.check.body
-  if ! diff -q requirements.body requirements.check.body >/dev/null 2>&1; then
-    rm -f requirements.txt.check requirements.body requirements.check.body
-    echo "pre-commit: requirements.txt is out of date. Run: ./scripts/export-requirements.sh"
-    exit 1
-  fi
-  rm -f requirements.txt.check requirements.body requirements.check.body
+  echo "pre-commit: syncing requirements.txt from uv.lock"
+  ./scripts/export-requirements.sh
+  git add requirements.txt
 fi
 
 echo "pre-commit: ruff format check"

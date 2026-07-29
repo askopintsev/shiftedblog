@@ -1,0 +1,27 @@
+name: Sync requirements.txt
+
+# Regenerate requirements.txt when uv.lock changes (e.g. Dependabot uv PRs).
+on:
+  pull_request:
+    paths:
+      - pyproject.toml
+      - uv.lock
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: astral-sh/setup-uv@v7
+      - name: Export requirements.txt from uv.lock
+        run: ./scripts/export-requirements.sh
+      - name: Commit requirements.txt if changed
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "Sync requirements.txt from uv.lock"
+          file_pattern: requirements.txt
