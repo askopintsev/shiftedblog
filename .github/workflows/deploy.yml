@@ -16,6 +16,12 @@ jobs:
           enable-cache: true
       - name: Sync dependencies
         run: uv sync --frozen --extra dev --python 3.14
+      - name: Check requirements.txt matches uv.lock
+        run: |
+          uv export --no-dev -o requirements.txt.check
+          tail -n +3 requirements.txt > requirements.body
+          tail -n +3 requirements.txt.check > requirements.check.body
+          diff -u requirements.body requirements.check.body
       - name: Run Ruff format check
         run: uv run ruff format --check api blog core editor sender shiftedblog team manage.py templates
       - name: Run Ruff lint
