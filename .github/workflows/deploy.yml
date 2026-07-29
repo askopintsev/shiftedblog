@@ -21,12 +21,19 @@ jobs:
       - name: Reject legacy pip-only dependency updates
         if: github.event_name == 'pull_request'
         run: |
+          case "${{ github.head_ref }}" in
+            dependabot/pip/*)
+              echo "Legacy Dependabot pip PR (${{ github.head_ref }})."
+              echo "Close this PR; dependency updates must change uv.lock."
+              exit 1
+              ;;
+          esac
           git fetch --no-tags origin "${{ github.event.pull_request.base.ref }}"
           CHANGED="$(git diff --name-only "origin/${{ github.event.pull_request.base.ref }}...HEAD")"
           if echo "$CHANGED" | grep -qx 'requirements.txt'; then
             if ! echo "$CHANGED" | grep -qxE 'pyproject.toml|uv.lock'; then
               echo "requirements.txt changed without pyproject.toml or uv.lock."
-              echo "Close legacy dependabot/pip/* PRs; use uv.lock updates instead."
+              echo "Run ./scripts/export-requirements.sh after updating uv.lock."
               exit 1
             fi
           fi
