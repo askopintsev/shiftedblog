@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.13"
 
 [manifest]
@@ -1132,7 +1132,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.15.10" },
     { name = "telethon", specifier = ">=1.42.0" },
     { name = "unidecode", specifier = ">=1.4.0" },
-    { name = "yadisk", specifier = ">=3.4.0" },
+    { name = "yadisk", specifier = ">=3.4.1" },
 ]
 provides-extras = ["dev"]
 
@@ -1277,9 +1277,9 @@ wheels = [
 
 [[package]]
 name = "yadisk"
-version = "3.4.0"
+version = "3.4.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c1/7f/a0fe034b6219066ef7723072addc397cd1977a663b6724a22a5c9f7e2f24/yadisk-3.4.0.tar.gz", hash = "sha256:6a0a79fb77fe248813f6378fedb17966165950c30cc278ceb660b04d75a9f965", size = 141683, upload-time = "2025-07-10T14:34:59.863Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c6/41/a0080b950b406eb944f42d3feb9ba1a24e9d659a801d51f9af36048389c4/yadisk-3.4.1.tar.gz", hash = "sha256:17d9092c6566244253be8694505bfb52bc351f27ceb56041798df87d8992d39a", size = 142818, upload-time = "2026-04-16T08:10:59.942Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/40/e0/836b12e709354b04bc729fe309dc9ceda2dd118b995bb940784d5a701054/yadisk-3.4.0-py3-none-any.whl", hash = "sha256:c32d64a3b62812d6ed68ef7a7aefb9404d9b6d8ba923abe2406e0d45aff717c9", size = 140362, upload-time = "2025-07-10T14:34:58.117Z" },
+    { url = "https://files.pythonhosted.org/packages/e2/c1/1856886450cdc5f8de9b04c276529f41e565e3dc1d755f12715764ec2dd6/yadisk-3.4.1-py3-none-any.whl", hash = "sha256:1498c8b23731b4262ad29e11de053a57902ea17daaa8ba07de27d1525a4028ac", size = 140744, upload-time = "2026-04-16T08:10:58.017Z" },
 ]
