@@ -114,6 +114,7 @@ staticfiles/
 zen_*
 
 .cursor
+docs
 
 # Editor SPA
 editor-ui/node_modules/

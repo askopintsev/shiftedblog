@@ -19,11 +19,23 @@ from sender.services.telegram_format import (
     format_tags_suffix,
     html_contains_link,
 )
+from sender.services.telegram_rich_format import (
+    MAX_RICH_MESSAGE_LEN,
+    RichMediaAttachment,
+    RichMessagePayload,
+    balance_telegram_rich_html,
+    build_formatted_rich_message,
+    find_telegram_rich_html_split_index,
+)
 
 MAX_MESSAGE_LEN = 4096
 MAX_CAPTION_LEN = 1024
 MAX_MEDIA_GROUP = 10
 CONTINUATION_PREFIX = "⏫ продолжение поста"
+
+
+def telegram_use_rich_messages() -> bool:
+    return bool(getattr(settings, "TELEGRAM_USE_RICH_MESSAGES", False))
 
 
 def _media_url_prefixes() -> list[str]:
@@ -88,12 +100,15 @@ class TelegramPlannedStep:
     """One logical send step (may trigger multiple Bot API calls)."""
 
     text: str = ""
+    legacy_text: str = ""
     cover_path: str | None = None
     media_paths: list[str] = field(default_factory=list)
+    rich_media: list[RichMediaAttachment] = field(default_factory=list)
     is_continuation: bool = False
     combined_album: bool = False
     caption_on_media_group: bool = False
     enable_link_preview: bool = False
+    use_rich_message: bool = False
 
     def preview_label(self) -> str:
         if self.is_continuation:
@@ -109,6 +124,7 @@ class TelegramPlannedStep:
 class TelegramPublishPlan:
     steps: list[TelegramPlannedStep] = field(default_factory=list)
     has_subscription: bool = False
+    uses_rich_messages: bool = False
 
     @property
     def is_series(self) -> bool:
@@ -290,6 +306,159 @@ def build_telegram_crosslink_plan(post: Post, *, link_url: str) -> TelegramPubli
     return TelegramPublishPlan(steps=steps, has_subscription=False)
 
 
+def _split_rich_text_chunks(
+    text: str,
+    *,
+    continuation_from_start: bool = False,
+    continuation_prefix: str | None = None,
+) -> list[str]:
+    if not text:
+        return []
+    header = _continuation_header(continuation_prefix)
+    first = not continuation_from_start
+    header_len = 0 if first else len(header)
+    base_limit = max(1, MAX_RICH_MESSAGE_LEN - header_len)
+    if len(text) <= base_limit and first:
+        return [text]
+    chunks: list[str] = []
+    rest = text
+    first = not continuation_from_start
+    while rest:
+        header_len = 0 if first else len(header)
+        base_limit = max(1, MAX_RICH_MESSAGE_LEN - header_len)
+        if len(rest) <= base_limit:
+            chunk = rest
+            rest = ""
+        else:
+            split_at = find_telegram_rich_html_split_index(rest, base_limit)
+            chunk = balance_telegram_rich_html(rest[:split_at].rstrip())
+            rest = rest[split_at:].lstrip()
+        if not first:
+            chunk = f"{header}{chunk}"
+        chunks.append(chunk)
+        first = False
+    return chunks
+
+
+def _gallery_only_image_paths(
+    post: Post,
+    *,
+    inlined_paths: set[str],
+) -> list[str]:
+    """Gallery rows not already embedded as rich inline media."""
+    if post.pk is None:
+        return []
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for gi in post.gallery_images.order_by(  # pyright: ignore[reportAttributeAccessIssue]
+        "gallery_key",
+        "order",
+        "id",
+    ):
+        if not gi.image:
+            continue
+        path = gi.image.name
+        if not path or path in inlined_paths or path in seen:
+            continue
+        if not default_storage.exists(path):
+            continue
+        seen.add(path)
+        ordered.append(path)
+    return ordered
+
+
+def _rich_media_for_html_chunk(
+    html: str,
+    media: list[RichMediaAttachment],
+) -> list[RichMediaAttachment]:
+    """Keep only attachments referenced by ``tg://photo?id=`` in *html*."""
+    if not media:
+        return []
+    used: list[RichMediaAttachment] = []
+    for item in media:
+        needle = f"tg://photo?id={item.media_id}"
+        if needle in html:
+            used.append(item)
+    return used
+
+
+def build_telegram_rich_plan(
+    post: Post,
+    *,
+    has_subscription: bool,
+    continuation_prefix: str | None = None,
+) -> TelegramPublishPlan:
+    """Rich-message plan: cover + body images inline; galleries as albums."""
+    tags_suffix, tags_line, _tags_reserve = format_tags_suffix(post)
+    cover_path: str | None = None
+    if post.cover_image:
+        cover_path = post.cover_image.name
+
+    rich_payload: RichMessagePayload = build_formatted_rich_message(
+        post,
+        include_tags=False,
+        cover_path=cover_path,
+        resolve_storage_path=storage_path_from_src,
+    )
+    rich_text = rich_payload.html
+    legacy_text = build_formatted_message(post, include_tags=False)
+    if tags_line:
+        rich_text = (
+            f"{rich_text}\n<p>{tags_line}</p>" if rich_text else f"<p>{tags_line}</p>"
+        )
+        legacy_text += tags_suffix
+
+    text_parts = _split_rich_text_chunks(
+        rich_text,
+        continuation_prefix=continuation_prefix,
+    )
+    legacy_parts = _split_text_chunks(
+        legacy_text,
+        MAX_MESSAGE_LEN,
+        continuation_prefix=continuation_prefix,
+    )
+    part_count = max(len(text_parts), len(legacy_parts), 1)
+    while len(text_parts) < part_count:
+        text_parts.append("")
+    while len(legacy_parts) < part_count:
+        legacy_parts.append("")
+
+    inlined = set(rich_payload.inline_storage_paths)
+    gallery_paths = _gallery_only_image_paths(post, inlined_paths=inlined)
+
+    steps: list[TelegramPlannedStep] = []
+    for i, part_text in enumerate(text_parts):
+        is_first = i == 0
+        if not part_text and not (is_first and gallery_paths):
+            continue
+        step = TelegramPlannedStep(
+            text=part_text,
+            legacy_text=legacy_parts[i] if i < len(legacy_parts) else "",
+            cover_path=None,
+            media_paths=gallery_paths if is_first else [],
+            rich_media=_rich_media_for_html_chunk(part_text, rich_payload.media),
+            is_continuation=not is_first,
+            combined_album=False,
+            caption_on_media_group=False,
+            use_rich_message=bool(part_text),
+        )
+        steps.append(step)
+
+    if not steps and gallery_paths:
+        steps.append(
+            TelegramPlannedStep(
+                media_paths=gallery_paths,
+                use_rich_message=False,
+            ),
+        )
+
+    return TelegramPublishPlan(
+        steps=steps,
+        has_subscription=has_subscription,
+        uses_rich_messages=True,
+    )
+
+
 def build_telegram_plan(
     post: Post,
     *,
@@ -297,6 +466,12 @@ def build_telegram_plan(
     continuation_prefix: str | None = None,
 ) -> TelegramPublishPlan:
     """Compose steps for *post* according to subscription and length rules."""
+    if telegram_use_rich_messages():
+        return build_telegram_rich_plan(
+            post,
+            has_subscription=has_subscription,
+            continuation_prefix=continuation_prefix,
+        )
     tags_suffix, tags_line, tags_reserve = format_tags_suffix(post)
     core_text = build_formatted_message(post, include_tags=False)
     cover_path: str | None = None
@@ -397,6 +572,8 @@ def text_dispatches_for_step(
     has_subscription: bool,
 ) -> list[tuple[str, str]]:
     """Exact ``(kind, text)`` payloads sent to Telegram (caption / message)."""
+    if step.use_rich_message and step.text:
+        return [("rich_message", step.text)]
     caption = caption_for_step(step, has_subscription=has_subscription)
     dispatches: list[tuple[str, str]] = []
     text_as_caption = caption is not None and caption == step.text
@@ -446,7 +623,17 @@ def build_preview_send_cards(plan: TelegramPublishPlan) -> list[dict[str, Any]]:
     for step_idx, step in enumerate(plan.steps, start=1):
         dispatches = text_dispatches_for_step(step, has_subscription=has_sub)
         caption = next((text for kind, text in dispatches if kind == "caption"), None)
-        message = next((text for kind, text in dispatches if kind == "message"), None)
+        rich_message = next(
+            (text for kind, text in dispatches if kind == "rich_message"),
+            None,
+        )
+        message = (
+            next(
+                (text for kind, text in dispatches if kind == "message"),
+                None,
+            )
+            or rich_message
+        )
         media_chunks = _chunk_media(step.media_paths)
 
         if step.combined_album:
@@ -502,22 +689,35 @@ def build_preview_send_cards(plan: TelegramPublishPlan) -> list[dict[str, Any]]:
             )
 
         if message:
+            title = "sendRichMessage" if step.use_rich_message else "sendMessage"
+            if step.use_rich_message:
+                max_chars = MAX_RICH_MESSAGE_LEN
+            else:
+                max_chars = MAX_MESSAGE_LEN
+            rich_paths = [item.storage_path for item in step.rich_media]
+            thumb_urls = _preview_urls(rich_paths)
             cards.append(
                 {
                     "step_index": step_idx,
                     "step_total": step_total,
                     "step_label": step.preview_label(),
                     "step_is_continuation": step.is_continuation,
-                    "kind": "message",
-                    "title": "sendMessage",
+                    "kind": "rich_message" if step.use_rich_message else "message",
+                    "title": title,
                     "text": message,
                     "has_text": True,
                     "char_count": len(message),
-                    "max_chars": MAX_MESSAGE_LEN,
-                    "limit_note": f"Message limit {MAX_MESSAGE_LEN} characters.",
-                    "cover_url": None,
-                    "thumb_urls": [],
-                    "image_count": 0,
+                    "max_chars": max_chars,
+                    "limit_note": (
+                        f"Rich message with {len(rich_paths)} inline image(s); "
+                        f"limit {max_chars} characters."
+                        if step.use_rich_message and rich_paths
+                        else f"Message limit {max_chars} characters."
+                    ),
+                    "cover_url": thumb_urls[0] if thumb_urls else None,
+                    "thumb_urls": thumb_urls[1:] if len(thumb_urls) > 1 else [],
+                    "thumb_row": len(thumb_urls) > 1,
+                    "image_count": len(thumb_urls),
                 },
             )
 
