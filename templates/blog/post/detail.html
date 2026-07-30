@@ -46,6 +46,10 @@
 {% endif %}
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
+{% if twitter_site %}
+<meta name="twitter:site" content="{{ twitter_site }}">
+<meta name="twitter:creator" content="{{ twitter_site }}">
+{% endif %}
 <meta name="twitter:url" content="{{ request.scheme }}://{{ request.get_host }}{{ post.get_absolute_url }}">
 {% if post.title %}
 <meta name="twitter:title" content="{{ post.title }}">

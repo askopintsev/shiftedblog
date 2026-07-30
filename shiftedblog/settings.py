@@ -131,6 +131,10 @@ if not SITE_URL and ALLOWED_HOSTS:
 if SITE_URL:
     SITE_URL = SITE_URL.strip().rstrip("/")
 
+TWITTER_SITE = os.environ.get("TWITTER_SITE", "@shifted_stuff").strip()
+if TWITTER_SITE and not TWITTER_SITE.startswith("@"):
+    TWITTER_SITE = f"@{TWITTER_SITE.lstrip('@')}"
+
 SITE_ID = 1
 
 # Application definition
@@ -207,6 +211,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "blog.context_processors.nav_categories",
                 "core.context_processors.admin_security_warnings",
+                "core.context_processors.social_meta",
             ],
         },
     },

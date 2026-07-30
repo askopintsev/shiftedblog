@@ -161,6 +161,32 @@ def share_jpeg_has_social_dimensions(data: bytes) -> bool:
         return False
 
 
+def ensure_post_share_image(post) -> str | None:
+    """Return ``{stem}-share.jpg`` path; generate when missing or stale."""
+    cover = post.cover_image
+    if not cover or not cover.name:
+        return None
+
+    cover_name = cover.name
+    share_name = social_share_storage_name(cover_name)
+    if default_storage.exists(share_name):
+        with default_storage.open(share_name, "rb") as share_file:
+            data = share_file.read()
+        if share_jpeg_has_social_dimensions(data):
+            return share_name
+
+    try:
+        raw = read_cover_bytes(cover)
+        data = build_share_jpeg_from_cover_bytes(raw)
+    except (OSError, ValueError):
+        return None
+
+    if default_storage.exists(share_name):
+        default_storage.delete(share_name)
+    default_storage.save(share_name, ContentFile(data))
+    return share_name
+
+
 def _encode_delivery(im: Image.Image, stem: str) -> tuple[str, ContentFile]:
     """Return (filename, content) for AVIF, WebP, or JPEG."""
     buf = io.BytesIO()

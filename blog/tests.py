@@ -3,7 +3,7 @@ import re
 from typing import cast
 
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
 
@@ -128,17 +128,24 @@ class PostSocialShareImageTests(TestCase):
         expected = post_og_image_absolute_url(self.post, response.wsgi_request)
         self.assertIsNotNone(expected)
         assert expected is not None
+        self.assertIn("/media/", expected)
+        self.assertIn("-share.jpg", expected)
         self.assertContains(response, f'property="og:image" content="{expected}"')
         self.assertContains(response, f'name="twitter:image" content="{expected}"')
         self.assertNotContains(response, ".avif")
 
-    def test_og_image_endpoint_returns_jpeg(self):
+    def test_og_image_endpoint_redirects_to_media_jpeg(self):
         url = reverse("blog:post_og_image", args=[self.post.slug])
         response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response["Content-Type"], "image/jpeg")
-        self.assertTrue(response.content.startswith(b"\xff\xd8"))
-        with Image.open(io.BytesIO(response.content)) as im:
+        self.assertEqual(response.status_code, 301)
+        media_response = self.client.get(response["Location"])
+        self.assertEqual(media_response.status_code, 200)
+        self.assertEqual(
+            media_response.get("Content-Type", "").split(";")[0],
+            "image/jpeg",
+        )
+        self.assertTrue(media_response.content.startswith(b"\xff\xd8"))
+        with Image.open(io.BytesIO(media_response.content)) as im:
             self.assertEqual(im.size, (1200, 630))
 
     def test_detail_page_og_image_dimensions_match_meta(self):
@@ -147,6 +154,16 @@ class PostSocialShareImageTests(TestCase):
         )
         self.assertContains(response, 'property="og:image:width" content="1200"')
         self.assertContains(response, 'property="og:image:height" content="630"')
+
+    @override_settings(TWITTER_SITE="@shifted_stuff")
+    def test_detail_page_includes_twitter_site_meta(self):
+        response = self.client.get(
+            reverse("blog:post_detail", args=[self.post.slug]),
+        )
+        self.assertContains(
+            response,
+            'name="twitter:site" content="@shifted_stuff"',
+        )
 
 
 class FeedLentaTests(TestCase):

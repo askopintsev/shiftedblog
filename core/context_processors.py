@@ -21,3 +21,12 @@ def admin_security_warnings(request: HttpRequest) -> dict[str, list[str]]:
         return {"admin_security_warnings": []}
 
     return {"admin_security_warnings": collect_secrets_rotation_warnings()}
+
+
+def social_meta(request: HttpRequest) -> dict[str, str | None]:
+    """Expose X/Twitter account handle for ``twitter:site`` meta tags."""
+    site = getattr(settings, "TWITTER_SITE", "") or ""
+    site = site.strip()
+    if site and not site.startswith("@"):
+        site = f"@{site.lstrip('@')}"
+    return {"twitter_site": site or None}

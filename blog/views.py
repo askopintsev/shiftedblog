@@ -2,8 +2,6 @@
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db.models import Count, Prefetch
 from django.http import (
@@ -22,15 +20,15 @@ from blog.querysets import public_posts_queryset
 from blog.tag_helpers import resolve_tag_for_list
 from editor.forms import SearchForm
 from editor.image_upload import (
-    build_share_jpeg_from_cover_bytes,
-    read_cover_bytes,
-    share_jpeg_has_social_dimensions,
+    ensure_post_share_image,
     social_share_image_size,
-    social_share_storage_name,
 )
 from editor.models import Category, PostSlugRedirect
 from sender.models import PostLink
-from sender.services.url_helpers import post_og_image_absolute_url
+from sender.services.url_helpers import (
+    post_og_image_absolute_url,
+    post_share_image_media_url,
+)
 
 
 def _public_page_cache(key_prefix: str):
@@ -263,6 +261,9 @@ def post_detail(request, slug):
         .order_by("-published")[: 5 - len(similar_posts)]
     )
 
+    if post.cover_image and post.cover_image.name:
+        ensure_post_share_image(post)
+
     return render(
         request,
         "blog/post/detail.html",
@@ -280,35 +281,20 @@ def post_detail(request, slug):
     )
 
 
-@_public_page_cache("blog.post_og_image")
 def post_og_image(request, slug: str) -> HttpResponse:
-    """Serve JPEG cover art for link-preview crawlers (Telegram, X/Twitter)."""
+    """Legacy URL: generate share JPEG if needed, then redirect to ``/media/``."""
     post = public_posts_queryset().filter(slug=slug).first()
     if post is None or not post.cover_image or not post.cover_image.name:
         raise Http404("No share image for this post.")
 
-    cover_name = post.cover_image.name
-    share_name = social_share_storage_name(cover_name)
-    if default_storage.exists(share_name):
-        with default_storage.open(share_name, "rb") as share_file:
-            data = share_file.read()
-        if share_jpeg_has_social_dimensions(data):
-            return _jpeg_image_response(data)
+    if not ensure_post_share_image(post):
+        raise Http404("Cover image is not readable.")
 
-    try:
-        raw = read_cover_bytes(post.cover_image)
-        data = build_share_jpeg_from_cover_bytes(raw)
-    except (OSError, ValueError) as exc:
-        raise Http404("Cover image is not readable.") from exc
+    media_url = post_share_image_media_url(post)
+    if media_url is None:
+        raise Http404("Share image unavailable.")
 
-    default_storage.save(share_name, ContentFile(data))
-    return _jpeg_image_response(data)
-
-
-def _jpeg_image_response(data: bytes) -> HttpResponse:
-    response = HttpResponse(data, content_type="image/jpeg")
-    response["Cache-Control"] = "public, max-age=604800, immutable"
-    return response
+    return HttpResponsePermanentRedirect(request.build_absolute_uri(media_url))
 
 
 def post_search(request):
