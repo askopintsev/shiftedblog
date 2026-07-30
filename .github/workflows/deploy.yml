@@ -7,11 +7,37 @@ on:
     branches: [ master ]
 
 jobs:
+  sync-requirements:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+      - name: Export requirements.txt from uv.lock
+        run: ./scripts/export-requirements.sh
+      - name: Commit requirements.txt if changed
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "Sync requirements.txt from uv.lock"
+          file_pattern: requirements.txt
+
   lint:
+    needs: sync-requirements
+    if: |
+      always() && (
+        needs.sync-requirements.result == 'success' ||
+        needs.sync-requirements.result == 'skipped'
+      )
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v7
         with:
@@ -28,15 +54,6 @@ jobs:
               exit 1
               ;;
           esac
-          git fetch --no-tags origin "${{ github.event.pull_request.base.ref }}"
-          CHANGED="$(git diff --name-only "origin/${{ github.event.pull_request.base.ref }}...HEAD")"
-          if echo "$CHANGED" | grep -qx 'requirements.txt'; then
-            if ! echo "$CHANGED" | grep -qxE 'pyproject.toml|uv.lock'; then
-              echo "requirements.txt changed without pyproject.toml or uv.lock."
-              echo "Run ./scripts/export-requirements.sh after updating uv.lock."
-              exit 1
-            fi
-          fi
       - name: Check requirements.txt matches uv.lock
         run: ./scripts/check-requirements-export.sh
       - name: Run Ruff format check
