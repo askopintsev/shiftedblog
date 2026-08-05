@@ -359,7 +359,7 @@ wheels = [
 
 [[package]]
 name = "django-stubs"
-version = "6.0.4"
+version = "6.0.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
@@ -367,9 +367,9 @@ dependencies = [
     { name = "types-pyyaml" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f9/82/ccf2a2dc9cdb4bd9cbe91f11e887589bf2da7609506db00ccbc73bd8a6da/django_stubs-6.0.4.tar.gz", hash = "sha256:7aee77e8de9c14c0d9cf84988befe826d93cbc15a87e0ade2943f14d553451cf", size = 280019, upload-time = "2026-05-09T21:24:30.436Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8a/90/087c6e424e705e05182e543ef6b366a59eb5c92ab008b0dbbba55f357a40/django_stubs-6.0.7.tar.gz", hash = "sha256:bc55431c0af745a64e39cf33a8d36c87dccbedeae2fe26fab47dd355270e8538", size = 282293, upload-time = "2026-07-14T10:08:27.122Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ba/e7/5128914ada94dd6277626ef5a4a5680a4def7d2f9366214d26c1cd86723b/django_stubs-6.0.4-py3-none-any.whl", hash = "sha256:e991c68f77239663577a5f4fc75e99c84f867f378cafc97cbf4acc5aff378279", size = 543791, upload-time = "2026-05-09T21:24:28.218Z" },
+    { url = "https://files.pythonhosted.org/packages/02/86/230ae6056221b543d63f7710d73967fe1c6840693540e99ea3c54f45859c/django_stubs-6.0.7-py3-none-any.whl", hash = "sha256:7ed9a14c438e589272ca04e966dee82a4d1ff7ca5c2171bc986c50a0d03ec35b", size = 547460, upload-time = "2026-07-14T10:08:25.626Z" },
 ]
 
 [[package]]
@@ -1115,7 +1115,7 @@ requires-dist = [
     { name = "django-cors-headers", specifier = ">=4.7.0" },
     { name = "django-ratelimit", specifier = ">=4.1.0" },
     { name = "django-redis", specifier = ">=5.4.0" },
-    { name = "django-stubs", marker = "extra == 'dev'", specifier = ">=6.0.4" },
+    { name = "django-stubs", marker = "extra == 'dev'", specifier = ">=6.0.7" },
     { name = "django-taggit", specifier = ">=6.1.0" },
     { name = "django-two-factor-auth", specifier = ">=1.18.0" },
     { name = "djangorestframework", specifier = ">=3.16.0" },
