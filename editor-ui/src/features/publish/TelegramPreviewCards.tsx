@@ -36,9 +36,11 @@ export function TelegramPreviewCards({
           {previewPayload.send_count} Telegram sends total.
           {previewPayload.has_subscription
             ? " Premium channel (album caption on first photo; cover-only may split text)."
-            : telegramFormat === "crosslink"
-              ? " Crosslink: single text message with linked label and tags."
-              : " Standard layout (caption on cover or album when text fits)."}
+            : previewPayload.uses_rich_messages
+              ? " Rich message: headings, lists, and inline body images in document order."
+              : telegramFormat === "crosslink"
+                ? " Crosslink: single text message with linked label and tags."
+                : " Standard layout (caption on cover or album when text fits)."}
         </p>
       )}
       <div className="space-y-4">
@@ -76,14 +78,16 @@ export function TelegramPreviewCards({
               {card.limit_note && (
                 <p className="text-xs text-amber-700">{card.limit_note}</p>
               )}
-              {card.cover_url && (
+              {card.kind !== "rich_message" && card.cover_url && (
                 <img
                   src={card.cover_url}
                   alt="Cover"
                   className="max-h-48 rounded-lg object-cover"
                 />
               )}
-              {card.thumb_row && card.thumb_urls?.length ? (
+              {card.kind !== "rich_message" &&
+              card.thumb_row &&
+              card.thumb_urls?.length ? (
                 <div className="flex flex-wrap gap-2">
                   {card.thumb_urls.map((url, i) => (
                     <img
@@ -97,7 +101,11 @@ export function TelegramPreviewCards({
               ) : null}
               {card.has_text && card.text ? (
                 <div
-                  className="prose prose-sm max-w-none text-sm"
+                  className={
+                    card.kind === "rich_message"
+                      ? "telegram-rich-preview text-sm"
+                      : "telegram-preview-text text-sm"
+                  }
                   dangerouslySetInnerHTML={{ __html: card.text }}
                 />
               ) : card.kind === "photo" && !card.cover_url ? (

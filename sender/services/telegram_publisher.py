@@ -36,6 +36,10 @@ from sender.services.telegram_plan import (
     build_telegram_plan,
     text_dispatches_for_step,
 )
+from sender.services.telegram_rich_format import (
+    RichMediaAttachment,
+    prepare_outbound_telegram_rich_html,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -153,17 +157,97 @@ def _api_post_multipart(
 def _fail_from_payload(
     payload: dict[str, Any],
     resp: requests.Response,
+    *,
+    rich_message: bool = False,
 ) -> PublishResult:
     desc_raw = payload.get("description") or resp.text[:500]
     desc = _telegram_api_error_detail(str(desc_raw))
     lowered = str(desc_raw).lower()
     if "parse" in lowered or "entity" in lowered or "html" in lowered:
-        desc = (
-            f"{desc} Check Telegram HTML: only <b>, <i>, <u>, <s>, <a>, "
-            "<code>, <pre>, <blockquote> tags; no nested duplicate tags."
-        )[:700]
+        if rich_message:
+            hint = (
+                " Check Telegram rich HTML tags (headings, lists, tables, "
+                "blockquote, b/i/u/s/a/code/pre)."
+            )
+        else:
+            hint = (
+                " Check Telegram HTML: only <b>, <i>, <u>, <s>, <a>, "
+                "<code>, <pre>, <blockquote> tags; no nested duplicate tags."
+            )
+        desc = f"{desc}{hint}"[:700]
     logger.warning("Telegram API error: %s", desc_raw)
     return PublishResult(ok=False, error="telegram_api", detail=desc[:700])
+
+
+def _rich_message_fallback_enabled(payload: dict[str, Any]) -> bool:
+    if payload.get("ok"):
+        return False
+    desc = str(payload.get("description") or "").lower()
+    if "rich" in desc or "parse" in desc or "html" in desc or "block" in desc:
+        return True
+    error_code = payload.get("error_code")
+    return error_code in (400, 404)
+
+
+def _send_rich_message(
+    token: str,
+    chat_id: str,
+    html: str,
+    *,
+    rich_media: list[RichMediaAttachment] | None = None,
+    legacy_fallback: str = "",
+) -> tuple[PublishResult, str, int | None]:
+    if not html:
+        return PublishResult(ok=True), "", None
+    html = prepare_outbound_telegram_rich_html(html)
+    media_items = list(rich_media or [])
+    if media_items:
+        fields: dict[str, tuple[str | None, str] | tuple[str, bytes, str]] = {
+            "chat_id": (None, str(chat_id)),
+        }
+        media_json: list[dict[str, Any]] = []
+        for i, item in enumerate(media_items):
+            key = f"richfile{i}"
+            fname, data, mime = _photo_upload_file(item.storage_path)
+            media_json.append(
+                {
+                    "id": item.media_id,
+                    "media": {
+                        "type": "photo",
+                        "media": f"attach://{key}",
+                    },
+                },
+            )
+            fields[key] = (fname, data, mime)
+        rich_message = {"html": html, "media": media_json}
+        fields["rich_message"] = (
+            None,
+            json.dumps(rich_message, separators=(",", ":")),
+        )
+        payload, resp = _api_post_multipart(token, "sendRichMessage", fields)
+    else:
+        payload, resp = _api_post_json(
+            token,
+            "sendRichMessage",
+            {
+                "chat_id": chat_id,
+                "rich_message": {"html": html},
+            },
+        )
+    if payload.get("ok"):
+        message_id, link = _message_url_from_response(payload)
+        return (
+            PublishResult(ok=True, message_url=link, message_id=message_id),
+            link,
+            message_id,
+        )
+    if legacy_fallback and _rich_message_fallback_enabled(payload):
+        logger.warning(
+            "sendRichMessage failed; falling back to sendMessage: %s",
+            payload.get("description"),
+        )
+        return _send_message(token, chat_id, legacy_fallback)
+    return _fail_from_payload(payload, resp, rich_message=True), "", None
 
 
 def _send_message(
@@ -274,6 +358,10 @@ def _execute_step(
         has_subscription=has_subscription,
     )
     caption = next((text for kind, text in dispatches if kind == "caption"), None)
+    rich_message = next(
+        (text for kind, text in dispatches if kind == "rich_message"),
+        None,
+    )
     message = next((text for kind, text in dispatches if kind == "message"), None)
     first_link = ""
     first_message_id: int | None = None
@@ -291,7 +379,21 @@ def _execute_step(
                 first_link = link
             if mid is not None and first_message_id is None:
                 first_message_id = mid
-        if message:
+        if rich_message:
+            res, link, mid = _send_rich_message(
+                token,
+                chat_id,
+                rich_message,
+                rich_media=step.rich_media,
+                legacy_fallback=step.legacy_text or message or "",
+            )
+            if not res.ok:
+                return res, first_link, first_message_id
+            if link and not first_link:
+                first_link = link
+            if mid is not None and first_message_id is None:
+                first_message_id = mid
+        elif message:
             res, link, mid = _send_message(
                 token,
                 chat_id,
@@ -323,7 +425,21 @@ def _execute_step(
         if mid is not None and first_message_id is None:
             first_message_id = mid
 
-    if message:
+    if rich_message:
+        res, link, mid = _send_rich_message(
+            token,
+            chat_id,
+            rich_message,
+            rich_media=step.rich_media,
+            legacy_fallback=step.legacy_text or message or "",
+        )
+        if not res.ok:
+            return res, first_link, first_message_id
+        if link and not first_link:
+            first_link = link
+        if mid is not None and first_message_id is None:
+            first_message_id = mid
+    elif message:
         res, link, mid = _send_message(
             token,
             chat_id,

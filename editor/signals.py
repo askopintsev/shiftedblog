@@ -5,7 +5,9 @@ from __future__ import annotations
 from django.db.models.signals import m2m_changed, post_delete, post_save
 from django.dispatch import receiver
 
+from blog.models import SitePublication
 from editor.cache_utils import invalidate_editor_public_pages_cache
+from editor.image_upload import ensure_post_share_image
 from editor.models import (
     Category,
     Post,
@@ -19,6 +21,29 @@ from editor.models import (
 @receiver(post_delete, sender=Post)
 def _invalidate_on_post_change(sender, instance, **kwargs) -> None:
     invalidate_editor_public_pages_cache()
+
+
+def _maybe_ensure_post_share_image(post: Post) -> None:
+    if post.status != "published":
+        return
+    if not post.cover_image or not post.cover_image.name:
+        return
+    if not SitePublication.objects.filter(post_id=post.pk).exists():
+        return
+    try:
+        ensure_post_share_image(post)
+    except (OSError, ValueError):
+        return
+
+
+@receiver(post_save, sender=Post)
+def _ensure_share_image_on_post_save(sender, instance, **kwargs) -> None:
+    _maybe_ensure_post_share_image(instance)
+
+
+@receiver(post_save, sender=SitePublication)
+def _ensure_share_image_on_site_publication(sender, instance, **kwargs) -> None:
+    _maybe_ensure_post_share_image(instance.post)
 
 
 @receiver(post_save, sender=PostGalleryImage)

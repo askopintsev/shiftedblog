@@ -131,6 +131,10 @@ if not SITE_URL and ALLOWED_HOSTS:
 if SITE_URL:
     SITE_URL = SITE_URL.strip().rstrip("/")
 
+TWITTER_SITE = os.environ.get("TWITTER_SITE", "@shifted_stuff").strip()
+if TWITTER_SITE and not TWITTER_SITE.startswith("@"):
+    TWITTER_SITE = f"@{TWITTER_SITE.lstrip('@')}"
+
 SITE_ID = 1
 
 # Application definition
@@ -207,6 +211,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "blog.context_processors.nav_categories",
                 "core.context_processors.admin_security_warnings",
+                "core.context_processors.social_meta",
             ],
         },
     },
@@ -358,6 +363,8 @@ TELEGRAM_CHANNEL_HAS_SUBSCRIPTION = get_bool_env(
 TELEGRAM_API_ID = os.environ.get("TELEGRAM_API_ID", "").strip()
 TELEGRAM_API_HASH = os.environ.get("TELEGRAM_API_HASH", "").strip()
 TELEGRAM_OPERATOR_SESSION = os.environ.get("TELEGRAM_OPERATOR_SESSION", "").strip()
+# Bot API 10.1 rich messages (headings, lists, tables) via sendRichMessage.
+TELEGRAM_USE_RICH_MESSAGES = get_bool_env("TELEGRAM_USE_RICH_MESSAGES", False)
 
 # Optional local Python checker integration for post text quality checks in admin.
 # Uses optional python libs (language_tool_python / pyspellchecker) if installed.

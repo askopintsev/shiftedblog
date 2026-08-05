@@ -47,6 +47,10 @@ from sender.services.telegram_plan import (
     caption_for_step,
 )
 from sender.services.telegram_publisher import resolve_telegram_plan
+from sender.services.telegram_rich_format import (
+    build_formatted_rich_message,
+    html_body_to_telegram_rich_html,
+)
 from sender.services.telegram_stories import check_story_availability, story_url_for
 from sender.services.url_helpers import crosslink_url_for_post, public_post_url
 
@@ -225,6 +229,183 @@ class TelegramFormatTests(TestCase):
             for step in plan.steps[1:-1]:
                 self.assertNotIn("#news", step.text)
                 self.assertNotIn("#django", step.text)
+
+
+class TelegramRichFormatTests(TestCase):
+    def test_heading_kept_as_h_tag(self):
+        html = "<h3>Section</h3><p>After</p>"
+        out = html_body_to_telegram_rich_html(html).html
+        self.assertIn("<h3>Section</h3>", out)
+        self.assertNotIn("<b>Section</b>", out)
+
+    def test_list_structure_preserved(self):
+        html = "<ul><li>One</li><li>Two</li></ul>"
+        out = html_body_to_telegram_rich_html(html).html
+        self.assertIn("<ul>", out)
+        self.assertIn("<li>One</li>", out)
+        self.assertIn("<li>Two</li>", out)
+        self.assertNotIn("•", out)
+
+    def test_table_structure_preserved(self):
+        html = (
+            "<table><thead><tr><th>A</th><th>B</th></tr></thead>"
+            "<tbody><tr><td>1</td><td>2</td></tr></tbody></table>"
+        )
+        out = html_body_to_telegram_rich_html(html).html
+        self.assertIn("<table>", out)
+        self.assertIn("<th>A</th>", out)
+        self.assertIn("<td>2</td>", out)
+
+    def test_inline_image_becomes_tg_photo_block(self):
+        def resolve(src: str) -> str | None:
+            return "img/body.jpg" if "body.jpg" in src else None
+
+        payload = html_body_to_telegram_rich_html(
+            '<p>Before</p><img src="/media/img/body.jpg" alt="Alt"><p>After</p>',
+            resolve_storage_path=resolve,
+        )
+        self.assertIn("tg://photo?id=img1", payload.html)
+        self.assertIn("<p>Before</p>", payload.html)
+        self.assertIn("<p>After</p>", payload.html)
+        self.assertIn("<figure>", payload.html)
+        self.assertEqual(len(payload.media), 1)
+        self.assertEqual(payload.media[0].storage_path, "img/body.jpg")
+
+    def test_inline_image_inside_paragraph_splits_block(self):
+        def resolve(src: str) -> str | None:
+            return "img/body.jpg" if "body.jpg" in src else None
+
+        payload = html_body_to_telegram_rich_html(
+            '<p>Text before<img src="/media/img/body.jpg">text after</p>',
+            resolve_storage_path=resolve,
+        )
+        self.assertIn("<p>Text before</p>", payload.html)
+        self.assertIn("<p>text after</p>", payload.html)
+        self.assertIn("tg://photo?id=img1", payload.html)
+
+    def test_paragraphs_keep_block_spacing(self):
+        html = "<p>First paragraph.</p><p>Second paragraph.</p>"
+        out = html_body_to_telegram_rich_html(html).html
+        self.assertIn("</p>\n<p>", out)
+
+    def test_blockquote_structure_preserved(self):
+        html = "<h2>Heading</h2><blockquote><p>Quoted line</p></blockquote>"
+        out = html_body_to_telegram_rich_html(html).html
+        self.assertIn("<h2>Heading</h2>", out)
+        self.assertIn("<blockquote>", out)
+        self.assertIn("Quoted line", out)
+
+    def test_div_blocks_convert_to_paragraphs(self):
+        html = "<div>Block1</div><div>Block2</div>"
+        out = html_body_to_telegram_rich_html(html).html
+        self.assertIn("<p>Block1</p>", out)
+        self.assertIn("<p>Block2</p>", out)
+
+    def test_figure_keeps_caption(self):
+        def resolve(src: str) -> str | None:
+            return "img/fig.jpg" if "fig.jpg" in src else None
+
+        html = (
+            "<figure>"
+            '<img src="/media/img/fig.jpg">'
+            "<figcaption>Caption text</figcaption>"
+            "</figure>"
+        )
+        payload = html_body_to_telegram_rich_html(
+            html,
+            resolve_storage_path=resolve,
+        )
+        self.assertIn("<figure>", payload.html)
+        self.assertIn("<figcaption>Caption text</figcaption>", payload.html)
+        self.assertIn("tg://photo?id=img1", payload.html)
+
+    def test_rich_message_template_uses_h1_title(self):
+        post = Post(title="Title", body="<p>Hello</p>")
+        post.save()
+        payload = build_formatted_rich_message(post)
+        self.assertIn("<h1>Title</h1>", payload.html)
+        self.assertIn("<p>Hello</p>", payload.html)
+
+    def test_cover_is_first_inline_media(self):
+        post = Post(title="Title", body="<p>Hello</p>")
+        post.save()
+        payload = build_formatted_rich_message(
+            post,
+            cover_path="img/cover.jpg",
+        )
+        self.assertTrue(
+            payload.html.startswith('<figure><img src="tg://photo?id=cover">')
+        )
+        self.assertEqual(payload.media[0].media_id, "cover")
+        self.assertEqual(payload.media[0].storage_path, "img/cover.jpg")
+
+    @override_settings(TELEGRAM_USE_RICH_MESSAGES=True)
+    def test_rich_preview_inlines_images_in_html(self):
+        post = Post(
+            title="Rich post",
+            body=(
+                "<p>Before</p>"
+                '<figure class="image"><img src="/media/img/body.jpg"></figure>'
+                "<p>After</p>"
+            ),
+            cover_image=_minimal_jpeg_upload(),
+        )
+        post.save()
+
+        def resolve(src: str) -> str | None:
+            if "body.jpg" in src:
+                return "img/body.jpg"
+            return None
+
+        with (
+            mock.patch(
+                "sender.services.telegram_plan.storage_path_from_src",
+                side_effect=resolve,
+            ),
+            mock.patch(
+                "sender.services.telegram_plan.media_preview_url",
+                side_effect=lambda path: f"/media/{path}" if path else None,
+            ),
+            mock.patch(
+                "sender.services.telegram_plan.default_storage.exists",
+                return_value=True,
+            ),
+        ):
+            plan = build_telegram_plan(post, has_subscription=False)
+            cards = build_preview_send_cards(plan)
+
+        self.assertEqual(len(cards), 1)
+        card = cards[0]
+        self.assertEqual(card["kind"], "rich_message")
+        self.assertIsNone(card["cover_url"])
+        self.assertEqual(card["thumb_urls"], [])
+        self.assertIn("/media/img/body.jpg", card["text"])
+        self.assertNotIn("tg://photo", card["text"])
+        self.assertIn("<p>Before</p>", card["text"])
+        self.assertIn("<p>After</p>", card["text"])
+
+    @override_settings(TELEGRAM_USE_RICH_MESSAGES=True)
+    def test_rich_plan_uses_single_send_rich_message_step(self):
+        post = Post(
+            title="Rich post",
+            body="<h2>Section</h2><p>Body</p>",
+            cover_image=_minimal_jpeg_upload(),
+        )
+        post.save()
+        plan = build_telegram_plan(post, has_subscription=False)
+        self.assertTrue(plan.uses_rich_messages)
+        self.assertEqual(len(plan.steps), 1)
+        step = plan.steps[0]
+        self.assertTrue(step.use_rich_message)
+        self.assertIn("<h2>Section</h2>", step.text)
+        self.assertIn("<h1>Rich post</h1>", step.text)
+        self.assertIn("tg://photo?id=cover", step.text)
+        self.assertEqual(len(step.rich_media), 1)
+        self.assertEqual(step.rich_media[0].media_id, "cover")
+        self.assertIsNone(step.cover_path)
+        self.assertEqual(step.media_paths, [])
+        self.assertTrue(step.legacy_text)
+        self.assertIsNone(caption_for_step(step, has_subscription=False))
 
 
 class TelegramCrosslinkFormatTests(TestCase):
@@ -635,6 +816,79 @@ class TelegramPublishJobTests(TestCase):
         self.assertEqual(photo_fields["parse_mode"], (None, "HTML"))
         self.assertEqual(photo_fields["caption"][1], preview_text)
         msg_api.assert_not_called()
+
+    @override_settings(TELEGRAM_USE_RICH_MESSAGES=True)
+    def test_rich_publish_uses_send_rich_message(self):
+        mock_resp = mock.Mock()
+        mock_resp.json.return_value = {
+            "ok": True,
+            "result": {
+                "message_id": 42,
+                "chat": {"username": "chan", "id": -100},
+            },
+        }
+        mock_resp.text = "{}"
+        with (
+            mock.patch(
+                "sender.services.telegram_publisher._api_post_multipart",
+            ) as multi_api,
+            mock.patch(
+                "sender.services.telegram_publisher._api_post_json",
+            ) as msg_api,
+        ):
+            multi_api.return_value = (mock_resp.json.return_value, mock_resp)
+            msg_api.return_value = (mock_resp.json.return_value, mock_resp)
+            from sender.services.telegram_publisher import publish_to_telegram
+
+            publish_to_telegram(self.post)
+        multi_api.assert_called_once()
+        method, fields = multi_api.call_args[0][1], multi_api.call_args[0][2]
+        self.assertEqual(method, "sendRichMessage")
+        rich_raw = fields["rich_message"][1]
+        rich_payload = __import__("json").loads(rich_raw)
+        self.assertIn("<h1>TG</h1>", rich_payload["html"])
+        self.assertIn("tg://photo?id=cover", rich_payload["html"])
+        self.assertEqual(rich_payload["media"][0]["id"], "cover")
+        self.assertIn("richfile0", fields)
+        msg_api.assert_not_called()
+
+    @override_settings(TELEGRAM_USE_RICH_MESSAGES=True)
+    def test_rich_publish_falls_back_to_send_message(self):
+        mock_resp = mock.Mock()
+        mock_resp.json.return_value = {
+            "ok": True,
+            "result": {
+                "message_id": 42,
+                "chat": {"username": "chan", "id": -100},
+            },
+        }
+        mock_resp.text = "{}"
+        rich_fail = {
+            "ok": False,
+            "error_code": 400,
+            "description": "Bad Request: rich message parse error",
+        }
+        with (
+            mock.patch(
+                "sender.services.telegram_publisher._api_post_multipart",
+            ) as multi_api,
+            mock.patch(
+                "sender.services.telegram_publisher._api_post_json",
+            ) as msg_api,
+        ):
+            multi_api.return_value = (rich_fail, mock_resp)
+            msg_api.return_value = (mock_resp.json.return_value, mock_resp)
+            from sender.services.telegram_publisher import publish_to_telegram
+
+            result = publish_to_telegram(self.post)
+        self.assertTrue(result.ok)
+        multi_api.assert_called_once()
+        self.assertEqual(multi_api.call_args[0][1], "sendRichMessage")
+        msg_api.assert_called_once()
+        self.assertEqual(msg_api.call_args[0][1], "sendMessage")
+        fallback_payload = msg_api.call_args[0][2]
+        self.assertEqual(fallback_payload["parse_mode"], "HTML")
+        self.assertIn("<b>TG</b>", fallback_payload["text"])
 
     def test_telegram_numeric_chat_id_unchanged(self):
         net = Network.objects.get(slug=NETWORK_SLUG_TELEGRAM)

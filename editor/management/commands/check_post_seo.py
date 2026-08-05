@@ -65,6 +65,8 @@ def _path_from_absolute_url(url: str) -> str | None:
     parsed = urlparse(url)
     if not parsed.path:
         return None
+    if parsed.query:
+        return f"{parsed.path}?{parsed.query}"
     return parsed.path
 
 
