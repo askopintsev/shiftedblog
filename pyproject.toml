@@ -34,7 +34,7 @@ dev = [
     "django-stubs>=6.0.7",
     "pip-audit>=2.10.1",
     "pyright>=1.1.411",
-    "ruff>=0.16.0",
+    "ruff>=0.16.1",
 ]
 
 [tool.uv]
