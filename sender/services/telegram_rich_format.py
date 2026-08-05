@@ -65,6 +65,63 @@ _RICH_INLINE_TAGS: frozenset[str] = frozenset(
     {"b", "i", "u", "s", "a", "code", "mark", "sub", "sup"},
 )
 
+_RICH_BLOCK_CONTAINER_ALIASES: dict[str, str] = {
+    "div": "p",
+    "section": "p",
+    "article": "p",
+}
+
+_RESUMABLE_BLOCK_TAGS: frozenset[str] = frozenset({"p", "li", "td", "th"})
+
+
+def _map_block_tag(tag_l: str) -> str | None:
+    if tag_l in _RICH_BLOCK_CONTAINER_ALIASES:
+        return _RICH_BLOCK_CONTAINER_ALIASES[tag_l]
+    if tag_l in (
+        "p",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "ul",
+        "ol",
+        "li",
+        "table",
+        "thead",
+        "tbody",
+        "tr",
+        "th",
+        "td",
+        "blockquote",
+        "pre",
+        "details",
+        "summary",
+    ):
+        return tag_l
+    return None
+
+
+def add_rich_block_spacing(html: str) -> str:
+    """Insert line breaks between adjacent block elements for Telegram layout."""
+    if not html:
+        return ""
+    text = html
+    block_boundary = (
+        r"(</(?:p|h[1-6]|li|blockquote|figure|pre|ul|ol|table|tr)>"
+        r"|<figure><img src=\"tg://photo[^\"]*\">(?:</figure>)?)"
+    )
+    next_block = r"(<(?:p|h[1-6]|ul|ol|li|blockquote|figure|pre|table|img))"
+    text = re.sub(
+        rf"{block_boundary}\s*{next_block}",
+        r"\1\n\2",
+        text,
+        flags=re.IGNORECASE,
+    )
+    return re.sub(r"\n{3,}", "\n\n", text)
+
+
 _TAG_TOKEN_RE = re.compile(r"</?([a-zA-Z]+)(?:\s[^>]*)?>", re.IGNORECASE)
 
 
@@ -234,7 +291,7 @@ def sanitize_telegram_rich_html(html: str) -> str:
     for tag in _RICH_INLINE_TAGS:
         text = re.sub(rf"<{tag}>(\s*)</{tag}>", r"\1", text, flags=re.IGNORECASE)
 
-    return balance_telegram_rich_html(text.strip())
+    return add_rich_block_spacing(balance_telegram_rich_html(text.strip()))
 
 
 def rich_photo_tag(media_id: str, *, caption: str = "") -> str:
@@ -243,7 +300,7 @@ def rich_photo_tag(media_id: str, *, caption: str = "") -> str:
     img = f'<img src="tg://photo?id={safe_id}">'
     caption = (caption or "").strip()
     if not caption:
-        return img
+        return f"<figure>{img}</figure>"
     safe_caption = escape_telegram_html(caption)
     return f"<figure>{img}<figcaption>{safe_caption}</figcaption></figure>"
 
@@ -273,8 +330,12 @@ class _TelegramRichHTMLConverter(HTMLParser):
         self._figure_alt = ""
         self._figure_caption_parts: list[str] = []
         self._in_figcaption = False
+        self._resume_block_tag: str | None = None
 
     def get_html(self) -> str:
+        if self._resume_block_tag:
+            self._open_block(self._resume_block_tag)
+            self._resume_block_tag = None
         return sanitize_telegram_rich_html("".join(self._out).strip())
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -323,6 +384,9 @@ class _TelegramRichHTMLConverter(HTMLParser):
             return
         if tag_l in ("ul", "ol", "table", "thead", "tbody", "tr", "blockquote"):
             self._open_block(tag_l)
+            return
+        if tag_l in _RICH_BLOCK_CONTAINER_ALIASES:
+            self._open_block(_RICH_BLOCK_CONTAINER_ALIASES[tag_l])
             return
         if tag_l in ("p", "li", "th", "td", "details", "summary"):
             attr_bits: list[str] = []
@@ -373,6 +437,9 @@ class _TelegramRichHTMLConverter(HTMLParser):
             return
         if tag_l in (
             "p",
+            "div",
+            "section",
+            "article",
             "h1",
             "h2",
             "h3",
@@ -392,7 +459,10 @@ class _TelegramRichHTMLConverter(HTMLParser):
             "details",
             "summary",
         ):
-            self._close_block(tag_l)
+            close_tag = _map_block_tag(tag_l) or tag_l
+            if close_tag in _RICH_BLOCK_CONTAINER_ALIASES.values():
+                close_tag = "p"
+            self._close_block(close_tag)
             return
         tg = _map_inline_tag(tag_l)
         if tg:
@@ -405,6 +475,9 @@ class _TelegramRichHTMLConverter(HTMLParser):
             if self._in_figcaption:
                 self._figure_caption_parts.append(_normalize_plain_text(data))
             return
+        if self._resume_block_tag and data.strip():
+            self._open_block(self._resume_block_tag)
+            self._resume_block_tag = None
         self._out.append(escape_telegram_html(_normalize_plain_text(data)))
 
     def handle_entityref(self, name: str) -> None:
@@ -429,8 +502,21 @@ class _TelegramRichHTMLConverter(HTMLParser):
         else:
             media_id = f"{self._media_id_prefix}{len(self.media) + 1}"
             self.media.append(RichMediaAttachment(media_id=media_id, storage_path=path))
-        self._close_all_open_tags()
+        resume_tag = self._resume_block_for_inline_photo()
+        if resume_tag:
+            self._close_block(resume_tag)
+        else:
+            self._close_all_open_tags()
+        self._out.append("\n")
         self._out.append(rich_photo_tag(media_id, caption=caption))
+        self._out.append("\n")
+        self._resume_block_tag = resume_tag
+
+    def _resume_block_for_inline_photo(self) -> str | None:
+        for tag in reversed(self._tag_stack):
+            if tag in _RESUMABLE_BLOCK_TAGS:
+                return tag
+        return None
 
     def _close_all_open_tags(self) -> None:
         while self._tag_stack:
@@ -538,7 +624,7 @@ def build_formatted_rich_message(
             parts.append(f"<p>{tags_line}</p>")
 
     return RichMessagePayload(
-        html=sanitize_telegram_rich_html("\n".join(parts)),
+        html=sanitize_telegram_rich_html("\n\n".join(parts)),
         media=media,
     )
 
@@ -546,6 +632,34 @@ def build_formatted_rich_message(
 def prepare_outbound_telegram_rich_html(text: str) -> str:
     """Final pass before ``sendRichMessage``."""
     return sanitize_telegram_rich_html(text)
+
+
+def substitute_rich_media_preview_urls(
+    html: str,
+    media: list[RichMediaAttachment],
+    url_for_path: Callable[[str], str | None],
+) -> str:
+    """Replace ``tg://photo?id=`` refs with browser-loadable URLs for admin preview."""
+    if not html or not media:
+        return html
+    by_id = {item.media_id: item.storage_path for item in media}
+
+    def repl(match: re.Match[str]) -> str:
+        media_id = match.group(1)
+        path = by_id.get(media_id)
+        if not path:
+            return match.group(0)
+        url = url_for_path(path)
+        if not url:
+            return match.group(0)
+        return f'src="{escape(url, quote=True)}"'
+
+    return re.sub(
+        r'src="tg://photo\?id=([^"]+)"',
+        repl,
+        html,
+        flags=re.IGNORECASE,
+    )
 
 
 def find_telegram_rich_html_split_index(

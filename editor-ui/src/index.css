@@ -27,3 +27,4 @@ body {
 }
 
 @import "./features/posts/body-editor/content-styles.css";
+@import "./features/publish/telegram-preview.css";

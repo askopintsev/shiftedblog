@@ -26,6 +26,7 @@ from sender.services.telegram_rich_format import (
     balance_telegram_rich_html,
     build_formatted_rich_message,
     find_telegram_rich_html_split_index,
+    substitute_rich_media_preview_urls,
 )
 
 MAX_MESSAGE_LEN = 4096
@@ -695,7 +696,23 @@ def build_preview_send_cards(plan: TelegramPublishPlan) -> list[dict[str, Any]]:
             else:
                 max_chars = MAX_MESSAGE_LEN
             rich_paths = [item.storage_path for item in step.rich_media]
-            thumb_urls = _preview_urls(rich_paths)
+            display_text = message
+            cover_url = None
+            thumb_urls: list[str] = []
+            thumb_row = False
+            if step.use_rich_message:
+                display_text = substitute_rich_media_preview_urls(
+                    message,
+                    step.rich_media,
+                    url_for_path=media_preview_url,
+                )
+                image_count = len(rich_paths)
+            else:
+                thumb_urls = _preview_urls(rich_paths)
+                cover_url = thumb_urls[0] if thumb_urls else None
+                thumb_urls = thumb_urls[1:] if len(thumb_urls) > 1 else []
+                thumb_row = len(thumb_urls) > 0
+                image_count = len(rich_paths)
             cards.append(
                 {
                     "step_index": step_idx,
@@ -704,7 +721,7 @@ def build_preview_send_cards(plan: TelegramPublishPlan) -> list[dict[str, Any]]:
                     "step_is_continuation": step.is_continuation,
                     "kind": "rich_message" if step.use_rich_message else "message",
                     "title": title,
-                    "text": message,
+                    "text": display_text,
                     "has_text": True,
                     "char_count": len(message),
                     "max_chars": max_chars,
@@ -714,10 +731,10 @@ def build_preview_send_cards(plan: TelegramPublishPlan) -> list[dict[str, Any]]:
                         if step.use_rich_message and rich_paths
                         else f"Message limit {max_chars} characters."
                     ),
-                    "cover_url": thumb_urls[0] if thumb_urls else None,
-                    "thumb_urls": thumb_urls[1:] if len(thumb_urls) > 1 else [],
-                    "thumb_row": len(thumb_urls) > 1,
-                    "image_count": len(thumb_urls),
+                    "cover_url": cover_url,
+                    "thumb_urls": thumb_urls,
+                    "thumb_row": thumb_row,
+                    "image_count": image_count,
                 },
             )
 
@@ -762,6 +779,7 @@ def build_preview_payload(plan: TelegramPublishPlan) -> dict[str, Any]:
     return {
         "has_subscription": plan.has_subscription,
         "is_series": plan.is_series,
+        "uses_rich_messages": plan.uses_rich_messages,
         "step_count": len(plan.steps),
         "send_count": len(cards),
         "cards": cards,

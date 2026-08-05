@@ -94,6 +94,7 @@ export interface TelegramPreviewPayload {
   step_count: number;
   send_count: number;
   has_subscription: boolean;
+  uses_rich_messages?: boolean;
 }
 
 export interface TelegramPreviewResponse {

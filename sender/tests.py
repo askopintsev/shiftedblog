@@ -265,10 +265,41 @@ class TelegramRichFormatTests(TestCase):
             resolve_storage_path=resolve,
         )
         self.assertIn("tg://photo?id=img1", payload.html)
-        self.assertIn("Before", payload.html)
-        self.assertIn("After", payload.html)
+        self.assertIn("<p>Before</p>", payload.html)
+        self.assertIn("<p>After</p>", payload.html)
+        self.assertIn("<figure>", payload.html)
         self.assertEqual(len(payload.media), 1)
         self.assertEqual(payload.media[0].storage_path, "img/body.jpg")
+
+    def test_inline_image_inside_paragraph_splits_block(self):
+        def resolve(src: str) -> str | None:
+            return "img/body.jpg" if "body.jpg" in src else None
+
+        payload = html_body_to_telegram_rich_html(
+            '<p>Text before<img src="/media/img/body.jpg">text after</p>',
+            resolve_storage_path=resolve,
+        )
+        self.assertIn("<p>Text before</p>", payload.html)
+        self.assertIn("<p>text after</p>", payload.html)
+        self.assertIn("tg://photo?id=img1", payload.html)
+
+    def test_paragraphs_keep_block_spacing(self):
+        html = "<p>First paragraph.</p><p>Second paragraph.</p>"
+        out = html_body_to_telegram_rich_html(html).html
+        self.assertIn("</p>\n<p>", out)
+
+    def test_blockquote_structure_preserved(self):
+        html = "<h2>Heading</h2><blockquote><p>Quoted line</p></blockquote>"
+        out = html_body_to_telegram_rich_html(html).html
+        self.assertIn("<h2>Heading</h2>", out)
+        self.assertIn("<blockquote>", out)
+        self.assertIn("Quoted line", out)
+
+    def test_div_blocks_convert_to_paragraphs(self):
+        html = "<div>Block1</div><div>Block2</div>"
+        out = html_body_to_telegram_rich_html(html).html
+        self.assertIn("<p>Block1</p>", out)
+        self.assertIn("<p>Block2</p>", out)
 
     def test_figure_keeps_caption(self):
         def resolve(src: str) -> str | None:
@@ -302,9 +333,56 @@ class TelegramRichFormatTests(TestCase):
             post,
             cover_path="img/cover.jpg",
         )
-        self.assertTrue(payload.html.startswith('<img src="tg://photo?id=cover">'))
+        self.assertTrue(
+            payload.html.startswith('<figure><img src="tg://photo?id=cover">')
+        )
         self.assertEqual(payload.media[0].media_id, "cover")
         self.assertEqual(payload.media[0].storage_path, "img/cover.jpg")
+
+    @override_settings(TELEGRAM_USE_RICH_MESSAGES=True)
+    def test_rich_preview_inlines_images_in_html(self):
+        post = Post(
+            title="Rich post",
+            body=(
+                "<p>Before</p>"
+                '<figure class="image"><img src="/media/img/body.jpg"></figure>'
+                "<p>After</p>"
+            ),
+            cover_image=_minimal_jpeg_upload(),
+        )
+        post.save()
+
+        def resolve(src: str) -> str | None:
+            if "body.jpg" in src:
+                return "img/body.jpg"
+            return None
+
+        with (
+            mock.patch(
+                "sender.services.telegram_plan.storage_path_from_src",
+                side_effect=resolve,
+            ),
+            mock.patch(
+                "sender.services.telegram_plan.media_preview_url",
+                side_effect=lambda path: f"/media/{path}" if path else None,
+            ),
+            mock.patch(
+                "sender.services.telegram_plan.default_storage.exists",
+                return_value=True,
+            ),
+        ):
+            plan = build_telegram_plan(post, has_subscription=False)
+            cards = build_preview_send_cards(plan)
+
+        self.assertEqual(len(cards), 1)
+        card = cards[0]
+        self.assertEqual(card["kind"], "rich_message")
+        self.assertIsNone(card["cover_url"])
+        self.assertEqual(card["thumb_urls"], [])
+        self.assertIn("/media/img/body.jpg", card["text"])
+        self.assertNotIn("tg://photo", card["text"])
+        self.assertIn("<p>Before</p>", card["text"])
+        self.assertIn("<p>After</p>", card["text"])
 
     @override_settings(TELEGRAM_USE_RICH_MESSAGES=True)
     def test_rich_plan_uses_single_send_rich_message_step(self):
