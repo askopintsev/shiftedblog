@@ -8,11 +8,13 @@ from unittest.mock import patch
 from cryptography.fernet import Fernet
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.test import RequestFactory, TestCase, override_settings
+from django.test import Client, RequestFactory, TestCase, override_settings
+from django.urls import reverse
 
 from core import crypto
 from core.fields import FernetEncryptedTextField
 from core.models import Credential, Network
+from core.models.user import User as CoreUser
 from core.models.user import UserManager
 from core.security_warnings import collect_secrets_rotation_warnings
 from core.signals import rotate_session_on_login
@@ -157,3 +159,19 @@ class AdminSessionKeepaliveTests(TestCase):
         self.client.force_login(self.staff)
         response = self.client.get("/mellon/session-keepalive/")
         self.assertEqual(response.status_code, 204)
+
+
+@override_settings(ADMIN_URL="mellon")
+class UserAdminTests(TestCase):
+    def setUp(self):
+        self.admin = cast(UserManager, CoreUser.objects).create_superuser(
+            email="admin@example.com",
+            password="secret",
+        )
+        self.client = Client()
+
+    def test_user_change_view_loads(self):
+        self.client.force_login(self.admin)
+        url = reverse("admin:core_user_change", args=[self.admin.pk])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)

@@ -49,6 +49,12 @@ urlpatterns = [
         name="sender_publish_workflow",
     ),
     path(f"{admin_url}/", admin.site.urls),
+    # Auth before blog catch-all (<slug>/ would swallow "login", "account", etc.)
+    path("login/", RateLimitedLoginView.as_view(), name="login"),
+    path("account/login/", RateLimitedLoginView.as_view(), name="account_login"),
+    path("account/two_factor/setup/", RateLimitedSetupView.as_view(), name="setup"),
+    path("account/two_factor/qrcode/", RateLimitedQRGeneratorView.as_view(), name="qr"),
+    path("", include((tf_urlpatterns[0], tf_urlpatterns[1]))),
     path("", include("team.urls")),
     path("", include("blog.urls", namespace="blog")),
     path("", include("editor.urls", namespace="editor")),
@@ -58,13 +64,6 @@ urlpatterns = [
         {"sitemaps": sitemaps},
         name="sitemap",
     ),
-    # Rate-limited authentication endpoints (override two_factor URLs)
-    path("login/", RateLimitedLoginView.as_view(), name="login"),
-    path("account/login/", RateLimitedLoginView.as_view(), name="account_login"),
-    path("account/two_factor/setup/", RateLimitedSetupView.as_view(), name="setup"),
-    path("account/two_factor/qrcode/", RateLimitedQRGeneratorView.as_view(), name="qr"),
-    # two_factor.urls: (pattern_list, 'two_factor'); include() needs 2-tuple
-    path("", include((tf_urlpatterns[0], tf_urlpatterns[1]))),
     path(
         "api/editor/v1/schema/",
         SpectacularAPIView.as_view(),
