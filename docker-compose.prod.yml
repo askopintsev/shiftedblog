@@ -21,7 +21,11 @@ services:
     command: redis-server --appendonly yes
 
   web:
-    build: .
+    build:
+      context: .
+      args:
+        VITE_API_BASE: ${VITE_API_BASE:-}
+        VITE_PUBLIC_SITE_BASE: ${VITE_PUBLIC_SITE_BASE:-}
     volumes:
       - ./static:/app/static
       - ./static_blog:/app/static_blog
@@ -29,6 +33,7 @@ services:
       - ./templates:/app/templates
       - ./backups:/backups
       - ./logs:/app/logs
+      - editor_ui_dist:/editor-ui/dist-export
     env_file:
       - secrets.env
     networks:
@@ -49,7 +54,7 @@ services:
       - ./templates:/templates:ro
       - ./nginx/ssl:/etc/nginx/ssl
       - /etc/letsencrypt:/etc/letsencrypt:ro
-      - ./editor-ui/dist:/editor-ui/dist:ro
+      - editor_ui_dist:/editor-ui/dist:ro
     ports:
       - "80:8000"
       - "443:443"
@@ -62,6 +67,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  editor_ui_dist:
   static:
   media: 
 
