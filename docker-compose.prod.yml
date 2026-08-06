@@ -24,7 +24,7 @@ services:
     build:
       context: .
       args:
-        VITE_API_BASE: ${VITE_API_BASE:-}
+        VITE_API_BASE: ${VITE_API_BASE:-/api/editor/v1}
         VITE_PUBLIC_SITE_BASE: ${VITE_PUBLIC_SITE_BASE:-}
     volumes:
       - ./static:/app/static

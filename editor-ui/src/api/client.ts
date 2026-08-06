@@ -1,4 +1,6 @@
-const API_BASE = import.meta.env.VITE_API_BASE ?? "/api/editor/v1";
+import { DEFAULT_EDITOR_API_BASE, resolveApiBase } from "./resolveApiBase";
+
+const API_BASE = resolveApiBase(import.meta.env.VITE_API_BASE);
 
 let csrfToken = "";
 
@@ -113,4 +115,4 @@ export async function apiUpload<T>(
   return payload as T;
 }
 
-export { API_BASE };
+export { API_BASE, DEFAULT_EDITOR_API_BASE };
