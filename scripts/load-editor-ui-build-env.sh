@@ -20,7 +20,7 @@ if [[ -z "${site_url}" ]]; then
 fi
 
 export VITE_PUBLIC_SITE_BASE="${VITE_PUBLIC_SITE_BASE:-${site_url}}"
-export VITE_API_BASE="${VITE_API_BASE:-/api/editor/v1}"
+export VITE_API_BASE="$(./scripts/sanitize-vite-api-base.sh)"
 
 echo "VITE_PUBLIC_SITE_BASE=${VITE_PUBLIC_SITE_BASE}"
 echo "VITE_API_BASE=${VITE_API_BASE}"
