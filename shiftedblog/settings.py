@@ -861,3 +861,9 @@ if _session_domain:
     CSRF_COOKIE_DOMAIN = os.environ.get("CSRF_COOKIE_DOMAIN", _session_domain).strip()
     SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "None")
     CSRF_COOKIE_SAMESITE = os.environ.get("CSRF_COOKIE_SAMESITE", "None")
+
+if IS_PRODUCTION and EDITOR_URL.startswith("https://"):
+    if EDITOR_URL not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(EDITOR_URL)
+    if EDITOR_URL not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(EDITOR_URL)
