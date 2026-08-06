@@ -15,9 +15,10 @@ def admin_security_warnings(request: HttpRequest) -> dict[str, list[str]]:
     if not path.startswith(admin_path):
         return {"admin_security_warnings": []}
 
-    if not getattr(request.user, "is_authenticated", False):
+    user = getattr(request, "user", None)
+    if not user or not getattr(user, "is_authenticated", False):
         return {"admin_security_warnings": []}
-    if not getattr(request.user, "is_staff", False):
+    if not getattr(user, "is_staff", False):
         return {"admin_security_warnings": []}
 
     return {"admin_security_warnings": collect_secrets_rotation_warnings()}

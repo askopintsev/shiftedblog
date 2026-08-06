@@ -35,6 +35,13 @@ for logfile in security.log authentication.log; do
   chmod 664 "${path}" 2>/dev/null || true
 done
 
+if [[ -d /editor-ui/dist-export ]]; then
+  echo "Syncing editor-ui dist to nginx volume..."
+  mkdir -p /editor-ui/dist-export
+  cp -a /editor-ui/dist/. /editor-ui/dist-export/
+  chown -R "${APP_USER}:${APP_USER}" /editor-ui/dist-export 2>/dev/null || true
+fi
+
 log_dir_env=""
 if ! runuser -u "${APP_USER}" -- test -w "${LOG_MOUNT}"; then
   echo "WARNING: ${LOG_MOUNT} is not writable by ${APP_USER}; using ${FALLBACK_LOG_DIR}" >&2
