@@ -50,8 +50,13 @@ class LoginView(APIView):
 
     @method_decorator(ratelimit(key="ip", rate="10/m", method="POST", block=True))
     def post(self, request: Request) -> Response:
-        email = (request.data.get("email") or "").strip()
+        email = User.objects.normalize_email((request.data.get("email") or "").strip())
         password = request.data.get("password") or ""
+        if not email:
+            return Response(
+                {"ok": False, "error": "Invalid credentials."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
         user = authenticate(request, username=email, password=password)
         if user is None:
             return Response(

@@ -34,6 +34,28 @@ class EditorApiAuthTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("csrfToken", response.json())
 
+    def test_login_rejects_wrong_password(self):
+        csrf = self.client.get("/api/editor/v1/auth/csrf/").json()["csrfToken"]
+        response = self.client.post(
+            "/api/editor/v1/auth/login/",
+            {"email": "editor@example.com", "password": "wrong-password"},
+            format="json",
+            HTTP_X_CSRFTOKEN=csrf,
+        )
+        self.assertEqual(response.status_code, 401)
+        self.assertFalse(response.json()["ok"])
+
+    def test_login_accepts_email_with_uppercase_domain(self):
+        csrf = self.client.get("/api/editor/v1/auth/csrf/").json()["csrfToken"]
+        response = self.client.post(
+            "/api/editor/v1/auth/login/",
+            {"email": "editor@EXAMPLE.com", "password": "test-pass-123"},
+            format="json",
+            HTTP_X_CSRFTOKEN=csrf,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["step"], "complete")
+
     def test_login_and_me(self):
         csrf = self.client.get("/api/editor/v1/auth/csrf/").json()["csrfToken"]
         login = self.client.post(

@@ -181,7 +181,7 @@ jobs:
             exit 1
           fi
           export VITE_PUBLIC_SITE_BASE="${VITE_PUBLIC_SITE_BASE:-${site_url}}"
-          export VITE_API_BASE="${VITE_API_BASE:-${site_url}/api/editor/v1}"
+          export VITE_API_BASE="${VITE_API_BASE:-/api/editor/v1}"
           echo "Editor UI build: VITE_API_BASE=${VITE_API_BASE}"
 
           docker compose -f docker-compose.prod.yml build web
