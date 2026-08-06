@@ -1,3 +1,4 @@
+import { ApiError, fetchCsrf } from "@/api/client";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./useAuth";
@@ -6,6 +7,10 @@ export function LoginPage() {
   const navigate = useNavigate();
   const { user, pending2fa, loading, login, verify2fa } = useAuth();
   const [otpToken, setOtpToken] = useState("");
+
+  useEffect(() => {
+    void fetchCsrf();
+  }, []);
 
   useEffect(() => {
     if (loading) {
@@ -104,7 +109,11 @@ export function LoginPage() {
               />
             </label>
             {login.isError && (
-              <p className="text-sm text-red-600">Неверный email или пароль.</p>
+              <p className="text-sm text-red-600">
+                {login.error instanceof ApiError && login.error.message
+                  ? login.error.message
+                  : "Неверный email или пароль."}
+              </p>
             )}
             <button
               type="submit"
