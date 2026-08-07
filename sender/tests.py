@@ -63,6 +63,12 @@ def _minimal_jpeg_upload(name: str = "cover.jpg") -> SimpleUploadedFile:
     return SimpleUploadedFile(name, buf.getvalue(), content_type="image/jpeg")
 
 
+def _portrait_png_bytes(size: tuple[int, int] = (300, 600)) -> bytes:
+    buf = io.BytesIO()
+    Image.new("RGB", size, color=(40, 120, 200)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
 def _chat_id_from_requests_mock_call(call: mock._Call) -> str | None:
     json_payload = call.kwargs.get("json")
     if isinstance(json_payload, dict):
@@ -75,6 +81,40 @@ def _chat_id_from_requests_mock_call(call: mock._Call) -> str | None:
         if isinstance(raw, tuple) and len(raw) >= 2:
             return str(raw[1])
     return None
+
+
+class TelegramPhotoUploadAspectTests(TestCase):
+    def test_telegram_jpeg_keeps_original_aspect_ratio(self):
+        from editor.image_upload import (
+            build_share_jpeg_from_cover_bytes,
+            build_telegram_jpeg_from_image_bytes,
+            social_share_image_size,
+        )
+
+        raw = _portrait_png_bytes((300, 600))
+        tg_jpeg = build_telegram_jpeg_from_image_bytes(raw)
+        share_jpeg = build_share_jpeg_from_cover_bytes(raw)
+        with Image.open(io.BytesIO(tg_jpeg)) as tg_im:
+            self.assertEqual(tg_im.size, (300, 600))
+        with Image.open(io.BytesIO(share_jpeg)) as share_im:
+            self.assertEqual(share_im.size, social_share_image_size())
+
+    def test_photo_upload_reencodes_png_without_social_crop(self):
+        from django.core.files.storage import default_storage
+
+        from sender.services.telegram_publisher import _photo_upload_file
+
+        path = "tmp/tg-cover-portrait.png"
+        default_storage.save(path, io.BytesIO(_portrait_png_bytes((240, 480))))
+        try:
+            name, data, mime = _photo_upload_file(path)
+            self.assertTrue(name.endswith(".jpg"))
+            self.assertEqual(mime, "image/jpeg")
+            with Image.open(io.BytesIO(data)) as im:
+                self.assertEqual(im.size, (240, 480))
+        finally:
+            if default_storage.exists(path):
+                default_storage.delete(path)
 
 
 class TelegramFormatTests(TestCase):

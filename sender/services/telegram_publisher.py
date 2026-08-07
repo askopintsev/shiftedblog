@@ -13,7 +13,7 @@ from django.core.files.storage import default_storage
 
 from core.models.network import NETWORK_SLUG_TELEGRAM, Credential, Network
 from core.models.telegram_settings import post_continuation_prefix
-from editor.image_upload import build_share_jpeg_from_cover_bytes
+from editor.image_upload import build_telegram_jpeg_from_image_bytes
 from editor.models import Post
 from sender.services.dto import PublishResult
 from sender.services.telegram_channel import (
@@ -101,14 +101,18 @@ def _message_url_from_response(data: dict[str, Any]) -> tuple[int | None, str]:
 
 
 def _photo_upload_file(storage_path: str) -> tuple[str, bytes, str]:
-    """Return ``(field_name, bytes, mime)`` for multipart upload."""
+    """Return ``(field_name, bytes, mime)`` for multipart upload.
+
+    Non-JPEG sources are re-encoded to JPEG without social-share cropping so
+    Telegram posts keep the original cover aspect ratio.
+    """
     with default_storage.open(storage_path, "rb") as fh:
         raw = fh.read()
     base = os.path.basename(storage_path)
     stem, ext = os.path.splitext(base)
     ext_l = ext.lower()
     if ext_l in (".avif", ".webp", ".png", ".gif", ".bmp", ".tiff"):
-        data = build_share_jpeg_from_cover_bytes(raw)
+        data = build_telegram_jpeg_from_image_bytes(raw)
         return f"{stem}.jpg", data, "image/jpeg"
     if ext_l in (".jpg", ".jpeg"):
         return base, raw, "image/jpeg"
