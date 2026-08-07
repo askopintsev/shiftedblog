@@ -21,12 +21,15 @@ from sender.services.telegram_format import (
 )
 from sender.services.telegram_rich_format import (
     MAX_RICH_MESSAGE_LEN,
+    RICH_SPLIT_BALANCE_RESERVE,
     RichMediaAttachment,
     RichMessagePayload,
     balance_telegram_rich_html,
     build_formatted_rich_message,
     find_telegram_rich_html_split_index,
     substitute_rich_media_preview_urls,
+    telegram_rich_utf8_len,
+    utf8_prefix_end,
 )
 
 MAX_MESSAGE_LEN = 4096
@@ -323,25 +326,28 @@ def _split_rich_text_chunks(
     continuation_from_start: bool = False,
     continuation_prefix: str | None = None,
 ) -> list[str]:
+    """Split rich HTML by Telegram's UTF-8 byte budget (tags count)."""
     if not text:
         return []
     header = _continuation_header(continuation_prefix)
     first = not continuation_from_start
-    header_len = 0 if first else len(header)
-    base_limit = max(1, MAX_RICH_MESSAGE_LEN - header_len)
-    if len(text) <= base_limit and first:
+    header_bytes = 0 if first else telegram_rich_utf8_len(header)
+    if telegram_rich_utf8_len(text) + header_bytes <= MAX_RICH_MESSAGE_LEN and first:
         return [text]
     chunks: list[str] = []
     rest = text
     first = not continuation_from_start
     while rest:
-        header_len = 0 if first else len(header)
-        base_limit = max(1, MAX_RICH_MESSAGE_LEN - header_len)
-        if len(rest) <= base_limit:
+        header_bytes = 0 if first else telegram_rich_utf8_len(header)
+        room = max(1, MAX_RICH_MESSAGE_LEN - header_bytes)
+        if telegram_rich_utf8_len(rest) <= room:
             chunk = rest
             rest = ""
         else:
-            split_at = find_telegram_rich_html_split_index(rest, base_limit)
+            split_budget = max(1, room - RICH_SPLIT_BALANCE_RESERVE)
+            split_at = find_telegram_rich_html_split_index(rest, split_budget)
+            if split_at <= 0:
+                split_at = max(1, utf8_prefix_end(rest, split_budget))
             chunk = balance_telegram_rich_html(rest[:split_at].rstrip())
             rest = rest[split_at:].lstrip()
         if not first:
@@ -739,13 +745,22 @@ def build_preview_send_cards(plan: TelegramPublishPlan) -> list[dict[str, Any]]:
                     "title": title,
                     "text": display_text,
                     "has_text": True,
-                    "char_count": len(message),
+                    "char_count": (
+                        telegram_rich_utf8_len(message)
+                        if step.use_rich_message
+                        else len(message)
+                    ),
                     "max_chars": max_chars,
                     "limit_note": (
                         f"Rich message with {len(rich_paths)} inline image(s); "
-                        f"limit {max_chars} characters."
+                        f"limit {max_chars} UTF-8 characters (HTML tags count)."
                         if step.use_rich_message and rich_paths
-                        else f"Message limit {max_chars} characters."
+                        else (
+                            f"Rich message limit {max_chars} UTF-8 characters "
+                            f"(HTML tags count)."
+                            if step.use_rich_message
+                            else f"Message limit {max_chars} characters."
+                        )
                     ),
                     "cover_url": cover_url,
                     "thumb_urls": thumb_urls,

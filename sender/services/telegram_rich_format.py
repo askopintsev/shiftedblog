@@ -20,8 +20,34 @@ from sender.services.telegram_format import (
 
 logger = logging.getLogger(__name__)
 
+# Bot API: "Up to 32768 UTF-8 characters in the rich message text" — measured as
+# UTF-8 byte length of the HTML payload (tags included), not Python len().
 MAX_RICH_MESSAGE_LEN = 32768
 MAX_RICH_MEDIA = 50
+# Closing tags appended by balance_telegram_rich_html after a mid-body split.
+RICH_SPLIT_BALANCE_RESERVE = 256
+
+
+def telegram_rich_utf8_len(text: str) -> int:
+    """Length Telegram applies to rich-message HTML (UTF-8 bytes)."""
+    return len(text.encode("utf-8"))
+
+
+def utf8_prefix_end(text: str, max_bytes: int) -> int:
+    """Largest index such that ``text[:index]`` encodes to ≤ *max_bytes* UTF-8."""
+    if max_bytes <= 0:
+        return 0
+    encoded = text.encode("utf-8")
+    if len(encoded) <= max_bytes:
+        return len(text)
+    cut = encoded[:max_bytes]
+    while cut:
+        try:
+            return len(cut.decode("utf-8"))
+        except UnicodeDecodeError:
+            cut = cut[:-1]
+    return 0
+
 
 ResolveStoragePath = Callable[[str], str | None]
 
@@ -668,11 +694,12 @@ def find_telegram_rich_html_split_index(
     *,
     min_chunk_ratio: float = 1 / 3,
 ) -> int:
-    """Return split position after the last block boundary within *max_len*."""
-    if len(text) <= max_len:
+    """Return split index after the last block boundary within *max_len* UTF-8 bytes."""
+    if telegram_rich_utf8_len(text) <= max_len:
         return len(text)
-    window = text[:max_len]
-    min_pos = int(max_len * min_chunk_ratio)
+    max_chars = utf8_prefix_end(text, max_len)
+    window = text[:max_chars]
+    min_pos = utf8_prefix_end(text, int(max_len * min_chunk_ratio))
     for token in (
         "</p>",
         "</h1>",
@@ -688,7 +715,7 @@ def find_telegram_rich_html_split_index(
             pos = window.rfind("tg://photo?id=")
             if pos >= min_pos:
                 end = window.find(">", pos)
-                if end != -1 and end < max_len:
+                if end != -1 and end < max_chars:
                     return end + 1
             continue
         pos = window.rfind(token)
@@ -696,5 +723,5 @@ def find_telegram_rich_html_split_index(
             return pos + len(token)
     split_at = window.rfind("\n\n")
     if split_at < min_pos:
-        split_at = max_len
+        split_at = max_chars
     return split_at
