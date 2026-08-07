@@ -48,8 +48,10 @@ from sender.services.telegram_plan import (
 )
 from sender.services.telegram_publisher import resolve_telegram_plan
 from sender.services.telegram_rich_format import (
+    MAX_RICH_MESSAGE_LEN,
     build_formatted_rich_message,
     html_body_to_telegram_rich_html,
+    telegram_rich_utf8_len,
 )
 from sender.services.telegram_stories import check_story_availability, story_url_for
 from sender.services.url_helpers import crosslink_url_for_post, public_post_url
@@ -451,7 +453,7 @@ class TelegramRichFormatTests(TestCase):
     @override_settings(TELEGRAM_USE_RICH_MESSAGES=True)
     def test_rich_plan_keeps_full_legacy_fallback_series(self):
         """One rich chunk under 32k must still retain all 4096 legacy parts."""
-        # ~12k plain chars → several legacy chunks, still one rich message.
+        # ~12k plain ASCII chars → several legacy chunks, still one rich message.
         body = "<p>" + ("wordz " * 2000) + "TAIL-MARKER</p>"
         post = Post(
             title="Long rich",
@@ -463,7 +465,7 @@ class TelegramRichFormatTests(TestCase):
         self.assertEqual(len(plan.steps), 1)
         step = plan.steps[0]
         self.assertTrue(step.use_rich_message)
-        self.assertLessEqual(len(step.text), 32768)
+        self.assertLessEqual(telegram_rich_utf8_len(step.text), MAX_RICH_MESSAGE_LEN)
         series = step.legacy_fallback_series()
         self.assertGreater(len(series), 1)
         for part in series:
@@ -471,6 +473,27 @@ class TelegramRichFormatTests(TestCase):
         joined = "\n".join(series)
         self.assertIn("TAIL-MARKER", joined)
         self.assertEqual(series[0], step.legacy_text)
+
+    @override_settings(TELEGRAM_USE_RICH_MESSAGES=True)
+    def test_rich_plan_splits_on_utf8_byte_limit_not_python_len(self):
+        """Cyrillic fits in len() < 32k but exceeds 32k UTF-8 bytes → continue."""
+        # 20k Cyrillic letters ≈ 40k UTF-8 bytes; Python len is still 20k+.
+        body = "<p>" + ("я" * 20000) + "TAIL-MARKER</p>"
+        post = Post(
+            title="Utf8 rich",
+            body=body,
+            cover_image=_minimal_jpeg_upload(),
+        )
+        post.save()
+        plan = build_telegram_plan(post, has_subscription=False)
+        self.assertGreater(len(plan.steps), 1)
+        joined = "".join(step.text for step in plan.steps)
+        self.assertIn("TAIL-MARKER", joined)
+        for step in plan.steps:
+            self.assertLessEqual(
+                telegram_rich_utf8_len(step.text),
+                MAX_RICH_MESSAGE_LEN,
+            )
 
 
 class TelegramCrosslinkFormatTests(TestCase):
