@@ -63,6 +63,12 @@ def _minimal_jpeg_upload(name: str = "cover.jpg") -> SimpleUploadedFile:
     return SimpleUploadedFile(name, buf.getvalue(), content_type="image/jpeg")
 
 
+def _portrait_png_bytes(size: tuple[int, int] = (300, 600)) -> bytes:
+    buf = io.BytesIO()
+    Image.new("RGB", size, color=(40, 120, 200)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
 def _chat_id_from_requests_mock_call(call: mock._Call) -> str | None:
     json_payload = call.kwargs.get("json")
     if isinstance(json_payload, dict):
@@ -75,6 +81,40 @@ def _chat_id_from_requests_mock_call(call: mock._Call) -> str | None:
         if isinstance(raw, tuple) and len(raw) >= 2:
             return str(raw[1])
     return None
+
+
+class TelegramPhotoUploadAspectTests(TestCase):
+    def test_telegram_jpeg_keeps_original_aspect_ratio(self):
+        from editor.image_upload import (
+            build_share_jpeg_from_cover_bytes,
+            build_telegram_jpeg_from_image_bytes,
+            social_share_image_size,
+        )
+
+        raw = _portrait_png_bytes((300, 600))
+        tg_jpeg = build_telegram_jpeg_from_image_bytes(raw)
+        share_jpeg = build_share_jpeg_from_cover_bytes(raw)
+        with Image.open(io.BytesIO(tg_jpeg)) as tg_im:
+            self.assertEqual(tg_im.size, (300, 600))
+        with Image.open(io.BytesIO(share_jpeg)) as share_im:
+            self.assertEqual(share_im.size, social_share_image_size())
+
+    def test_photo_upload_reencodes_png_without_social_crop(self):
+        from django.core.files.storage import default_storage
+
+        from sender.services.telegram_publisher import _photo_upload_file
+
+        path = "tmp/tg-cover-portrait.png"
+        default_storage.save(path, io.BytesIO(_portrait_png_bytes((240, 480))))
+        try:
+            name, data, mime = _photo_upload_file(path)
+            self.assertTrue(name.endswith(".jpg"))
+            self.assertEqual(mime, "image/jpeg")
+            with Image.open(io.BytesIO(data)) as im:
+                self.assertEqual(im.size, (240, 480))
+        finally:
+            if default_storage.exists(path):
+                default_storage.delete(path)
 
 
 class TelegramFormatTests(TestCase):
@@ -405,7 +445,32 @@ class TelegramRichFormatTests(TestCase):
         self.assertIsNone(step.cover_path)
         self.assertEqual(step.media_paths, [])
         self.assertTrue(step.legacy_text)
+        self.assertEqual(step.legacy_fallback_series(), [step.legacy_text])
         self.assertIsNone(caption_for_step(step, has_subscription=False))
+
+    @override_settings(TELEGRAM_USE_RICH_MESSAGES=True)
+    def test_rich_plan_keeps_full_legacy_fallback_series(self):
+        """One rich chunk under 32k must still retain all 4096 legacy parts."""
+        # ~12k plain chars → several legacy chunks, still one rich message.
+        body = "<p>" + ("wordz " * 2000) + "TAIL-MARKER</p>"
+        post = Post(
+            title="Long rich",
+            body=body,
+            cover_image=_minimal_jpeg_upload(),
+        )
+        post.save()
+        plan = build_telegram_plan(post, has_subscription=False)
+        self.assertEqual(len(plan.steps), 1)
+        step = plan.steps[0]
+        self.assertTrue(step.use_rich_message)
+        self.assertLessEqual(len(step.text), 32768)
+        series = step.legacy_fallback_series()
+        self.assertGreater(len(series), 1)
+        for part in series:
+            self.assertLessEqual(len(part), MAX_MESSAGE_LEN)
+        joined = "\n".join(series)
+        self.assertIn("TAIL-MARKER", joined)
+        self.assertEqual(series[0], step.legacy_text)
 
 
 class TelegramCrosslinkFormatTests(TestCase):
@@ -889,6 +954,58 @@ class TelegramPublishJobTests(TestCase):
         fallback_payload = msg_api.call_args[0][2]
         self.assertEqual(fallback_payload["parse_mode"], "HTML")
         self.assertIn("<b>TG</b>", fallback_payload["text"])
+
+    @override_settings(TELEGRAM_USE_RICH_MESSAGES=True)
+    def test_rich_publish_fallback_sends_full_legacy_series(self):
+        self.post.body = "<p>" + ("word " * 2500) + "TAIL-MARKER</p>"
+        self.post.save(update_fields=["body"])
+        plan = build_telegram_plan(self.post, has_subscription=False)
+        self.assertEqual(len(plan.steps), 1)
+        expected_parts = plan.steps[0].legacy_fallback_series()
+        self.assertGreater(len(expected_parts), 1)
+
+        mock_resp = mock.Mock()
+        mock_resp.json.return_value = {
+            "ok": True,
+            "result": {
+                "message_id": 42,
+                "chat": {"username": "chan", "id": -100},
+            },
+        }
+        mock_resp.text = "{}"
+        rich_fail = {
+            "ok": False,
+            "error_code": 400,
+            "description": "Bad Request: rich message parse error",
+        }
+        with (
+            mock.patch(
+                "sender.services.telegram_publisher._api_post_multipart",
+            ) as multi_api,
+            mock.patch(
+                "sender.services.telegram_publisher._api_post_json",
+            ) as msg_api,
+        ):
+            multi_api.return_value = (rich_fail, mock_resp)
+            msg_api.return_value = (mock_resp.json.return_value, mock_resp)
+            from sender.services.telegram_publisher import publish_to_telegram
+
+            result = publish_to_telegram(self.post)
+        self.assertTrue(result.ok)
+        multi_api.assert_called_once()
+        send_message_calls = [
+            c for c in msg_api.call_args_list if c[0][1] == "sendMessage"
+        ]
+        self.assertEqual(len(send_message_calls), len(expected_parts))
+        for call, _expected in zip(
+            send_message_calls,
+            expected_parts,
+            strict=True,
+        ):
+            self.assertLessEqual(len(call[0][2]["text"]), MAX_MESSAGE_LEN)
+            self.assertTrue(call[0][2]["text"])
+        last_text = send_message_calls[-1][0][2]["text"]
+        self.assertIn("TAIL-MARKER", last_text)
 
     def test_telegram_numeric_chat_id_unchanged(self):
         net = Network.objects.get(slug=NETWORK_SLUG_TELEGRAM)

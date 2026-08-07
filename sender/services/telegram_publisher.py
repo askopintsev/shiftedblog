@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from collections.abc import Sequence
 from typing import Any
 
 import requests
@@ -13,7 +14,7 @@ from django.core.files.storage import default_storage
 
 from core.models.network import NETWORK_SLUG_TELEGRAM, Credential, Network
 from core.models.telegram_settings import post_continuation_prefix
-from editor.image_upload import build_share_jpeg_from_cover_bytes
+from editor.image_upload import build_telegram_jpeg_from_image_bytes
 from editor.models import Post
 from sender.services.dto import PublishResult
 from sender.services.telegram_channel import (
@@ -101,14 +102,18 @@ def _message_url_from_response(data: dict[str, Any]) -> tuple[int | None, str]:
 
 
 def _photo_upload_file(storage_path: str) -> tuple[str, bytes, str]:
-    """Return ``(field_name, bytes, mime)`` for multipart upload."""
+    """Return ``(field_name, bytes, mime)`` for multipart upload.
+
+    Non-JPEG sources are re-encoded to JPEG without social-share cropping so
+    Telegram posts keep the original cover aspect ratio.
+    """
     with default_storage.open(storage_path, "rb") as fh:
         raw = fh.read()
     base = os.path.basename(storage_path)
     stem, ext = os.path.splitext(base)
     ext_l = ext.lower()
     if ext_l in (".avif", ".webp", ".png", ".gif", ".bmp", ".tiff"):
-        data = build_share_jpeg_from_cover_bytes(raw)
+        data = build_telegram_jpeg_from_image_bytes(raw)
         return f"{stem}.jpg", data, "image/jpeg"
     if ext_l in (".jpg", ".jpeg"):
         return base, raw, "image/jpeg"
@@ -189,13 +194,21 @@ def _rich_message_fallback_enabled(payload: dict[str, Any]) -> bool:
     return error_code in (400, 404)
 
 
+def _normalize_legacy_fallback(
+    legacy_fallback: str | Sequence[str],
+) -> list[str]:
+    if isinstance(legacy_fallback, str):
+        return [legacy_fallback] if legacy_fallback else []
+    return [part for part in legacy_fallback if part]
+
+
 def _send_rich_message(
     token: str,
     chat_id: str,
     html: str,
     *,
     rich_media: list[RichMediaAttachment] | None = None,
-    legacy_fallback: str = "",
+    legacy_fallback: str | Sequence[str] = "",
 ) -> tuple[PublishResult, str, int | None]:
     if not html:
         return PublishResult(ok=True), "", None
@@ -241,12 +254,14 @@ def _send_rich_message(
             link,
             message_id,
         )
-    if legacy_fallback and _rich_message_fallback_enabled(payload):
+    fallback_parts = _normalize_legacy_fallback(legacy_fallback)
+    if fallback_parts and _rich_message_fallback_enabled(payload):
         logger.warning(
-            "sendRichMessage failed; falling back to sendMessage: %s",
+            "sendRichMessage failed; falling back to sendMessage (%s parts): %s",
+            len(fallback_parts),
             payload.get("description"),
         )
-        return _send_message(token, chat_id, legacy_fallback)
+        return _send_message_series(token, chat_id, fallback_parts)
     return _fail_from_payload(payload, resp, rich_message=True), "", None
 
 
@@ -277,6 +292,46 @@ def _send_message(
         PublishResult(ok=True, message_url=link, message_id=message_id),
         link,
         message_id,
+    )
+
+
+def _send_message_series(
+    token: str,
+    chat_id: str,
+    texts: Sequence[str],
+    *,
+    enable_link_preview: bool = False,
+) -> tuple[PublishResult, str, int | None]:
+    """Send each non-empty text via sendMessage; stop on first failure."""
+    first_link = ""
+    first_message_id: int | None = None
+    sent_any = False
+    for text in texts:
+        if not text:
+            continue
+        res, link, mid = _send_message(
+            token,
+            chat_id,
+            text,
+            enable_link_preview=enable_link_preview,
+        )
+        if not res.ok:
+            return res, first_link, first_message_id
+        sent_any = True
+        if link and not first_link:
+            first_link = link
+        if mid is not None and first_message_id is None:
+            first_message_id = mid
+    if not sent_any:
+        return PublishResult(ok=True), "", None
+    return (
+        PublishResult(
+            ok=True,
+            message_url=first_link,
+            message_id=first_message_id,
+        ),
+        first_link,
+        first_message_id,
     )
 
 
@@ -385,7 +440,9 @@ def _execute_step(
                 chat_id,
                 rich_message,
                 rich_media=step.rich_media,
-                legacy_fallback=step.legacy_text or message or "",
+                legacy_fallback=(
+                    step.legacy_fallback_series() or ([message] if message else [])
+                ),
             )
             if not res.ok:
                 return res, first_link, first_message_id
@@ -431,7 +488,9 @@ def _execute_step(
             chat_id,
             rich_message,
             rich_media=step.rich_media,
-            legacy_fallback=step.legacy_text or message or "",
+            legacy_fallback=(
+                step.legacy_fallback_series() or ([message] if message else [])
+            ),
         )
         if not res.ok:
             return res, first_link, first_message_id

@@ -102,6 +102,8 @@ class TelegramPlannedStep:
 
     text: str = ""
     legacy_text: str = ""
+    # Full sendMessage series if sendRichMessage fails for this step.
+    legacy_fallback_texts: list[str] = field(default_factory=list)
     cover_path: str | None = None
     media_paths: list[str] = field(default_factory=list)
     rich_media: list[RichMediaAttachment] = field(default_factory=list)
@@ -110,6 +112,14 @@ class TelegramPlannedStep:
     caption_on_media_group: bool = False
     enable_link_preview: bool = False
     use_rich_message: bool = False
+
+    def legacy_fallback_series(self) -> list[str]:
+        """Legacy HTML chunks to send when rich posting fails for this step."""
+        if self.legacy_fallback_texts:
+            return [part for part in self.legacy_fallback_texts if part]
+        if self.legacy_text:
+            return [self.legacy_text]
+        return []
 
     def preview_label(self) -> str:
         if self.is_continuation:
@@ -418,23 +428,29 @@ def build_telegram_rich_plan(
         MAX_MESSAGE_LEN,
         continuation_prefix=continuation_prefix,
     )
-    part_count = max(len(text_parts), len(legacy_parts), 1)
-    while len(text_parts) < part_count:
-        text_parts.append("")
-    while len(legacy_parts) < part_count:
-        legacy_parts.append("")
 
     inlined = set(rich_payload.inline_storage_paths)
     gallery_paths = _gallery_only_image_paths(post, inlined_paths=inlined)
 
+    # Rich chunks drive steps. Extra legacy chunks (common: one rich message,
+    # many 4096 sendMessage parts) attach to the last rich step for fallback.
     steps: list[TelegramPlannedStep] = []
+    rich_part_count = len(text_parts)
     for i, part_text in enumerate(text_parts):
         is_first = i == 0
+        is_last = i == rich_part_count - 1
         if not part_text and not (is_first and gallery_paths):
             continue
+        if is_last:
+            fallback_parts = [part for part in legacy_parts[i:] if part]
+        elif i < len(legacy_parts) and legacy_parts[i]:
+            fallback_parts = [legacy_parts[i]]
+        else:
+            fallback_parts = []
         step = TelegramPlannedStep(
             text=part_text,
-            legacy_text=legacy_parts[i] if i < len(legacy_parts) else "",
+            legacy_text=fallback_parts[0] if fallback_parts else "",
+            legacy_fallback_texts=fallback_parts,
             cover_path=None,
             media_paths=gallery_paths if is_first else [],
             rich_media=_rich_media_for_html_chunk(part_text, rich_payload.media),

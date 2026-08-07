@@ -107,9 +107,8 @@ def _crop_and_resize_for_social(im: Image.Image) -> Image.Image:
     return im.resize((target_w, target_h), Image.Resampling.LANCZOS)
 
 
-def encode_image_as_share_jpeg(im: Image.Image) -> bytes:
-    """Return JPEG bytes sized for social link previews."""
-    rgb = _flatten_for_jpeg(_crop_and_resize_for_social(im))
+def _encode_rgb_jpeg(im: Image.Image) -> bytes:
+    rgb = _flatten_for_jpeg(im)
     buf = io.BytesIO()
     rgb.save(
         buf,
@@ -119,6 +118,16 @@ def encode_image_as_share_jpeg(im: Image.Image) -> bytes:
         progressive=True,
     )
     return buf.getvalue()
+
+
+def encode_image_as_share_jpeg(im: Image.Image) -> bytes:
+    """Return JPEG bytes sized for social link previews."""
+    return _encode_rgb_jpeg(_crop_and_resize_for_social(im))
+
+
+def encode_image_as_jpeg_preserve_ratio(im: Image.Image) -> bytes:
+    """Return JPEG bytes without changing aspect ratio (for Telegram uploads)."""
+    return _encode_rgb_jpeg(im)
 
 
 def save_social_share_jpeg(cover_storage_name: str, im: Image.Image) -> str:
@@ -139,18 +148,29 @@ def read_cover_bytes(field_file: FieldFile) -> bytes:
         field_file.close()
 
 
+def _normalize_opened_image(im: Image.Image) -> Image.Image:
+    """EXIF transpose, optional downscale, RGB/RGBA mode."""
+    im = ImageOps.exif_transpose(im)
+    if im.mode == "CMYK":
+        im = im.convert("RGB")
+    im = _maybe_downscale(im)
+    if im.mode not in ("RGB", "RGBA"):
+        if im.mode in ("L", "LA"):
+            im = im.convert("RGBA" if im.mode == "LA" else "RGB")
+        else:
+            im = im.convert("RGBA" if "transparency" in im.info else "RGB")
+    return im
+
+
 def build_share_jpeg_from_cover_bytes(raw: bytes) -> bytes:
     with Image.open(io.BytesIO(raw)) as im:
-        im = ImageOps.exif_transpose(im)
-        if im.mode == "CMYK":
-            im = im.convert("RGB")
-        im = _maybe_downscale(im)
-        if im.mode not in ("RGB", "RGBA"):
-            if im.mode in ("L", "LA"):
-                im = im.convert("RGBA" if im.mode == "LA" else "RGB")
-            else:
-                im = im.convert("RGBA" if "transparency" in im.info else "RGB")
-        return encode_image_as_share_jpeg(im)
+        return encode_image_as_share_jpeg(_normalize_opened_image(im))
+
+
+def build_telegram_jpeg_from_image_bytes(raw: bytes) -> bytes:
+    """JPEG for Bot API photo uploads; keeps the original aspect ratio."""
+    with Image.open(io.BytesIO(raw)) as im:
+        return encode_image_as_jpeg_preserve_ratio(_normalize_opened_image(im))
 
 
 def share_jpeg_has_social_dimensions(data: bytes) -> bool:
