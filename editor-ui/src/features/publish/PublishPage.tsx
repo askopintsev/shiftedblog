@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/api/client";
 import type { PostListItem, PublishResult, TelegramPreviewResponse } from "@/api/types";
+import { PublishResultDialog } from "@/features/publish/PublishResultDialog";
 import { TelegramPreviewCards } from "@/features/publish/TelegramPreviewCards";
 import { useT } from "@/i18n";
 
@@ -13,6 +14,7 @@ export function PublishPage() {
   const [crosslinkNetwork, setCrosslinkNetwork] = useState("");
   const [telegramStory, setTelegramStory] = useState(false);
   const [result, setResult] = useState<PublishResult | null>(null);
+  const [requestError, setRequestError] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const t = useT();
 
@@ -58,11 +60,54 @@ export function PublishPage() {
           telegram_post_story: telegramStory,
         }),
       }),
+    onMutate: () => {
+      setResult(null);
+      setRequestError(null);
+    },
     onSuccess: (data) => setResult(data.result),
+    onError: (error) => {
+      setRequestError(
+        t("publish.requestFailed", {
+          message: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    },
   });
 
   return (
     <div className="p-6">
+      {result && (
+        <PublishResultDialog result={result} onClose={() => setResult(null)} />
+      )}
+      {requestError && !result && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setRequestError(null);
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            className="w-full max-w-md rounded-2xl border border-red-200 bg-surface p-5 shadow-xl"
+          >
+            <h2 className="text-lg font-semibold text-red-900">
+              {t("publish.hasErrors")}
+            </h2>
+            <p className="mt-2 text-sm text-red-800">{requestError}</p>
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setRequestError(null)}
+                className="rounded-lg bg-accent px-4 py-2 text-sm text-white"
+              >
+                {t("common.close")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <h1 className="mb-6 text-2xl font-semibold">{t("publish.title")}</h1>
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-4 rounded-xl border border-border bg-surface p-4">
@@ -183,31 +228,6 @@ export function PublishPage() {
             <p className="text-sm text-text-muted">{t("publish.previewEmpty")}</p>
           ) : (
             <p className="text-sm text-text-muted">{t("publish.previewHint")}</p>
-          )}
-          {result && (
-            <div className="mt-4 border-t border-border pt-4">
-              <h3 className="font-medium">
-                {result.all_ok ? t("publish.success") : t("publish.hasErrors")}
-              </h3>
-              <ul className="mt-2 space-y-1 text-sm">
-                {Object.entries(result.by_network).map(([network, item]) => (
-                  <li key={network}>
-                    <strong>{network}:</strong>{" "}
-                    {item.ok ? (
-                      item.message_url ? (
-                        <a href={item.message_url} target="_blank" rel="noreferrer">
-                          {item.message_url}
-                        </a>
-                      ) : (
-                        t("common.ok")
-                      )
-                    ) : (
-                      <span className="text-red-600">{item.error || item.detail}</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
           )}
         </div>
       </div>
