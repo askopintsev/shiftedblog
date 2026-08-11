@@ -114,7 +114,9 @@ export const ru = {
     "Порядок поста в серии (для навигации предыдущий/следующий).",
   "postEdit.tags": "Теги",
   "postEdit.tagsPlaceholder": "news, django",
-  "postEdit.tagsHelp": "Введите теги через запятую.",
+  "postEdit.tagsHelp":
+    "Введите теги через запятую. Подсказки — из уже существующих тегов.",
+  "postEdit.loadingTags": "Загрузка тегов…",
   "postEdit.historyTitle": "История автосохранения",
   "postEdit.restore": "Восстановить",
   "postEdit.restoreDraftConfirm":

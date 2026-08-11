@@ -53,6 +53,7 @@ urlpatterns = [
         posts.PostGalleryDetailView.as_view(),
         name="post_gallery_detail",
     ),
+    path("tags/", posts.TagListView.as_view(), name="tag_list"),
     path("categories/", posts.CategoryListCreateView.as_view(), name="category_list"),
     path(
         "categories/<int:category_id>/",

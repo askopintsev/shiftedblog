@@ -6,6 +6,7 @@ import { apiFetch, apiUpload, ApiError } from "@/api/client";
 import type { Category, PostDetail, PostStatus, Series } from "@/api/types";
 import { PostBodyEditorFallback } from "@/features/posts/body-editor/PostBodyEditorFallback";
 import { GalleryTab } from "@/features/posts/components/GalleryTab";
+import { TagsInput } from "@/features/posts/components/TagsInput";
 import { ImageFileInput } from "@/components/ImageFileInput";
 import {
   tryRestoreDraftFromLocal,
@@ -99,7 +100,6 @@ export function PostEditPage() {
   const draftRestored = useRef(false);
   const slugEditedRef = useRef(false);
   const hydratedPostIdRef = useRef<string | null>(null);
-  const tagsTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const saveBarRef = useRef<HTMLDivElement | null>(null);
   const [toolbarStickyTop, setToolbarStickyTop] = useState(0);
   const [isFormReady, setIsFormReady] = useState(isNew);
@@ -157,13 +157,6 @@ export function PostEditPage() {
     setForm(nextForm);
     setIsFormReady(true);
   }, [id, isNew, post, postMatchesRoute]);
-
-  useEffect(() => {
-    const textarea = tagsTextareaRef.current;
-    if (!textarea) return;
-    textarea.style.height = "auto";
-    textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [form.tags]);
 
   useEffect(() => {
     const saveBar = saveBarRef.current;
@@ -735,16 +728,12 @@ export function PostEditPage() {
             ) : null}
             <label className="block text-sm">
               {t("postEdit.tags")}
-              <textarea
-                ref={tagsTextareaRef}
+              <TagsInput
                 value={form.tags}
-                onChange={(e) => {
+                onChange={(tags) => {
                   setSaveError(null);
-                  updateForm({ tags: e.target.value });
+                  updateForm({ tags });
                 }}
-                rows={2}
-                placeholder={t("postEdit.tagsPlaceholder")}
-                className="mt-1 min-h-16 w-full resize-none overflow-hidden rounded-lg border border-border px-2 py-1.5"
               />
               <p className="mt-1 text-xs text-text-muted">
                 {t("postEdit.tagsHelp")}

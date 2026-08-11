@@ -117,7 +117,9 @@ export const en: Record<MessageKey, string> = {
     "Post order in the series (used for previous/next navigation).",
   "postEdit.tags": "Tags",
   "postEdit.tagsPlaceholder": "news, django",
-  "postEdit.tagsHelp": "Enter tags separated by commas.",
+  "postEdit.tagsHelp":
+    "Enter tags separated by commas. Suggestions come from existing tags.",
+  "postEdit.loadingTags": "Loading tags…",
   "postEdit.historyTitle": "Autosave history",
   "postEdit.restore": "Restore",
   "postEdit.restoreDraftConfirm":

@@ -319,6 +319,37 @@ class EditorSiteSettingsApiTests(TestCase):
         self.assertEqual(again.json()["settings"]["site_name"], "Editor Site")
 
 
+class EditorTagListApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email="tags@example.com",
+            password="test-pass-123",
+            is_staff=True,
+        )
+        self.client.force_authenticate(user=self.user)
+        post = Post.objects.create(
+            title="Tagged",
+            slug="tagged-post",
+            author=self.user,
+            status="draft",
+            body="<p>hi</p>",
+        )
+        post.tags.set(["django", "news"])
+
+    def test_lists_existing_tag_names(self):
+        response = self.client.get("/api/editor/v1/tags/")
+        self.assertEqual(response.status_code, 200)
+        names = response.json()["results"]
+        self.assertIn("django", names)
+        self.assertIn("news", names)
+
+    def test_filters_by_query(self):
+        response = self.client.get("/api/editor/v1/tags/", {"q": "dja"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["results"], ["django"])
+
+
 class EditorSeriesApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()

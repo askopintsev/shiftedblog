@@ -15,6 +15,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from taggit.models import Tag
 
 from api.editor.permissions import IsStaffUser
 from api.editor.serializers.posts import (
@@ -352,6 +353,20 @@ class PostGalleryDetailView(APIView):
         obj = get_object_or_404(PostGalleryImage, pk=gallery_id, post_id=post_id)
         obj.delete()
         return Response(status=204)
+
+
+class TagListView(APIView):
+    """Existing tag names from posts (django-taggit)."""
+
+    permission_classes = [IsStaffUser]
+
+    def get(self, request: Request) -> Response:
+        qs = Tag.objects.order_by("name")
+        query = (request.query_params.get("q") or "").strip()
+        if query:
+            qs = qs.filter(name__icontains=query)
+        names = list(qs.values_list("name", flat=True)[:200])
+        return Response({"ok": True, "results": names})
 
 
 class CategoryListCreateView(APIView):
