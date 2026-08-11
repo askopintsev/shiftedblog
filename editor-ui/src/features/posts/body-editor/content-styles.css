@@ -246,12 +246,36 @@
   aspect-ratio: auto !important;
 }
 
-.post-body-editor .ck-editor__editable figcaption,
-.post-body-editor .ck-content figcaption {
-  margin-top: 0.75rem;
+/* figcaption is a nested .ck-editor__editable — do not inherit the main
+   editor min-height / padding (otherwise a one-line caption is ~360px tall). */
+.post-body-editor .ck-editor__editable figure.image > figcaption,
+.post-body-editor .ck-editor__editable figure.image > figcaption.ck-editor__editable,
+.post-body-editor .ck-content figure.image > figcaption {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 0 !important;
+  height: auto !important;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+  padding: 0.35rem 0.75rem !important;
   font-size: 0.9rem;
+  line-height: 1.4;
+  font-weight: 400;
+  letter-spacing: normal;
   color: #6c757d;
   text-align: center;
+  background-color: hsl(0, 0%, 97%);
+  border-radius: 0 0 4px 4px;
+}
+
+.post-body-editor .ck-editor__editable figure.image > figcaption p,
+.post-body-editor .ck-content figure.image > figcaption p {
+  margin: 0;
+  padding: 0;
+  line-height: inherit;
+  text-align: inherit;
+  font-size: inherit;
 }
 
 .post-body-editor .ck-editor__editable.ck-focused {
