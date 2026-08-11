@@ -212,6 +212,35 @@ class PostSocialShareImageTests(TestCase):
         self.assertContains(response, 'property="og:image:width" content="1200"')
         self.assertContains(response, 'property="og:image:height" content="630"')
 
+    def test_draft_preview_includes_jpeg_og_image(self):
+        draft = Post(
+            title="Draft share preview",
+            slug="draft-share-preview",
+            author=self.author,
+            cover_image=_minimal_jpeg_upload("cover-draft-share.jpg"),
+            body="<p>Draft body</p>",
+            status="draft",
+            category=self.category,
+        )
+        draft.save()
+        response = self.client.get(
+            reverse("editor:post_detail_by_uuid", args=[draft.uuid]),
+        )
+        self.assertEqual(response.status_code, 200)
+        expected = post_og_image_absolute_url(draft, response.wsgi_request)
+        self.assertIsNotNone(expected)
+        assert expected is not None
+        self.assertIn("-share.jpg", expected)
+        self.assertContains(response, f'property="og:image" content="{expected}"')
+        self.assertContains(
+            response,
+            f'property="og:url" content="http://testserver/draft/{draft.uuid}/"',
+        )
+        self.assertNotContains(
+            response,
+            'property="og:url" content="http://testserver/draft-share-preview/"',
+        )
+
     @override_settings(TWITTER_SITE="@shifted_stuff")
     def test_detail_page_includes_twitter_site_meta(self):
         response = self.client.get(

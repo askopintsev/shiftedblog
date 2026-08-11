@@ -19,7 +19,11 @@
 {% endif %}
 <!-- Open Graph -->
 <meta property="og:type" content="article">
+{% if is_draft_preview %}
+<meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
+{% else %}
 <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{{ post.get_absolute_url }}">
+{% endif %}
 {% if post.title %}
 <meta property="og:title" content="{{ post.title }}">
 {% endif %}
@@ -50,7 +54,11 @@
 <meta name="twitter:site" content="{{ twitter_site }}">
 <meta name="twitter:creator" content="{{ twitter_site }}">
 {% endif %}
+{% if is_draft_preview %}
+<meta name="twitter:url" content="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
+{% else %}
 <meta name="twitter:url" content="{{ request.scheme }}://{{ request.get_host }}{{ post.get_absolute_url }}">
+{% endif %}
 {% if post.title %}
 <meta name="twitter:title" content="{{ post.title }}">
 {% endif %}

@@ -11,7 +11,9 @@ from blog.category_helpers import resolve_category_for_list
 from blog.querysets import public_posts_queryset
 from blog.related_posts import series_navigation, similar_and_newest_posts
 from editor.forms import SearchForm
+from editor.image_upload import ensure_post_share_image, social_share_image_size
 from editor.models import Category, Post, PostSlugRedirect
+from sender.services.url_helpers import post_og_image_absolute_url
 
 
 def _public_page_cache(key_prefix: str):
@@ -239,6 +241,9 @@ def post_detail_by_uuid(request, uuid):
         excluded_ids=excluded_series_post_ids,
     )
 
+    if post.cover_image and post.cover_image.name:
+        ensure_post_share_image(post)
+
     response = render(
         request,
         "blog/post/detail.html",
@@ -250,6 +255,9 @@ def post_detail_by_uuid(request, uuid):
             "next_post": next_post,
             "current_series": current_series,
             "is_draft_preview": post.status != "published",
+            "post_og_image_url": post_og_image_absolute_url(post, request),
+            "post_og_image_width": social_share_image_size()[0],
+            "post_og_image_height": social_share_image_size()[1],
         },
     )
     response["X-Robots-Tag"] = "noindex, nofollow"
