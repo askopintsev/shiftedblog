@@ -1,21 +1,38 @@
 #!/usr/bin/env bash
-# Export VITE_* build args for prod docker compose (source secrets.env first).
+# Export VITE_* build args for prod docker compose.
+# Sources secrets.env, or .env, or ENV_FILE if set.
 set -euo pipefail
-cd "$(git rev-parse --show-toplevel)"
 
-if [[ ! -f secrets.env ]]; then
-  echo "secrets.env not found; run doppler secrets download first." >&2
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+ENV_FILE="${ENV_FILE:-}"
+if [[ -z "$ENV_FILE" ]]; then
+  if [[ -f secrets.env ]]; then
+    ENV_FILE="secrets.env"
+  elif [[ -f .env ]]; then
+    ENV_FILE=".env"
+  else
+    echo "No secrets.env or .env found. Create one with ./scripts/setup.sh" >&2
+    exit 1
+  fi
+fi
+
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "${ENV_FILE} not found." >&2
   exit 1
 fi
 
 set -a
-# shellcheck disable=SC1091
-source secrets.env
+set +u
+# shellcheck disable=SC1090
+source "$ENV_FILE"
+set -u
 set +a
 
 site_url="${SITE_URL%/}"
 if [[ -z "${site_url}" ]]; then
-  echo "SITE_URL must be set in secrets.env for editor-ui production build." >&2
+  echo "SITE_URL must be set in ${ENV_FILE} for editor-ui production build." >&2
   exit 1
 fi
 

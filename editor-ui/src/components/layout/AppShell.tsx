@@ -3,6 +3,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { resetCsrfToken } from "@/api/client";
 import {
   FileText,
+  Globe,
+  Languages,
+  Layers,
   Link2,
   LogOut,
   Network,
@@ -12,33 +15,58 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/features/auth/useAuth";
+import { useT } from "@/i18n";
+import type { MessageKey } from "@/i18n";
 
-const navGroups = [
+type NavItem = {
+  to: string;
+  labelKey: MessageKey;
+  icon: typeof FileText;
+  superuser?: boolean;
+};
+
+type NavGroup = {
+  labelKey: MessageKey;
+  items: NavItem[];
+};
+
+const navGroups: NavGroup[] = [
   {
-    label: "Контент",
-    items: [{ to: "/posts", label: "Посты", icon: FileText }],
-  },
-  {
-    label: "Публикация",
-    items: [{ to: "/publish", label: "Мультиканал", icon: Send }],
-  },
-  {
-    label: "Настройки",
+    labelKey: "nav.content",
     items: [
-      { to: "/config/networks", label: "Сети", icon: Network },
-      { to: "/config/telegram", label: "Telegram", icon: Settings },
-      { to: "/config/credentials", label: "Credentials", icon: Shield, superuser: true },
+      { to: "/posts", labelKey: "nav.posts", icon: FileText },
+      { to: "/series", labelKey: "nav.series", icon: Layers },
     ],
   },
   {
-    label: "Аудит",
-    items: [{ to: "/audit/post-links", label: "Post links", icon: Link2 }],
+    labelKey: "nav.publish",
+    items: [{ to: "/publish", labelKey: "nav.multichannel", icon: Send }],
+  },
+  {
+    labelKey: "nav.settings",
+    items: [
+      { to: "/config/site", labelKey: "nav.site", icon: Globe },
+      { to: "/config/networks", labelKey: "nav.networks", icon: Network },
+      { to: "/config/telegram", labelKey: "nav.telegram", icon: Settings },
+      {
+        to: "/config/credentials",
+        labelKey: "nav.credentials",
+        icon: Shield,
+        superuser: true,
+      },
+      { to: "/config/interface", labelKey: "nav.interface", icon: Languages },
+    ],
+  },
+  {
+    labelKey: "nav.audit",
+    items: [{ to: "/audit/post-links", labelKey: "nav.postLinks", icon: Link2 }],
   },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const queryClient = useQueryClient();
+  const t = useT();
 
   async function handleLogout() {
     try {
@@ -56,13 +84,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden">
       <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-border bg-surface">
         <div className="shrink-0 border-b border-border px-4 py-5">
-          <span className="text-sm font-semibold tracking-tight">Shifted Editor</span>
+          <span className="text-sm font-semibold tracking-tight">
+            {t("nav.brand")}
+          </span>
         </div>
         <nav className="min-h-0 flex-1 space-y-6 overflow-y-auto p-3">
           {navGroups.map((group) => (
-            <div key={group.label}>
+            <div key={group.labelKey}>
               <div className="mb-2 px-2 text-xs font-semibold uppercase text-text-muted">
-                {group.label}
+                {t(group.labelKey)}
               </div>
               <ul className="space-y-1">
                 {group.items
@@ -81,7 +111,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         }
                       >
                         <item.icon className="h-4 w-4" />
-                        {item.label}
+                        {t(item.labelKey)}
                       </NavLink>
                     </li>
                   ))}
@@ -90,7 +120,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
         <div className="shrink-0 border-t border-border p-3">
-          <div className="mb-2 truncate px-2 text-xs text-text-muted">{user?.email}</div>
+          <div className="mb-2 truncate px-2 text-xs text-text-muted">
+            {user?.email}
+          </div>
           <button
             type="button"
             onClick={() => void handleLogout()}
@@ -98,7 +130,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-surface-muted disabled:opacity-60"
           >
             <LogOut className="h-4 w-4" />
-            Выйти
+            {t("nav.logout")}
           </button>
         </div>
       </aside>

@@ -7,6 +7,7 @@ from typing import Any
 from rest_framework import serializers
 
 from core.models.network import Credential, Network
+from core.models.site_settings import SiteSettings
 from core.models.telegram_settings import TelegramNetworkSettings
 from sender.models.post_link import PostLink
 
@@ -81,6 +82,32 @@ class TelegramSettingsSerializer(serializers.ModelSerializer):
             "story_fallback_image",
             "post_continuation_text",
         )
+
+
+class SiteSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SiteSettings
+        fields = (
+            "site_name",
+            "tagline",
+            "footer_text",
+            "telegram_url",
+            "github_url",
+            "habr_url",
+            "twitter_site",
+            "contact_email",
+            "default_from_email",
+            "admin_email",
+            "email_host",
+            "email_port",
+            "email_host_user",
+            "email_use_tls",
+            "email_use_ssl",
+            "telegram_use_rich_messages",
+            "text_quality_checker_enabled",
+            "updated_at",
+        )
+        read_only_fields = ("updated_at",)
 
 
 class PostLinkSerializer(serializers.ModelSerializer):

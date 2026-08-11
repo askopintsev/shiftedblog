@@ -13,9 +13,11 @@ from api.editor.serializers.config import (
     CredentialListSerializer,
     NetworkSerializer,
     PostLinkSerializer,
+    SiteSettingsSerializer,
     TelegramSettingsSerializer,
 )
 from core.models.network import Credential, Network
+from core.models.site_settings import get_site_settings
 from core.models.telegram_settings import TelegramNetworkSettings
 from sender.models.post_link import PostLink
 
@@ -98,6 +100,21 @@ class TelegramSettingsView(APIView):
         if obj is None:
             return Response({"ok": False, "error": "Not configured."}, status=404)
         ser = TelegramSettingsSerializer(obj, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response({"ok": True, "settings": ser.data})
+
+
+class SiteSettingsView(APIView):
+    permission_classes = [IsStaffUser]
+
+    def get(self, request: Request) -> Response:
+        obj = get_site_settings()
+        return Response({"ok": True, "settings": SiteSettingsSerializer(obj).data})
+
+    def patch(self, request: Request) -> Response:
+        obj = get_site_settings()
+        ser = SiteSettingsSerializer(obj, data=request.data, partial=True)
         ser.is_valid(raise_exception=True)
         ser.save()
         return Response({"ok": True, "settings": ser.data})

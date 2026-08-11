@@ -23,7 +23,15 @@ class CategorySerializer(serializers.ModelSerializer):
 class SeriesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Series
-        fields = ("id", "name", "slug")
+        fields = ("id", "name")
+
+
+class PostSeriesMembershipSerializer(serializers.Serializer):
+    """Series membership for a post, including order in the series."""
+
+    id = serializers.IntegerField(source="series_id", read_only=True)
+    name = serializers.CharField(source="series.name", read_only=True)
+    order_position = serializers.IntegerField(allow_null=True, required=False)
 
 
 class AuthorSerializer(serializers.ModelSerializer):
@@ -84,14 +92,7 @@ class PostDetailSerializer(serializers.ModelSerializer):
         required=False,
     )
     tags = serializers.StringRelatedField(many=True, required=False)
-    series_ids = serializers.PrimaryKeyRelatedField(
-        queryset=Series.objects.all(),
-        many=True,
-        source="series",
-        write_only=True,
-        required=False,
-    )
-    series = SeriesSerializer(many=True, read_only=True)
+    series = serializers.SerializerMethodField()
     gallery_images = PostGallerySerializer(many=True, read_only=True)
     cover_image_url = serializers.SerializerMethodField()
     cover_image = serializers.SerializerMethodField()
@@ -118,7 +119,6 @@ class PostDetailSerializer(serializers.ModelSerializer):
             "category",
             "category_id",
             "series",
-            "series_ids",
             "short_description",
             "views",
             "gallery_images",
@@ -145,6 +145,25 @@ class PostDetailSerializer(serializers.ModelSerializer):
 
     def get_is_on_site(self, obj: Post) -> bool:
         return SitePublication.objects.filter(post=obj).exists()
+
+    def get_series(self, obj: Post) -> list[dict[str, Any]]:
+        memberships = getattr(obj, "_prefetched_objects_cache", {}).get("post_series")
+        if memberships is None:
+            qs = obj.post_series.select_related("series").order_by(
+                "order_position",
+                "pk",
+            )
+        else:
+            qs = sorted(
+                memberships,
+                key=lambda row: (
+                    row.order_position is None,
+                    row.order_position or 0,
+                    row.pk,
+                ),
+            )
+        data = PostSeriesMembershipSerializer(qs, many=True).data
+        return list(data)
 
     def _set_tags(self, instance: Post, tags: list[str] | None) -> None:
         if tags is not None:
@@ -192,6 +211,12 @@ class PostWriteSerializer(serializers.Serializer):
     series_ids = serializers.ListField(
         child=serializers.IntegerField(),
         required=False,
+    )
+    series_id = serializers.IntegerField(required=False, allow_null=True)
+    series_order_position = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        min_value=1,
     )
     cover_image_credits = serializers.CharField(required=False, allow_blank=True)
     cover_description = serializers.CharField(required=False, allow_blank=True)

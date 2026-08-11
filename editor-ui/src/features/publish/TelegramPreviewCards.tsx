@@ -1,4 +1,11 @@
 import type { TelegramPreviewCard, TelegramPreviewPayload } from "@/api/types";
+import {
+  translateCardTitle,
+  translateLayoutSource,
+  translateLimitNote,
+  translateStepLabel,
+} from "@/features/publish/previewI18n";
+import { useT } from "@/i18n";
 
 interface TelegramPreviewCardsProps {
   cards: TelegramPreviewCard[];
@@ -15,15 +22,21 @@ export function TelegramPreviewCards({
   ownerPremium,
   telegramFormat,
 }: TelegramPreviewCardsProps) {
+  const t = useT();
+  const layoutText = translateLayoutSource(layoutSource);
+
   return (
     <div className="space-y-4">
-      {layoutSource && (
+      {layoutText && (
         <p className="text-xs text-text-muted">
-          {layoutSource}
+          {layoutText}
           {ownerPremium !== null && ownerPremium !== undefined && (
             <>
               {" "}
-              Owner Premium: <strong>{ownerPremium ? "yes" : "no"}</strong>.
+              {t("preview.ownerPremium", {
+                value: ownerPremium ? t("preview.yes") : t("preview.no"),
+              })}
+              .
             </>
           )}
         </p>
@@ -31,16 +44,16 @@ export function TelegramPreviewCards({
       {previewPayload && (
         <p className="text-xs text-text-muted">
           {previewPayload.is_series
-            ? `Series: ${previewPayload.step_count} text parts, `
-            : "Single post, "}
-          {previewPayload.send_count} Telegram sends total.
+            ? t("preview.series", { n: previewPayload.step_count })
+            : t("preview.singlePost")}
+          {t("preview.sendsTotal", { n: previewPayload.send_count })}
           {previewPayload.has_subscription
-            ? " Premium channel (album caption on first photo; cover-only may split text)."
+            ? t("preview.premiumChannel")
             : previewPayload.uses_rich_messages
-              ? " Rich message: headings, lists, and inline body images in document order."
+              ? t("preview.richMessage")
               : telegramFormat === "crosslink"
-                ? " Crosslink: single text message with linked label and tags."
-                : " Standard layout (caption on cover or album when text fits)."}
+                ? t("preview.crosslink")
+                : t("preview.standardLayout")}
         </p>
       )}
       <div className="space-y-4">
@@ -51,12 +64,21 @@ export function TelegramPreviewCards({
           >
             <header className="flex flex-wrap items-center gap-2 border-b border-border bg-surface-muted px-3 py-2 text-xs">
               <span className="rounded bg-accent/10 px-2 py-0.5 font-medium text-accent">
-                Send {card.send_index}/{card.send_total}
+                {t("preview.send", {
+                  i: card.send_index,
+                  total: card.send_total,
+                })}
               </span>
-              <strong className="text-sm text-text-primary">{card.title}</strong>
+              <strong className="text-sm text-text-primary">
+                {translateCardTitle(card.title)}
+              </strong>
               <span className="text-text-muted">
-                Step {card.step_index}/{card.step_total} — {card.step_label}
-                {card.step_is_continuation ? " (продолжение)" : ""}
+                {t("preview.step", {
+                  i: card.step_index,
+                  total: card.step_total,
+                })}{" "}
+                — {translateStepLabel(card.step_label)}
+                {card.step_is_continuation ? t("preview.continuation") : ""}
               </span>
               {card.max_chars ? (
                 <span
@@ -66,22 +88,27 @@ export function TelegramPreviewCards({
                       : "text-text-muted"
                   }
                 >
-                  {card.char_count} / {card.max_chars} chars
+                  {t("preview.chars", {
+                    n: card.char_count,
+                    m: card.max_chars,
+                  })}
                 </span>
               ) : card.kind === "media_group" ? (
                 <span className="text-text-muted">
-                  {card.image_count} photo{card.image_count === 1 ? "" : "s"}
+                  {t("preview.photos", { n: card.image_count ?? 0 })}
                 </span>
               ) : null}
             </header>
             <div className="space-y-3 p-3">
               {card.limit_note && (
-                <p className="text-xs text-amber-700">{card.limit_note}</p>
+                <p className="text-xs text-amber-700">
+                  {translateLimitNote(card.limit_note, card)}
+                </p>
               )}
               {card.kind !== "rich_message" && card.cover_url && (
                 <img
                   src={card.cover_url}
-                  alt="Cover"
+                  alt={t("preview.coverAlt")}
                   className="max-h-48 rounded-lg object-cover"
                 />
               )}
@@ -93,7 +120,7 @@ export function TelegramPreviewCards({
                     <img
                       key={url}
                       src={url}
-                      alt={`Album ${i + 1}`}
+                      alt={t("preview.albumAlt", { n: i + 1 })}
                       className="h-16 w-16 rounded object-cover"
                     />
                   ))}
@@ -109,7 +136,7 @@ export function TelegramPreviewCards({
                   dangerouslySetInnerHTML={{ __html: card.text }}
                 />
               ) : card.kind === "photo" && !card.cover_url ? (
-                <p className="text-xs text-text-muted">Cover file not found on disk.</p>
+                <p className="text-xs text-text-muted">{t("preview.coverMissing")}</p>
               ) : null}
             </div>
           </article>

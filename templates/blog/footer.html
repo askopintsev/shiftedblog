@@ -12,13 +12,13 @@
                 <div class="col-md-3 col-lg-4 col-xl-3 mx-auto mb-4">
                     <!-- Logo -->
                     <a href="/">
-                        <img alt="logo" src="{% static 'img/template/' %}new_logo_1.png" width="42%">
+                        <img alt="{{ site_settings.site_name }}" src="{% static 'img/template/' %}new_logo_1.png" width="42%">
                     </a>
                     <div class="footer-copyright pt-3">
-                        © {% now "Y" %} <a class="text-reset text-decoration-none" href="/">Shifted Stuff</a>.</br>
-                        Автор: Александр Скопинцев</br>
-                        Все материалы лицензированы под <a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ru">CC BY-NC-ND 4.0</a>.</br>
-                        <img alt="CC BY-NC-ND 4.0" src="https://licensebuttons.net/l/by-nc-nd/4.0/80x15.png"/>
+                        © {% now "Y" %} <a class="text-reset text-decoration-none" href="/">{{ site_settings.site_name }}</a>.</br>
+                        {% if site_settings.footer_text %}
+                        {{ site_settings.footer_text|linebreaksbr }}
+                        {% endif %}
                     </div>
                 </div>
                 <!-- Grid column -->
@@ -61,26 +61,34 @@
                     </h6>
                     <div class="pb-3">
                         <ul class="list-unstyled">
+                            {% if site_settings.telegram_url %}
                             <li class="mb-2">
-                                <a class="text-reset text-decoration-none" href="https://t.me/shifted_stuff">
+                                <a class="text-reset text-decoration-none" href="{{ site_settings.telegram_url }}">
                                     <i class="fa-brands fa-telegram me-2"></i>Telegram
                                 </a>
                             </li>
+                            {% endif %}
+                            {% if site_settings.habr_url %}
                             <li class="mb-2">
-                                <a class="text-reset text-decoration-none" href="https://career.habr.com/shifter">
+                                <a class="text-reset text-decoration-none" href="{{ site_settings.habr_url }}">
                                     <i class="fa-solid fa-address-card me-2"></i>Habr Career
                                 </a>
                             </li>
+                            {% endif %}
+                            {% if site_settings.github_url %}
                             <li class="mb-2">
-                                <a class="text-reset text-decoration-none" href="https://github.com/askopintsev">
+                                <a class="text-reset text-decoration-none" href="{{ site_settings.github_url }}">
                                     <i class="fa-brands fa-github me-2"></i>GitHub
                                 </a>
                             </li>
+                            {% endif %}
+                            {% if site_settings.contact_email %}
                             <li class="mb-2">
-                                <a class="text-reset text-decoration-none" href="mailto:askopintsev@hotmail.com">
+                                <a class="text-reset text-decoration-none" href="mailto:{{ site_settings.contact_email }}">
                                     <i class="fa-solid fa-envelope me-2"></i>e-mail
                                 </a>
                             </li>
+                            {% endif %}
                         </ul>
                     </div>
                 </div>
@@ -89,7 +97,7 @@
             <!-- Grid row -->
         </div>
     </section>
-    <section class="text-center">version 0.4.1</section>
+    <section class="text-center">version 0.5.0</section>
 </footer>
 <!-- Footer -->
 {% endblock %}

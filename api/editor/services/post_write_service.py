@@ -11,9 +11,10 @@ from django.core.files.uploadedfile import UploadedFile
 from django.forms import model_to_dict
 
 from editor.forms import PostAdminForm
-from editor.models import Post
+from editor.models import Post, PostSeries, Series
 
 _FORM_FILE_FIELDS = ("cover_image",)
+_SERIES_UNSET = object()
 
 
 @dataclass(frozen=True)
@@ -72,3 +73,52 @@ def save_post(validated: ValidatedPostData, *, record_history: bool = False) -> 
 
         PostHistoryService().record_autosave_snapshot(instance)
     return instance
+
+
+def apply_series_membership(
+    post: Post,
+    *,
+    series_id: int | None,
+    order_position: int | None = None,
+) -> None:
+    """Replace post series membership (single series + optional position)."""
+    PostSeries.objects.filter(post=post).delete()
+    if series_id is None:
+        return
+    if not Series.objects.filter(pk=series_id).exists():
+        raise DjangoValidationError({"series_id": ["Unknown series."]})
+    if order_position is not None:
+        conflict = (
+            PostSeries.objects.filter(
+                series_id=series_id,
+                order_position=order_position,
+            )
+            .exclude(post_id=post.pk)
+            .exists()
+        )
+        if conflict:
+            raise DjangoValidationError(
+                {
+                    "series_order_position": [
+                        "This position is already used in the series.",
+                    ],
+                },
+            )
+    PostSeries.objects.create(
+        post=post,
+        series_id=series_id,
+        order_position=order_position,
+    )
+
+
+def pop_series_write_fields(
+    validated_data: dict[str, Any],
+) -> tuple[Any, Any]:
+    """Remove series write keys from form payload; return (series_id, order)."""
+    series_id = validated_data.pop("series_id", _SERIES_UNSET)
+    order_position = validated_data.pop("series_order_position", _SERIES_UNSET)
+    return series_id, order_position
+
+
+def series_fields_were_set(series_id: Any) -> bool:
+    return series_id is not _SERIES_UNSET

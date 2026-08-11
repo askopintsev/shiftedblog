@@ -53,6 +53,7 @@ urlpatterns = [
         posts.PostGalleryDetailView.as_view(),
         name="post_gallery_detail",
     ),
+    path("tags/", posts.TagListView.as_view(), name="tag_list"),
     path("categories/", posts.CategoryListCreateView.as_view(), name="category_list"),
     path(
         "categories/<int:category_id>/",
@@ -100,6 +101,11 @@ urlpatterns = [
         "config/telegram-settings/",
         config.TelegramSettingsView.as_view(),
         name="telegram_settings",
+    ),
+    path(
+        "config/site-settings/",
+        config.SiteSettingsView.as_view(),
+        name="site_settings",
     ),
     path("audit/post-links/", config.PostLinkAuditView.as_view(), name="post_links"),
 ]

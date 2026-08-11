@@ -3,6 +3,9 @@
  * Keep in sync when Django toolbar changes.
  */
 
+import type { Locale } from "@/i18n";
+import { t } from "@/i18n";
+
 export const ckeditorToolbarItems = [
   "heading",
   "|",
@@ -48,28 +51,33 @@ export const ckeditorToolbarItems = [
   "redo",
 ];
 
-export const ckeditorConfig = {
-  licenseKey: "GPL",
-  toolbar: {
-    items: ckeditorToolbarItems,
-    shouldNotGroupWhenFull: true,
-  },
-  language: "ru",
-  placeholder: "Начните писать…",
-  alignment: {
-    options: ["left", "right", "center", "justify"],
-  },
-  fontFamily: {
-    options: [
-      "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif",
-      "default",
-      "Arial, Helvetica, sans-serif",
-      "Georgia, serif",
-      "Times New Roman, Times, serif",
-      "Verdana, Geneva, sans-serif",
-    ],
-  },
-  fontSize: {
-    options: [18, "default", "tiny", "small", "big", "huge"],
-  },
-};
+export function buildCkeditorConfig(locale: Locale) {
+  return {
+    licenseKey: "GPL",
+    toolbar: {
+      items: ckeditorToolbarItems,
+      shouldNotGroupWhenFull: true,
+    },
+    language: locale,
+    placeholder: t("editor.placeholder"),
+    alignment: {
+      options: ["left", "right", "center", "justify"],
+    },
+    fontFamily: {
+      options: [
+        "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif",
+        "default",
+        "Arial, Helvetica, sans-serif",
+        "Georgia, serif",
+        "Times New Roman, Times, serif",
+        "Verdana, Geneva, sans-serif",
+      ],
+    },
+    fontSize: {
+      options: [18, "default", "tiny", "small", "big", "huge"],
+    },
+  };
+}
+
+/** @deprecated Prefer buildCkeditorConfig(locale) */
+export const ckeditorConfig = buildCkeditorConfig("ru");

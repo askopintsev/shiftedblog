@@ -30,6 +30,17 @@ export interface Category {
   slug: string;
 }
 
+export interface Series {
+  id: number;
+  name: string;
+}
+
+export interface PostSeriesMembership {
+  id: number;
+  name: string;
+  order_position: number | null;
+}
+
 export interface PostDetail extends PostListItem {
   uuid: string;
   body: string;
@@ -38,7 +49,7 @@ export interface PostDetail extends PostListItem {
   cover_image_url: string;
   cover_image_credits: string;
   cover_description: string;
-  series: { id: number; name: string; slug: string }[];
+  series: PostSeriesMembership[];
   gallery_images: GalleryImage[];
   draft_preview_url: string;
   views: number;

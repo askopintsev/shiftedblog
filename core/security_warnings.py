@@ -38,12 +38,12 @@ def collect_secrets_rotation_warnings(*, today: date | None = None) -> list[str]
     if secret_rotated is None:
         warnings.append(
             "SECRET_KEY rotation date is not set. Add SECRET_KEY_ROTATED_AT "
-            "(YYYY-MM-DD) in Doppler after rotating."
+            "(YYYY-MM-DD) in your secrets file after rotating."
         )
     elif _age_days(secret_rotated, today=today) >= max_age:
         warnings.append(
             f"SECRET_KEY was last rotated {_age_days(secret_rotated, today=today)} "
-            f"days ago (threshold: {max_age}). Rotate in Doppler and redeploy."
+            f"days ago (threshold: {max_age}). Rotate the key and redeploy."
         )
 
     cred_key_rotated = _parse_rotation_date(
@@ -52,7 +52,7 @@ def collect_secrets_rotation_warnings(*, today: date | None = None) -> list[str]
     if cred_key_rotated is None:
         warnings.append(
             "CREDENTIALS_ENCRYPTION_KEY rotation date is not set. "
-            "Add CREDENTIALS_ENCRYPTION_KEY_ROTATED_AT in Doppler."
+            "Add CREDENTIALS_ENCRYPTION_KEY_ROTATED_AT in your secrets file."
         )
     elif _age_days(cred_key_rotated, today=today) >= max_age:
         warnings.append(

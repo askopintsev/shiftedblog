@@ -109,7 +109,9 @@ staticfiles/
 zen_*
 
 .cursor
-docs
+
+# Optional local nginx override (generated nginx.conf stays committed)
+nginx/nginx.conf.local
 
 # Editor SPA (source is tracked; ignore build/cache/test artifacts)
 editor-ui/node_modules/

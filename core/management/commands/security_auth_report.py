@@ -112,14 +112,18 @@ class Command(BaseCommand):
         self.stdout.write(report)
 
         if alerts and options["email"]:
-            admin_email = getattr(settings, "ADMIN_EMAIL", "") or ""
+            from core.services.site_settings import SiteSettingsService
+
+            email_cfg = SiteSettingsService.effective_email()
+            admin_email = email_cfg.admin_email
             if admin_email:
                 send_mail(
                     subject="[shiftedblog] Security auth report alerts",
                     message=report,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    from_email=email_cfg.default_from_email,
                     recipient_list=[admin_email],
                     fail_silently=False,
+                    connection=SiteSettingsService.get_email_connection(),
                 )
                 self.stdout.write(
                     self.style.SUCCESS(f"Alert email sent to {admin_email}")

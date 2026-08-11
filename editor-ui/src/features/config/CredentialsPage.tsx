@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/api/client";
 import { useAuth } from "@/features/auth/useAuth";
+import { useT } from "@/i18n";
 
 interface CredentialRow {
   id: number;
@@ -20,6 +21,7 @@ export function CredentialsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [secretsJson, setSecretsJson] = useState("{}");
   const [label, setLabel] = useState("");
+  const t = useT();
 
   const { data } = useQuery({
     queryKey: ["credentials"],
@@ -58,21 +60,21 @@ export function CredentialsPage() {
   if (!user?.is_superuser) {
     return (
       <div className="p-6">
-        <h1 className="mb-4 text-2xl font-semibold">Credentials</h1>
-        <p className="text-sm text-text-muted">Доступ только для superuser.</p>
+        <h1 className="mb-4 text-2xl font-semibold">{t("credentials.title")}</h1>
+        <p className="text-sm text-text-muted">{t("credentials.superuserOnly")}</p>
       </div>
     );
   }
 
   return (
     <div className="p-6">
-      <h1 className="mb-4 text-2xl font-semibold">Credentials</h1>
+      <h1 className="mb-4 text-2xl font-semibold">{t("credentials.title")}</h1>
       <ul className="space-y-2">
         {data?.results.map((c) => (
           <li key={c.id} className="rounded-lg border border-border bg-surface px-4 py-3">
             <div className="flex items-center justify-between">
               <span>
-                {c.network_slug}:{c.label || "default"}
+                {c.network_slug}:{c.label || t("credentials.default")}
               </span>
               <button
                 type="button"
@@ -82,7 +84,7 @@ export function CredentialsPage() {
                   setLabel(c.label);
                 }}
               >
-                Редактировать
+                {t("credentials.edit")}
               </button>
             </div>
           </li>
@@ -98,7 +100,7 @@ export function CredentialsPage() {
               try {
                 secrets = JSON.parse(secretsJson) as Record<string, unknown>;
               } catch {
-                window.alert("Некорректный JSON secrets");
+                window.alert(t("credentials.invalidJson"));
                 return;
               }
               patchMutation.mutate({
@@ -107,9 +109,9 @@ export function CredentialsPage() {
               });
             }}
           >
-            <h2 className="mb-3 font-semibold">Редактирование credential</h2>
+            <h2 className="mb-3 font-semibold">{t("credentials.editTitle")}</h2>
             <label className="mb-3 block text-sm">
-              Label
+              {t("credentials.label")}
               <input
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
@@ -117,11 +119,11 @@ export function CredentialsPage() {
               />
             </label>
             <p className="mb-1 text-xs text-text-muted">
-              Текущие ключи (masked):{" "}
+              {t("credentials.maskedKeys")}{" "}
               {JSON.stringify(detailQuery.data?.credential.secrets_masked ?? {})}
             </p>
             <label className="mb-3 block text-sm">
-              Secrets (JSON)
+              {t("credentials.secrets")}
               <textarea
                 value={secretsJson}
                 onChange={(e) => setSecretsJson(e.target.value)}
@@ -134,14 +136,14 @@ export function CredentialsPage() {
                 type="submit"
                 className="rounded-lg bg-accent px-4 py-2 text-sm text-white"
               >
-                Сохранить
+                {t("common.save")}
               </button>
               <button
                 type="button"
                 className="rounded-lg border border-border px-4 py-2 text-sm"
                 onClick={() => setEditingId(null)}
               >
-                Отмена
+                {t("common.cancel")}
               </button>
             </div>
           </form>

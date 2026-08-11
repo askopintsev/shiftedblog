@@ -1,12 +1,14 @@
 import { ApiError, fetchCsrf } from "@/api/client";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useT } from "@/i18n";
 import { useAuth } from "./useAuth";
 
 export function LoginPage() {
   const navigate = useNavigate();
   const { user, pending2fa, loading, login, verify2fa } = useAuth();
   const [otpToken, setOtpToken] = useState("");
+  const t = useT();
 
   useEffect(() => {
     void fetchCsrf();
@@ -51,16 +53,14 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-surface-muted p-4">
       <div className="w-full max-w-md rounded-xl border border-border bg-surface p-8 shadow-sm">
         <div className="mb-6 text-center">
-          <h1 className="text-xl font-semibold">Shifted Blog Editor</h1>
-          <p className="mt-1 text-sm text-text-muted">Вход для редакторов</p>
+          <h1 className="text-xl font-semibold">{t("login.brand")}</h1>
+          <p className="mt-1 text-sm text-text-muted">{t("login.subtitle")}</p>
         </div>
         {pending2fa ? (
           <form key="2fa-form" onSubmit={on2faSubmit} className="space-y-4" autoComplete="off">
-            <p className="text-sm text-text-muted">
-              Введите код из приложения аутентификации.
-            </p>
+            <p className="text-sm text-text-muted">{t("login.twoFactorHelp")}</p>
             <label className="block text-sm font-medium">
-              Код 2FA
+              {t("login.twoFactorCode")}
               <input
                 name="token"
                 type="text"
@@ -76,20 +76,20 @@ export function LoginPage() {
               />
             </label>
             {verify2fa.isError && (
-              <p className="text-sm text-red-600">Неверный код.</p>
+              <p className="text-sm text-red-600">{t("login.twoFactorInvalid")}</p>
             )}
             <button
               type="submit"
               disabled={verify2fa.isPending}
               className="w-full rounded-lg bg-accent px-4 py-2 text-white disabled:opacity-60"
             >
-              Подтвердить
+              {t("login.twoFactorSubmit")}
             </button>
           </form>
         ) : (
           <form key="login-form" onSubmit={onLoginSubmit} className="space-y-4">
             <label className="block text-sm font-medium">
-              Email
+              {t("common.email")}
               <input
                 name="email"
                 type="email"
@@ -99,7 +99,7 @@ export function LoginPage() {
               />
             </label>
             <label className="block text-sm font-medium">
-              Пароль
+              {t("login.password")}
               <input
                 name="password"
                 type="password"
@@ -112,7 +112,7 @@ export function LoginPage() {
               <p className="text-sm text-red-600">
                 {login.error instanceof ApiError && login.error.message
                   ? login.error.message
-                  : "Неверный email или пароль."}
+                  : t("login.invalidCredentials")}
               </p>
             )}
             <button
@@ -120,7 +120,7 @@ export function LoginPage() {
               disabled={login.isPending}
               className="w-full rounded-lg bg-accent px-4 py-2 text-white disabled:opacity-60"
             >
-              Войти
+              {t("login.submit")}
             </button>
           </form>
         )}

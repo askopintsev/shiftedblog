@@ -1,14 +1,17 @@
-const FIELD_LABELS: Record<string, string> = {
-  body: "Текст",
-  title: "Заголовок",
-  slug: "Slug",
-  status: "Статус",
-  short_description: "Краткое описание",
-};
+import { t } from "@/i18n";
+import { translateApiMessage } from "@/lib/translateApiMessage";
+
+const FIELD_KEYS = {
+  body: "field.body",
+  title: "field.title",
+  slug: "field.slug",
+  status: "field.status",
+  short_description: "field.shortDescription",
+} as const;
 
 export function formatApiErrors(payload: unknown): string {
   if (!payload || typeof payload !== "object") {
-    return "Не удалось сохранить.";
+    return t("postEdit.saveFailed");
   }
   const record = payload as {
     errors?: Record<string, string[] | string>;
@@ -19,10 +22,17 @@ export function formatApiErrors(payload: unknown): string {
     return Object.entries(record.errors)
       .flatMap(([field, msgs]) => {
         const list = Array.isArray(msgs) ? msgs : [String(msgs)];
-        const label = FIELD_LABELS[field] ?? field;
-        return list.map((message) => `${label}: ${message}`);
+        const key = FIELD_KEYS[field as keyof typeof FIELD_KEYS];
+        const label = key ? t(key) : field;
+        return list.map(
+          (message) => `${label}: ${translateApiMessage(message)}`,
+        );
       })
       .join(" · ");
   }
-  return record.error || record.detail || "Не удалось сохранить.";
+  const fallback = record.error || record.detail;
+  if (fallback) {
+    return translateApiMessage(fallback);
+  }
+  return t("postEdit.saveFailed");
 }

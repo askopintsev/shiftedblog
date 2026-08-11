@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/api/client";
+import { useT } from "@/i18n";
 
 export function NetworksPage() {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
+  const t = useT();
 
   const { data } = useQuery({
     queryKey: ["networks"],
@@ -29,7 +31,7 @@ export function NetworksPage() {
 
   return (
     <div className="p-6">
-      <h1 className="mb-4 text-2xl font-semibold">Сети</h1>
+      <h1 className="mb-4 text-2xl font-semibold">{t("networks.title")}</h1>
       <ul className="space-y-2">
         {data?.results.map((n) => (
           <li key={n.id} className="rounded-lg border border-border bg-surface px-4 py-3">
@@ -47,14 +49,14 @@ export function NetworksPage() {
                   className="flex-1 rounded-lg border border-border px-2 py-1"
                 />
                 <button type="submit" className="text-accent text-sm">
-                  Сохранить
+                  {t("common.save")}
                 </button>
                 <button
                   type="button"
                   className="text-sm text-text-muted"
                   onClick={() => setEditingId(null)}
                 >
-                  Отмена
+                  {t("common.cancel")}
                 </button>
               </form>
             ) : (
@@ -71,7 +73,7 @@ export function NetworksPage() {
                     setEditName(n.name);
                   }}
                 >
-                  Изменить
+                  {t("common.edit")}
                 </button>
               </div>
             )}

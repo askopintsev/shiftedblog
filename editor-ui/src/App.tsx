@@ -6,11 +6,15 @@ import { useAuth } from "@/features/auth/useAuth";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { PostLinksPage } from "@/features/audit/PostLinksPage";
 import { CredentialsPage } from "@/features/config/CredentialsPage";
+import { InterfacePage } from "@/features/config/InterfacePage";
 import { NetworksPage } from "@/features/config/NetworksPage";
+import { SiteSettingsPage } from "@/features/config/SiteSettingsPage";
 import { TelegramSettingsPage } from "@/features/config/TelegramSettingsPage";
 import { PostsListPage } from "@/features/posts/PostsListPage";
+import { SeriesPage } from "@/features/series/SeriesPage";
 import { PublishPage } from "@/features/publish/PublishPage";
 import { SessionKeepalive } from "@/features/auth/SessionKeepalive";
+import { useT } from "@/i18n";
 
 const PostEditPage = lazy(() =>
   import("@/features/posts/PostEditPage").then((module) => ({
@@ -20,10 +24,11 @@ const PostEditPage = lazy(() =>
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading, pending2fa } = useAuth();
+  const t = useT();
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-text-muted">
-        Загрузка…
+        {t("common.loading")}
       </div>
     );
   }
@@ -54,7 +59,9 @@ export default function App() {
                     <Route path="/posts" element={<PostsListPage />} />
                     <Route path="/posts/new" element={<PostEditPage />} />
                     <Route path="/posts/:id" element={<PostEditPage />} />
+                    <Route path="/series" element={<SeriesPage />} />
                     <Route path="/publish" element={<PublishPage />} />
+                    <Route path="/config/site" element={<SiteSettingsPage />} />
                     <Route path="/config/networks" element={<NetworksPage />} />
                     <Route
                       path="/config/credentials"
@@ -63,6 +70,10 @@ export default function App() {
                     <Route
                       path="/config/telegram"
                       element={<TelegramSettingsPage />}
+                    />
+                    <Route
+                      path="/config/interface"
+                      element={<InterfacePage />}
                     />
                     <Route path="/audit/post-links" element={<PostLinksPage />} />
                   </Routes>

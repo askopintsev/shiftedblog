@@ -109,7 +109,7 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 if not SECRET_KEY:
     raise ValueError(
         "SECRET_KEY environment variable must be set. "
-        "Use Doppler or set it in your environment."
+        "Set it in .env / secrets.env (or your secret manager)."
     )
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -131,7 +131,8 @@ if not SITE_URL and ALLOWED_HOSTS:
 if SITE_URL:
     SITE_URL = SITE_URL.strip().rstrip("/")
 
-TWITTER_SITE = os.environ.get("TWITTER_SITE", "@shifted_stuff").strip()
+# Bootstrap / fallback for twitter:site; prefer Core → Site settings in templates.
+TWITTER_SITE = os.environ.get("TWITTER_SITE", "").strip()
 if TWITTER_SITE and not TWITTER_SITE.startswith("@"):
     TWITTER_SITE = f"@{TWITTER_SITE.lstrip('@')}"
 
@@ -212,6 +213,7 @@ TEMPLATES = [
                 "blog.context_processors.nav_categories",
                 "core.context_processors.admin_security_warnings",
                 "core.context_processors.social_meta",
+                "core.context_processors.site_settings",
             ],
         },
     },
@@ -698,7 +700,7 @@ EMAIL_USE_SSL = get_bool_env("EMAIL_USE_SSL", False)
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@localhost")
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "")
 
-# Optional metadata for secrets rotation reminders (ISO date YYYY-MM-DD in Doppler).
+# Optional metadata for secrets rotation reminders (ISO date YYYY-MM-DD).
 SECRET_KEY_ROTATED_AT = os.environ.get("SECRET_KEY_ROTATED_AT", "").strip()
 CREDENTIALS_ENCRYPTION_KEY_ROTATED_AT = os.environ.get(
     "CREDENTIALS_ENCRYPTION_KEY_ROTATED_AT", ""

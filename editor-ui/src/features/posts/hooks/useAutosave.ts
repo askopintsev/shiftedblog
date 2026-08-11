@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/api/client";
+import { t } from "@/i18n";
 
 const DRAFT_PREFIX = "shiftedblog-post-body:";
 
@@ -117,11 +118,7 @@ export function tryRestoreDraftFromLocal(
   try {
     const saved = localStorage.getItem(`${DRAFT_PREFIX}${postId}`);
     if (!saved || saved === currentBody) return null;
-    if (
-      window.confirm(
-        "В браузере есть несохранённая копия текста поста (например, после обрыва сессии). Восстановить её в поле редактора?",
-      )
-    ) {
+    if (window.confirm(t("postEdit.restoreDraftConfirm"))) {
       return saved;
     }
   } catch {

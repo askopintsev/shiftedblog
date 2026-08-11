@@ -1,6 +1,7 @@
 import { Plugin, Widget, toWidget } from "ckeditor5";
 import type { Editor } from "ckeditor5";
 import type { GalleryImage } from "@/api/types";
+import { t } from "@/i18n";
 import { mediaUrl } from "@/lib/mediaUrl";
 
 export const GALLERY_MARKER_TAG = "section";
@@ -56,13 +57,13 @@ function renderGalleryDom(marker: HTMLElement, images: GalleryImage[]): void {
       const thumb = document.createElement("img");
       thumb.className = "ck-gallery-marker__thumb";
       thumb.src = mediaUrl(image.image_url);
-      thumb.alt = image.caption || `Gallery ${key}`;
+      thumb.alt = image.caption || t("gallery.alt", { n: key });
       item.appendChild(thumb);
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "ck-gallery-marker__delete";
       remove.dataset.galleryImageId = String(image.id);
-      remove.setAttribute("aria-label", "Удалить изображение из галереи");
+      remove.setAttribute("aria-label", t("editor.deleteFromGalleryAria"));
       remove.textContent = "×";
       item.appendChild(remove);
       grid.appendChild(item);
@@ -73,7 +74,7 @@ function renderGalleryDom(marker: HTMLElement, images: GalleryImage[]): void {
 
   const empty = document.createElement("div");
   empty.className = "ck-gallery-marker__empty";
-  empty.textContent = "Перетащите изображения сюда или добавьте их на вкладке Галерея.";
+  empty.textContent = t("editor.galleryEmpty");
   marker.appendChild(empty);
 }
 
@@ -143,7 +144,7 @@ export class GalleryMarkerPlugin extends Plugin {
         });
         writer.insert(
           writer.createPositionAt(title, 0),
-          writer.createText(`Галерея ${key}`),
+          writer.createText(t("editor.galleryTitle", { key })),
         );
         writer.insert(writer.createPositionAt(wrapper, 0), title);
 
@@ -168,14 +169,14 @@ export class GalleryMarkerPlugin extends Plugin {
             const thumb = writer.createEmptyElement("img", {
               class: "ck-gallery-marker__thumb",
               src: mediaUrl(image.image_url),
-              alt: image.caption || `Gallery ${key}`,
+              alt: image.caption || t("gallery.alt", { n: key }),
             });
             writer.insert(writer.createPositionAt(item, "end"), thumb);
             const remove = writer.createContainerElement("button", {
               type: "button",
               class: "ck-gallery-marker__delete",
               "data-gallery-image-id": String(image.id),
-              "aria-label": "Удалить изображение из галереи",
+              "aria-label": t("editor.deleteFromGalleryAria"),
             });
             writer.insert(writer.createPositionAt(remove, 0), writer.createText("×"));
             writer.insert(writer.createPositionAt(item, "end"), remove);
@@ -188,14 +189,14 @@ export class GalleryMarkerPlugin extends Plugin {
           });
           writer.insert(
             writer.createPositionAt(empty, 0),
-            writer.createText(
-              "Перетащите изображения сюда или добавьте их на вкладке Галерея.",
-            ),
+            writer.createText(t("editor.galleryEmpty")),
           );
           writer.insert(writer.createPositionAt(wrapper, "end"), empty);
         }
 
-        return toWidget(wrapper, writer, { label: `Галерея ${key}` });
+        return toWidget(wrapper, writer, {
+          label: t("editor.galleryTitle", { key }),
+        });
       },
     });
   }

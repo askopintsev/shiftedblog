@@ -15,6 +15,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from taggit.models import Tag
 
 from api.editor.permissions import IsStaffUser
 from api.editor.serializers.posts import (
@@ -25,11 +26,24 @@ from api.editor.serializers.posts import (
     PostWriteSerializer,
     SeriesSerializer,
 )
-from api.editor.services.post_write_service import save_post, validate_post_data
+from api.editor.services.post_write_service import (
+    apply_series_membership,
+    pop_series_write_fields,
+    save_post,
+    series_fields_were_set,
+    validate_post_data,
+)
 from blog.models import SitePublication
 from editor.models import Category, Post, PostGalleryImage, Series
 from editor.post_history_service import PostHistoryService
 from editor.text_quality_service import PostTextQualityService, TextQualityRequestDTO
+
+
+def _clear_post_series_prefetch(post: Post) -> None:
+    cache = getattr(post, "_prefetched_objects_cache", None)
+    if cache is not None:
+        cache.pop("post_series", None)
+        cache.pop("series", None)
 
 
 def _form_errors_response(exc: DjangoValidationError) -> Response:
@@ -91,7 +105,9 @@ class PostListCreateView(APIView):
     def post(self, request: Request) -> Response:
         write_ser = PostWriteSerializer(data=request.data)
         write_ser.is_valid(raise_exception=True)
-        data = _write_data_from_request(write_ser.validated_data)
+        payload = dict(write_ser.validated_data)
+        series_id, order_position = pop_series_write_fields(payload)
+        data = _write_data_from_request(payload)
         data.setdefault("author", request.user.pk)
         data.setdefault("status", "draft")
         try:
@@ -99,6 +115,17 @@ class PostListCreateView(APIView):
             instance = validated.instance
             instance.author = instance.author or request.user
             save_post(validated)
+            if series_fields_were_set(series_id):
+                apply_series_membership(
+                    instance,
+                    series_id=series_id,
+                    order_position=(
+                        order_position
+                        if series_fields_were_set(order_position)
+                        else None
+                    ),
+                )
+                _clear_post_series_prefetch(instance)
         except DjangoValidationError as exc:
             return _form_errors_response(exc)
         out = PostDetailSerializer(instance, context={"request": request})
@@ -112,7 +139,9 @@ class PostDetailView(APIView):
     def get_object(self, post_id: int) -> Post:
         return get_object_or_404(
             Post.objects.select_related("author", "category").prefetch_related(
-                "tags", "series", "gallery_images"
+                "tags",
+                "gallery_images",
+                "post_series__series",
             ),
             pk=post_id,
         )
@@ -126,12 +155,25 @@ class PostDetailView(APIView):
         post = self.get_object(post_id)
         write_ser = PostWriteSerializer(data=request.data, partial=True)
         write_ser.is_valid(raise_exception=True)
-        data = _write_data_from_request(write_ser.validated_data)
+        payload = dict(write_ser.validated_data)
+        series_id, order_position = pop_series_write_fields(payload)
+        data = _write_data_from_request(payload)
         if "cover_image" in request.FILES:
             data["cover_image"] = request.FILES["cover_image"]
         try:
             validated = validate_post_data(post, data)
             instance = save_post(validated)
+            if series_fields_were_set(series_id):
+                apply_series_membership(
+                    instance,
+                    series_id=series_id,
+                    order_position=(
+                        order_position
+                        if series_fields_were_set(order_position)
+                        else None
+                    ),
+                )
+                _clear_post_series_prefetch(instance)
         except DjangoValidationError as exc:
             return _form_errors_response(exc)
         out = PostDetailSerializer(instance, context={"request": request})
@@ -146,10 +188,23 @@ class PostAutosaveView(APIView):
         post = get_object_or_404(Post, pk=post_id)
         write_ser = PostWriteSerializer(data=request.data, partial=True)
         write_ser.is_valid(raise_exception=True)
-        data = _write_data_from_request(write_ser.validated_data)
+        payload = dict(write_ser.validated_data)
+        series_id, order_position = pop_series_write_fields(payload)
+        data = _write_data_from_request(payload)
         try:
             validated = validate_post_data(post, data)
             instance = save_post(validated, record_history=True)
+            if series_fields_were_set(series_id):
+                apply_series_membership(
+                    instance,
+                    series_id=series_id,
+                    order_position=(
+                        order_position
+                        if series_fields_were_set(order_position)
+                        else None
+                    ),
+                )
+                _clear_post_series_prefetch(instance)
         except DjangoValidationError as exc:
             return _form_errors_response(exc)
         return Response({"ok": True, "updated": instance.updated.isoformat()})
@@ -298,6 +353,20 @@ class PostGalleryDetailView(APIView):
         obj = get_object_or_404(PostGalleryImage, pk=gallery_id, post_id=post_id)
         obj.delete()
         return Response(status=204)
+
+
+class TagListView(APIView):
+    """Existing tag names from posts (django-taggit)."""
+
+    permission_classes = [IsStaffUser]
+
+    def get(self, request: Request) -> Response:
+        qs = Tag.objects.order_by("name")
+        query = (request.query_params.get("q") or "").strip()
+        if query:
+            qs = qs.filter(name__icontains=query)
+        names = list(qs.values_list("name", flat=True)[:200])
+        return Response({"ok": True, "results": names})
 
 
 class CategoryListCreateView(APIView):

@@ -1,14 +1,13 @@
 import { cn } from "@/lib/utils";
+import { useT } from "@/i18n";
 
 interface LoadingFallbackProps {
   className?: string;
   label?: string;
 }
 
-export function LoadingFallback({
-  className,
-  label = "Загрузка…",
-}: LoadingFallbackProps) {
+export function LoadingFallback({ className, label }: LoadingFallbackProps) {
+  const t = useT();
   return (
     <div
       className={cn(
@@ -16,7 +15,7 @@ export function LoadingFallback({
         className,
       )}
     >
-      {label}
+      {label ?? t("common.loading")}
     </div>
   );
 }

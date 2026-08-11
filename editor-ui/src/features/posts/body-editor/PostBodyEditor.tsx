@@ -50,7 +50,7 @@ import { apiFetch, apiUpload } from "@/api/client";
 import type { GalleryImage } from "@/api/types";
 import { normalizeImageFileForUpload } from "@/lib/imageUpload";
 import { mediaUrl } from "@/lib/mediaUrl";
-import { ckeditorConfig } from "./ckeditor.config";
+import { buildCkeditorConfig } from "./ckeditor.config";
 import { EmojiPalette } from "./components/EmojiPalette";
 import { GalleryInsertButton } from "./components/GalleryInsertButton";
 import { BodyBasicStatsRail } from "./components/BodyBasicStatsRail";
@@ -63,6 +63,7 @@ import {
 import { useDefaultJustify } from "./hooks/useDefaultJustify";
 import { useElementVisible } from "./hooks/useElementVisible";
 import type { Editor, EditorConfig } from "ckeditor5";
+import { useI18n } from "@/i18n";
 
 interface PostBodyEditorProps {
   value: string;
@@ -74,18 +75,22 @@ interface PostBodyEditorProps {
   onGalleryUploaded?: () => void;
 }
 
-function CustomUploadAdapter(loader: { file: Promise<File | null> }) {
-  return {
+function CustomUploadAdapterPlugin(editor: Editor) {
+  editor.plugins.get("FileRepository").createUploadAdapter = (loader: {
+    file: Promise<File | null>;
+  }) => ({
     upload: async () => {
       const file = await loader.file;
       if (!file) throw new Error("No file");
+      // Clipboard images often lack a filename/extension; normalize before POST.
+      const uploadFile = await normalizeImageFileForUpload(file);
       const body = new FormData();
-      body.append("upload", file);
+      body.append("upload", uploadFile);
       const data = await apiUpload<{ url: string }>("/media/upload/", body);
       return { default: mediaUrl(data.url) };
     },
     abort: () => {},
-  };
+  });
 }
 
 function appendDroppedPreviews(marker: HTMLElement, files: File[]): () => void {
@@ -140,6 +145,7 @@ export function PostBodyEditor({
   postId,
   onGalleryUploaded,
 }: PostBodyEditorProps) {
+  const { locale, t } = useI18n();
   const editorRef = useRef<Editor | null>(null);
   const mainStatsRef = useRef<HTMLDivElement | null>(null);
   const extraToolbarHostRef = useRef<HTMLElement | null>(null);
@@ -152,13 +158,14 @@ export function PostBodyEditor({
   const localGalleryImagesRef = useRef(localGalleryImages);
   localGalleryImagesRef.current = localGalleryImages;
   const galleryEditorKey = useMemo(
-    () => localGalleryImages.map((image) => image.id).join(":"),
-    [localGalleryImages],
+    () => `${locale}:${localGalleryImages.map((image) => image.id).join(":")}`,
+    [locale, localGalleryImages],
   );
   const editorConfig = useMemo(
     () =>
       ({
-        ...ckeditorConfig,
+        ...buildCkeditorConfig(locale),
+        extraPlugins: [CustomUploadAdapterPlugin],
         plugins: [
           Essentials,
           Autoformat,
@@ -227,7 +234,7 @@ export function PostBodyEditor({
           ],
         },
       }) as EditorConfig,
-    [],
+    [locale],
   );
 
   const { attachJustify } = useDefaultJustify();
@@ -386,7 +393,7 @@ export function PostBodyEditor({
           (file) => file.size > 0 && file.type.startsWith("image/"),
         );
         if (!files.length) {
-          showGalleryDropMessage(marker, "Перетащите сюда файл изображения.");
+          showGalleryDropMessage(marker, t("editor.dropImageHere"));
           return;
         }
         const galleryKey = Number(marker.dataset.galleryKey) || 1;
@@ -407,7 +414,7 @@ export function PostBodyEditor({
             () => marker.classList.remove("ck-gallery-marker--error"),
             1600,
           );
-          showGalleryDropMessage(marker, "Не удалось загрузить изображение.");
+          showGalleryDropMessage(marker, t("editor.uploadImageFailed"));
         }).finally(() => {
           marker.classList.remove("ck-gallery-marker--uploading");
         });
@@ -424,13 +431,13 @@ export function PostBodyEditor({
         event.stopPropagation();
         const imageId = Number(button.dataset.galleryImageId);
         if (!imageId) return;
-        if (!window.confirm("Удалить изображение из галереи?")) return;
+        if (!window.confirm(t("editor.deleteImageConfirm"))) return;
         button.disabled = true;
         void deleteGalleryImage(imageId).catch(() => {
           button.disabled = false;
           const marker = button.closest<HTMLElement>(".ck-gallery-marker");
           if (marker) {
-            showGalleryDropMessage(marker, "Не удалось удалить изображение.");
+            showGalleryDropMessage(marker, t("editor.deleteImageFailed"));
           }
         });
       };
@@ -449,7 +456,7 @@ export function PostBodyEditor({
         editable.removeEventListener("drop", onDrop, true);
       };
     },
-    [deleteGalleryImage, postId, uploadGalleryFiles],
+    [deleteGalleryImage, postId, t, uploadGalleryFiles],
   );
 
   const extraToolbar = (
@@ -504,12 +511,9 @@ export function PostBodyEditor({
                   const root = editor.editing.view.document.getRoot();
                   if (root) {
                     writer.setAttribute("spellcheck", "true", root);
-                    writer.setAttribute("lang", "ru", root);
+                    writer.setAttribute("lang", locale, root);
                   }
                 });
-                editor.plugins.get("FileRepository").createUploadAdapter = (
-                  loader: { file: Promise<File | null> },
-                ) => CustomUploadAdapter(loader);
                 attachGalleryDropHandlers(editor);
               }}
               onChange={(_event, editor) => {
@@ -517,7 +521,9 @@ export function PostBodyEditor({
               }}
               onError={(error) => {
                 setEditorError(
-                  error instanceof Error ? error.message : "Не удалось загрузить редактор.",
+                  error instanceof Error
+                    ? error.message
+                    : t("editor.loadFailed"),
                 );
               }}
             />

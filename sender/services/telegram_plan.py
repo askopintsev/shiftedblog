@@ -39,7 +39,9 @@ CONTINUATION_PREFIX = "⏫ продолжение поста"
 
 
 def telegram_use_rich_messages() -> bool:
-    return bool(getattr(settings, "TELEGRAM_USE_RICH_MESSAGES", False))
+    from core.services.site_settings import SiteSettingsService
+
+    return SiteSettingsService.telegram_use_rich_messages()
 
 
 def _media_url_prefixes() -> list[str]:

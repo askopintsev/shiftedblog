@@ -4,13 +4,8 @@ import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { apiFetch } from "@/api/client";
 import type { PostListItem, PostStatus } from "@/api/types";
+import { useI18n } from "@/i18n";
 import { cn } from "@/lib/utils";
-
-const statusLabels: Record<PostStatus, string> = {
-  draft: "Черновик",
-  ready_to_publish: "Готов",
-  published: "Опубликован",
-};
 
 const statusColors: Record<PostStatus, string> = {
   draft: "bg-gray-100 text-gray-700",
@@ -21,6 +16,13 @@ const statusColors: Record<PostStatus, string> = {
 export function PostsListPage() {
   const [status, setStatus] = useState("");
   const queryClient = useQueryClient();
+  const { t, bcp47 } = useI18n();
+
+  const statusLabels: Record<PostStatus, string> = {
+    draft: t("posts.status.draft"),
+    ready_to_publish: t("posts.status.ready"),
+    published: t("posts.status.published"),
+  };
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["posts", status],
@@ -47,13 +49,13 @@ export function PostsListPage() {
   return (
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Посты</h1>
+        <h1 className="text-2xl font-semibold">{t("posts.title")}</h1>
         <Link
           to="/posts/new"
           className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm text-white"
         >
           <Plus className="h-4 w-4" />
-          Новый пост
+          {t("posts.new")}
         </Link>
       </div>
       <div className="mb-4 flex gap-2">
@@ -67,7 +69,7 @@ export function PostsListPage() {
               status === s ? "bg-accent text-white" : "bg-surface border border-border",
             )}
           >
-            {s ? statusLabels[s as PostStatus] : "Все"}
+            {s ? statusLabels[s as PostStatus] : t("posts.filterAll")}
           </button>
         ))}
       </div>
@@ -75,33 +77,37 @@ export function PostsListPage() {
         <table className="w-full text-sm">
           <thead className="bg-surface-muted text-left text-text-muted">
             <tr>
-              <th className="px-4 py-3">Заголовок</th>
-              <th className="px-4 py-3">Статус</th>
-              <th className="px-4 py-3">Обновлён</th>
-              <th className="px-4 py-3">Показывать на сайте</th>
-              <th className="px-4 py-3">Действия</th>
+              <th className="px-4 py-3">{t("posts.col.title")}</th>
+              <th className="px-4 py-3">{t("posts.col.status")}</th>
+              <th className="px-4 py-3">{t("posts.col.updated")}</th>
+              <th className="px-4 py-3">{t("posts.col.onSite")}</th>
+              <th className="px-4 py-3">{t("posts.col.actions")}</th>
             </tr>
           </thead>
           <tbody>
             {isLoading && (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-text-muted">
-                  Загрузка…
+                  {t("common.loading")}
                 </td>
               </tr>
             )}
             {isError && (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-red-600">
-                  Не удалось загрузить посты:{" "}
-                  {error instanceof Error ? error.message : "ошибка API"}
+                  {t("posts.loadError", {
+                    message:
+                      error instanceof Error
+                        ? error.message
+                        : t("posts.apiError"),
+                  })}
                 </td>
               </tr>
             )}
             {!isLoading && !isError && !data?.results.length && (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-text-muted">
-                  Постов не найдено.
+                  {t("posts.empty")}
                 </td>
               </tr>
             )}
@@ -124,14 +130,14 @@ export function PostsListPage() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-text-muted">
-                  {new Date(post.updated).toLocaleString("ru-RU")}
+                  {new Date(post.updated).toLocaleString(bcp47)}
                 </td>
                 <td className="px-4 py-3">
                   {post.status === "published" ? (
                     <div className="flex items-center gap-2">
                       {post.is_on_site ? (
                         <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">
-                          Да
+                          {t("common.yes")}
                         </span>
                       ) : (
                         <button
@@ -140,12 +146,12 @@ export function PostsListPage() {
                           disabled={siteMutationPending}
                           onClick={() => sitePublish.mutate(post.id)}
                         >
-                          Да
+                          {t("common.yes")}
                         </button>
                       )}
                       {!post.is_on_site ? (
                         <span className="rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-semibold text-gray-800">
-                          Нет
+                          {t("common.no")}
                         </span>
                       ) : (
                         <button
@@ -154,17 +160,17 @@ export function PostsListPage() {
                           disabled={siteMutationPending}
                           onClick={() => siteUnpublish.mutate(post.id)}
                         >
-                          Нет
+                          {t("common.no")}
                         </button>
                       )}
                     </div>
                   ) : (
-                    <span className="text-text-muted">—</span>
+                    <span className="text-text-muted">{t("common.emDash")}</span>
                   )}
                 </td>
                 <td className="px-4 py-3">
                   <Link to={`/posts/${post.id}`} className="text-accent hover:underline">
-                    Редактировать
+                    {t("posts.edit")}
                   </Link>
                 </td>
               </tr>

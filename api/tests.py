@@ -8,7 +8,7 @@ from django.test import TestCase
 from PIL import Image
 from rest_framework.test import APIClient
 
-from editor.models import Post
+from editor.models import Post, PostSeries, Series
 
 User = get_user_model()
 
@@ -226,3 +226,183 @@ class EditorApiPostTests(TestCase):
         response = self.client.get("/api/editor/v1/posts/")
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["ok"])
+
+
+class EditorApiMediaUploadTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email="media@example.com",
+            password="test-pass-123",
+            is_staff=True,
+        )
+        self.client.force_login(self.user)
+
+    def _png_bytes(self) -> bytes:
+        buffer = io.BytesIO()
+        Image.new("RGB", (8, 8), color="blue").save(buffer, format="PNG")
+        return buffer.getvalue()
+
+    def test_upload_with_filename(self):
+        uploaded = SimpleUploadedFile(
+            "shot.png",
+            self._png_bytes(),
+            content_type="image/png",
+        )
+        response = self.client.post(
+            "/api/editor/v1/media/upload/",
+            {"upload": uploaded},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["uploaded"], 1)
+        self.assertTrue(payload["url"].endswith(".png"))
+
+    def test_clipboard_upload_without_extension_uses_content_type(self):
+        # Browsers often paste clipboard images with an empty/extension-less name.
+        uploaded = SimpleUploadedFile(
+            "image",
+            self._png_bytes(),
+            content_type="image/png",
+        )
+        response = self.client.post(
+            "/api/editor/v1/media/upload/",
+            {"upload": uploaded},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["uploaded"], 1)
+        self.assertTrue(str(payload["fileName"]).endswith(".png"))
+        self.assertTrue(payload["url"].endswith(".png"))
+
+    def test_upload_rejects_unknown_type(self):
+        uploaded = SimpleUploadedFile(
+            "notes",
+            b"not-an-image",
+            content_type="text/plain",
+        )
+        response = self.client.post(
+            "/api/editor/v1/media/upload/",
+            {"upload": uploaded},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, 400)
+
+
+class EditorSiteSettingsApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email="sitesettings@example.com",
+            password="test-pass-123",
+            is_staff=True,
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_get_and_patch_site_settings(self):
+        get_response = self.client.get("/api/editor/v1/config/site-settings/")
+        self.assertEqual(get_response.status_code, 200)
+        self.assertTrue(get_response.json()["ok"])
+        self.assertIn("site_name", get_response.json()["settings"])
+
+        patch_response = self.client.patch(
+            "/api/editor/v1/config/site-settings/",
+            {"site_name": "Editor Site"},
+            format="json",
+        )
+        self.assertEqual(patch_response.status_code, 200)
+        self.assertEqual(patch_response.json()["settings"]["site_name"], "Editor Site")
+
+        again = self.client.get("/api/editor/v1/config/site-settings/")
+        self.assertEqual(again.json()["settings"]["site_name"], "Editor Site")
+
+
+class EditorTagListApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email="tags@example.com",
+            password="test-pass-123",
+            is_staff=True,
+        )
+        self.client.force_authenticate(user=self.user)
+        post = Post.objects.create(
+            title="Tagged",
+            slug="tagged-post",
+            author=self.user,
+            status="draft",
+            body="<p>hi</p>",
+        )
+        post.tags.set(["django", "news"])
+
+    def test_lists_existing_tag_names(self):
+        response = self.client.get("/api/editor/v1/tags/")
+        self.assertEqual(response.status_code, 200)
+        names = response.json()["results"]
+        self.assertIn("django", names)
+        self.assertIn("news", names)
+
+    def test_filters_by_query(self):
+        response = self.client.get("/api/editor/v1/tags/", {"q": "dja"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["results"], ["django"])
+
+
+class EditorSeriesApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email="series@example.com",
+            password="test-pass-123",
+            is_staff=True,
+        )
+        self.client.force_authenticate(user=self.user)
+        self.series = Series.objects.create(name="Roadmap")
+        self.post = Post.objects.create(
+            title="Part one",
+            slug="part-one",
+            author=self.user,
+            status="draft",
+            body="<p>hi</p>",
+        )
+
+    def test_create_series_and_assign_with_position(self):
+        create = self.client.post(
+            "/api/editor/v1/series/",
+            {"name": "New series"},
+            format="json",
+        )
+        self.assertEqual(create.status_code, 201)
+        series_id = create.json()["series"]["id"]
+
+        patch = self.client.patch(
+            f"/api/editor/v1/posts/{self.post.pk}/",
+            {"series_id": series_id, "series_order_position": 2},
+            format="json",
+        )
+        self.assertEqual(patch.status_code, 200)
+        memberships = patch.json()["post"]["series"]
+        self.assertEqual(len(memberships), 1)
+        self.assertEqual(memberships[0]["id"], series_id)
+        self.assertEqual(memberships[0]["order_position"], 2)
+
+        row = PostSeries.objects.get(post=self.post)
+        self.assertEqual(row.series_id, series_id)
+        self.assertEqual(row.order_position, 2)
+
+    def test_clear_series_membership(self):
+        PostSeries.objects.create(
+            post=self.post,
+            series=self.series,
+            order_position=1,
+        )
+        patch = self.client.patch(
+            f"/api/editor/v1/posts/{self.post.pk}/",
+            {"series_id": None, "series_order_position": None},
+            format="json",
+        )
+        self.assertEqual(patch.status_code, 200)
+        self.assertEqual(patch.json()["post"]["series"], [])
+        self.assertFalse(PostSeries.objects.filter(post=self.post).exists())
