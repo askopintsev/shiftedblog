@@ -289,3 +289,31 @@ class EditorApiMediaUploadTests(TestCase):
             format="multipart",
         )
         self.assertEqual(response.status_code, 400)
+
+
+class EditorSiteSettingsApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email="sitesettings@example.com",
+            password="test-pass-123",
+            is_staff=True,
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_get_and_patch_site_settings(self):
+        get_response = self.client.get("/api/editor/v1/config/site-settings/")
+        self.assertEqual(get_response.status_code, 200)
+        self.assertTrue(get_response.json()["ok"])
+        self.assertIn("site_name", get_response.json()["settings"])
+
+        patch_response = self.client.patch(
+            "/api/editor/v1/config/site-settings/",
+            {"site_name": "Editor Site"},
+            format="json",
+        )
+        self.assertEqual(patch_response.status_code, 200)
+        self.assertEqual(patch_response.json()["settings"]["site_name"], "Editor Site")
+
+        again = self.client.get("/api/editor/v1/config/site-settings/")
+        self.assertEqual(again.json()["settings"]["site_name"], "Editor Site")

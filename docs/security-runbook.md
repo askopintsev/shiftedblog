@@ -2,13 +2,15 @@
 
 Lightweight monitoring for the single-VPS shiftedblog deployment (logs + email, no Sentry/Datadog).
 
+Self-host guides: [en/getting-started.md](en/getting-started.md) · [ru/getting-started.md](ru/getting-started.md). Maintainer CI notes: [en/maintainer.md](en/maintainer.md).
+
 ## Monthly checklist
 
 1. Review `logs/security.log` and `logs/authentication.log` on the server (`./logs` volume in production).
 2. Open Django admin → Axes access attempts / failure logs (stock axes admin).
 3. Run `python manage.py security_auth_report --hours 168` (last 7 days).
-4. Confirm `ADMIN_URL` in Doppler is non-default and not shared publicly.
-5. Review GitHub deploy keys, `VPS_SSH_KEY`, and Doppler access.
+4. Confirm `ADMIN_URL` in `secrets.env` (or your secret manager) is non-default and not shared publicly.
+5. Review GitHub deploy keys, `VPS_SSH_KEY`, and secret-manager access.
 6. Check Dependabot PRs and CI `pip-audit` results.
 
 ## Weekly automated report (optional cron on VPS)

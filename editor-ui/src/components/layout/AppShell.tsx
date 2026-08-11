@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { resetCsrfToken } from "@/api/client";
 import {
   FileText,
+  Globe,
   Languages,
   Link2,
   LogOut,
@@ -40,6 +41,7 @@ const navGroups: NavGroup[] = [
   {
     labelKey: "nav.settings",
     items: [
+      { to: "/config/site", labelKey: "nav.site", icon: Globe },
       { to: "/config/networks", labelKey: "nav.networks", icon: Network },
       { to: "/config/telegram", labelKey: "nav.telegram", icon: Settings },
       {

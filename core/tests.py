@@ -161,6 +161,39 @@ class AdminSessionKeepaliveTests(TestCase):
         self.assertEqual(response.status_code, 204)
 
 
+class SiteSettingsTests(TestCase):
+    def test_get_site_settings_is_singleton(self):
+        from core.models import SiteSettings, get_site_settings
+
+        a = get_site_settings()
+        b = get_site_settings()
+        self.assertEqual(a.pk, b.pk)
+        self.assertEqual(SiteSettings.objects.count(), 1)
+
+    def test_context_processor_exposes_site_name(self):
+        from core.models import SiteSettings
+
+        SiteSettings.objects.filter(pk=1).update(site_name="Custom Blog")
+        from django.core.cache import cache
+
+        cache.clear()
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Custom Blog")
+
+    @override_settings(ADMIN_EMAIL="env-admin@example.com")
+    def test_effective_email_falls_back_to_env(self):
+        from core.models import SiteSettings
+        from core.services.site_settings import SiteSettingsService
+
+        SiteSettings.objects.filter(pk=1).update(admin_email="")
+        from django.core.cache import cache
+
+        cache.clear()
+        cfg = SiteSettingsService.effective_email()
+        self.assertEqual(cfg.admin_email, "env-admin@example.com")
+
+
 @override_settings(ADMIN_URL="mellon")
 class UserAdminTests(TestCase):
     def setUp(self):

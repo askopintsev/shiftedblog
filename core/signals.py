@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 
-from django.conf import settings
 from django.contrib.auth.signals import user_logged_in
 from django.core.mail import send_mail
 from django.dispatch import receiver
@@ -20,16 +19,20 @@ def rotate_session_on_login(sender, request, user, **kwargs):
 
 
 def _send_lockout_email(subject: str, body: str) -> None:
-    admin_email = getattr(settings, "ADMIN_EMAIL", "") or ""
+    from core.services.site_settings import SiteSettingsService
+
+    email_cfg = SiteSettingsService.effective_email()
+    admin_email = email_cfg.admin_email
     if not admin_email:
         log.warning("ADMIN_EMAIL is not set; skipping lockout notification email.")
         return
     send_mail(
         subject=subject,
         message=body,
-        from_email=settings.DEFAULT_FROM_EMAIL,
+        from_email=email_cfg.default_from_email,
         recipient_list=[admin_email],
         fail_silently=False,
+        connection=SiteSettingsService.get_email_connection(),
     )
 
 

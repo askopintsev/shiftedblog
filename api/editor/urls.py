@@ -101,5 +101,10 @@ urlpatterns = [
         config.TelegramSettingsView.as_view(),
         name="telegram_settings",
     ),
+    path(
+        "config/site-settings/",
+        config.SiteSettingsView.as_view(),
+        name="site_settings",
+    ),
     path("audit/post-links/", config.PostLinkAuditView.as_view(), name="post_links"),
 ]

@@ -1,0 +1,198 @@
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    client_max_body_size 100M;
+
+    # Rate limiting zones
+    # Login / 2FA: allow multi-step flow (form, POST, token page, QR, POST token).
+    limit_req_zone $binary_remote_addr zone=login_limit:10m rate=20r/m;
+    # Editor API auth (separate bucket so SPA retries do not block staff login).
+    limit_req_zone $binary_remote_addr zone=api_login_limit:10m rate=30r/m;
+    # General API rate limiting: 10 requests per second per IP
+    limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+    # Connection limiting: max 10 connections per IP
+    limit_conn_zone $binary_remote_addr zone=conn_limit:10m;
+
+    # limit_req/limit_conn default to 503; use 429 so error_page handlers apply.
+    limit_req_status 429;
+    limit_conn_status 429;
+
+    # Redirect HTTP to HTTPS
+    server {
+        listen 8000;
+        server_name __HTTP_SERVER_NAMES__;
+
+        # Serve ACME challenges on plain HTTP without redirect (best practice: before any proxy/redirect)
+        location /.well-known/acme-challenge/ {
+            root /var/www/html;  # Your webroot (must match -w flag)
+            try_files $uri =404;  # Serve file or 404 (prevents app handling)
+        }
+
+        location / {
+            return 301 https://$host$request_uri;
+        }
+    }
+
+    # HTTPS server
+    server {
+        listen 443 ssl;
+        server_name __HTTPS_SERVER_NAMES__;
+
+        ssl_certificate __SSL_CERTIFICATE__;
+        ssl_certificate_key __SSL_CERTIFICATE_KEY__;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers HIGH:!aNULL:!MD5;
+
+        # Security headers
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        
+        # Content-Security-Policy
+        # Allow: self, Bootstrap CDN, inline scripts/styles for CKEditor
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://kit.fontawesome.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://ka-f.fontawesome.com; img-src 'self' data: https:; font-src 'self' https://cdn.jsdelivr.net https://kit.fontawesome.com https://ka-f.fontawesome.com data:; connect-src 'self' https://kit.fontawesome.com https://ka-f.fontawesome.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        
+        # Permissions-Policy (restrict browser features)
+        add_header Permissions-Policy "geolocation=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(self), payment=()" always;
+
+        # Optionally allow ACME on HTTPS too (for robustness, though CA uses HTTP)
+        location /.well-known/acme-challenge/ {
+            root /var/www/html;
+            try_files $uri =404;
+        }
+
+        # Static files
+        location /static/ {
+            alias /static/;
+            expires 7d;
+            add_header Cache-Control "public, immutable";
+        }
+
+        # Media files
+        location /media/ {
+            alias /media/;
+            expires 7d;
+            add_header Cache-Control "public";
+        }
+
+        # Rate limiting for login endpoints (two-factor auth)
+        # Protect login, 2FA setup, and admin login endpoints
+        # Matches: /login/, /account/login/, /account/two_factor/*, /{any_admin_slug}/login/
+        # ADMIN_URL is configurable in Django (default: mellon); pattern is not hardcoded.
+        location ~ ^/(login|account/(login|two_factor)|[^/]+/login) {
+            limit_req zone=login_limit burst=15 nodelay;
+            limit_conn conn_limit 10;
+
+            proxy_connect_timeout 30s;
+            proxy_send_timeout 120s;
+            proxy_read_timeout 120s;
+            
+            proxy_pass http://web:8000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_redirect off;
+            
+            error_page 429 = @ratelimit;
+            error_page 503 = @ratelimit;
+        }
+
+        # Custom error page for rate limiting
+        location @ratelimit {
+            add_header Content-Type text/plain;
+            return 429 "Too Many Requests. Please try again later.\n";
+        }
+
+        # Rate limiting for editor API auth (csrf + login + 2fa)
+        location ~ ^/api/editor/v1/auth/(csrf|login|2fa)/ {
+            limit_req zone=api_login_limit burst=20 nodelay;
+            limit_conn conn_limit 10;
+            proxy_pass http://web:8000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_redirect off;
+            error_page 429 = @ratelimit;
+            error_page 503 = @ratelimit;
+        }
+
+        # Django application
+        location / {
+            # Apply general connection limiting
+            limit_conn conn_limit 10;
+
+            proxy_connect_timeout 30s;
+            proxy_send_timeout 120s;
+            proxy_read_timeout 120s;
+            
+            proxy_pass http://web:8000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_redirect off;
+        }
+    }
+
+    # Editor SPA subdomain
+    server {
+        listen 443 ssl;
+        server_name __EDITOR_SERVER_NAMES__;
+
+        ssl_certificate __SSL_CERTIFICATE__;
+        ssl_certificate_key __SSL_CERTIFICATE_KEY__;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers HIGH:!aNULL:!MD5;
+
+        # Keep in sync with main HTTPS vhost (+ Google Fonts for the SPA).
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Cross-Origin-Opener-Policy "same-origin" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' __CSP_CONNECT_ORIGINS__; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        add_header Permissions-Policy "geolocation=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(self), payment=()" always;
+
+        root /editor-ui/dist;
+        index index.html;
+
+        location /api/editor/ {
+            limit_req zone=api_limit burst=20 nodelay;
+            limit_conn conn_limit 10;
+
+            proxy_connect_timeout 30s;
+            proxy_send_timeout 120s;
+            proxy_read_timeout 120s;
+
+            proxy_pass http://web:8000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_redirect off;
+        }
+
+        location /media/ {
+            alias /media/;
+            expires 7d;
+            # Location-level add_header replaces server-level headers; repeat security ones.
+            add_header Cache-Control "public";
+            add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+            add_header X-Frame-Options "DENY" always;
+            add_header X-Content-Type-Options "nosniff" always;
+            add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        }
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+    }
+}

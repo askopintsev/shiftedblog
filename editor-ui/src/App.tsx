@@ -8,6 +8,7 @@ import { PostLinksPage } from "@/features/audit/PostLinksPage";
 import { CredentialsPage } from "@/features/config/CredentialsPage";
 import { InterfacePage } from "@/features/config/InterfacePage";
 import { NetworksPage } from "@/features/config/NetworksPage";
+import { SiteSettingsPage } from "@/features/config/SiteSettingsPage";
 import { TelegramSettingsPage } from "@/features/config/TelegramSettingsPage";
 import { PostsListPage } from "@/features/posts/PostsListPage";
 import { PublishPage } from "@/features/publish/PublishPage";
@@ -58,6 +59,7 @@ export default function App() {
                     <Route path="/posts/new" element={<PostEditPage />} />
                     <Route path="/posts/:id" element={<PostEditPage />} />
                     <Route path="/publish" element={<PublishPage />} />
+                    <Route path="/config/site" element={<SiteSettingsPage />} />
                     <Route path="/config/networks" element={<NetworksPage />} />
                     <Route
                       path="/config/credentials"

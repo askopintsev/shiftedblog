@@ -29,7 +29,7 @@
     <meta name="msapplication-TileColor" content="#ffffff">
     <meta name="msapplication-TileImage" content="{% static 'img/favicons/' %}ms-icon-144x144.png">
     <meta name="theme-color" content="#ffffff">
-    <meta name="copyright" content="© 2025 Shifted Stuff">
+    <meta name="copyright" content="© {% now 'Y' %} {{ site_settings.site_name }}">
     <!-- CSS tweak for very custom css now for footer-->
     {% block css %}{% endblock css %}
 

@@ -9,7 +9,13 @@ from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 
-from core.models import Credential, Network, TelegramNetworkSettings, User
+from core.models import (
+    Credential,
+    Network,
+    SiteSettings,
+    TelegramNetworkSettings,
+    User,
+)
 
 
 class CredentialAdminForm(forms.ModelForm):
@@ -73,6 +79,67 @@ class NetworkAdmin(admin.ModelAdmin):
     list_display = ("name", "slug")
     search_fields = ("name", "slug")
     fields = ("name", "slug")
+
+
+@admin.register(SiteSettings)
+class SiteSettingsAdmin(admin.ModelAdmin):
+    """Singleton site branding / operator settings."""
+
+    def has_add_permission(self, request):
+        if SiteSettings.objects.exists():
+            return False
+        return super().has_add_permission(request)
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    fieldsets = (
+        (
+            "Brand",
+            {"fields": ("site_name", "tagline", "footer_text")},
+        ),
+        (
+            "Social links",
+            {
+                "fields": (
+                    "telegram_url",
+                    "github_url",
+                    "habr_url",
+                    "twitter_site",
+                    "contact_email",
+                ),
+            },
+        ),
+        (
+            "Email (non-secret)",
+            {
+                "description": (
+                    "SMTP password stays in environment "
+                    "(EMAIL_HOST_PASSWORD). Leave host blank to use env EMAIL_*."
+                ),
+                "fields": (
+                    "default_from_email",
+                    "admin_email",
+                    "email_host",
+                    "email_port",
+                    "email_host_user",
+                    "email_use_tls",
+                    "email_use_ssl",
+                ),
+            },
+        ),
+        (
+            "Feature toggles",
+            {
+                "fields": (
+                    "telegram_use_rich_messages",
+                    "text_quality_checker_enabled",
+                ),
+            },
+        ),
+        (_("Important dates"), {"fields": ("updated_at",)}),
+    )
+    readonly_fields = ("updated_at",)
 
 
 @admin.register(TelegramNetworkSettings)

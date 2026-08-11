@@ -349,7 +349,9 @@ class PostTextQualityService:
         plain_text: str,
         locale: str,
     ) -> _LanguageToolInsights | None:
-        if not getattr(settings, "TEXT_QUALITY_PY_CHECKER_ENABLED", False):
+        from core.services.site_settings import SiteSettingsService
+
+        if not SiteSettingsService.text_quality_checker_enabled():
             return None
         if len(plain_text) < 40:
             return None
