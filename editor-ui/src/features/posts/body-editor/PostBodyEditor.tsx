@@ -75,18 +75,22 @@ interface PostBodyEditorProps {
   onGalleryUploaded?: () => void;
 }
 
-function CustomUploadAdapter(loader: { file: Promise<File | null> }) {
-  return {
+function CustomUploadAdapterPlugin(editor: Editor) {
+  editor.plugins.get("FileRepository").createUploadAdapter = (loader: {
+    file: Promise<File | null>;
+  }) => ({
     upload: async () => {
       const file = await loader.file;
       if (!file) throw new Error("No file");
+      // Clipboard images often lack a filename/extension; normalize before POST.
+      const uploadFile = await normalizeImageFileForUpload(file);
       const body = new FormData();
-      body.append("upload", file);
+      body.append("upload", uploadFile);
       const data = await apiUpload<{ url: string }>("/media/upload/", body);
       return { default: mediaUrl(data.url) };
     },
     abort: () => {},
-  };
+  });
 }
 
 function appendDroppedPreviews(marker: HTMLElement, files: File[]): () => void {
@@ -161,6 +165,7 @@ export function PostBodyEditor({
     () =>
       ({
         ...buildCkeditorConfig(locale),
+        extraPlugins: [CustomUploadAdapterPlugin],
         plugins: [
           Essentials,
           Autoformat,
@@ -509,9 +514,6 @@ export function PostBodyEditor({
                     writer.setAttribute("lang", locale, root);
                   }
                 });
-                editor.plugins.get("FileRepository").createUploadAdapter = (
-                  loader: { file: Promise<File | null> },
-                ) => CustomUploadAdapter(loader);
                 attachGalleryDropHandlers(editor);
               }}
               onChange={(_event, editor) => {

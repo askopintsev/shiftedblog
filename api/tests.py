@@ -226,3 +226,66 @@ class EditorApiPostTests(TestCase):
         response = self.client.get("/api/editor/v1/posts/")
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["ok"])
+
+
+class EditorApiMediaUploadTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email="media@example.com",
+            password="test-pass-123",
+            is_staff=True,
+        )
+        self.client.force_login(self.user)
+
+    def _png_bytes(self) -> bytes:
+        buffer = io.BytesIO()
+        Image.new("RGB", (8, 8), color="blue").save(buffer, format="PNG")
+        return buffer.getvalue()
+
+    def test_upload_with_filename(self):
+        uploaded = SimpleUploadedFile(
+            "shot.png",
+            self._png_bytes(),
+            content_type="image/png",
+        )
+        response = self.client.post(
+            "/api/editor/v1/media/upload/",
+            {"upload": uploaded},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["uploaded"], 1)
+        self.assertTrue(payload["url"].endswith(".png"))
+
+    def test_clipboard_upload_without_extension_uses_content_type(self):
+        # Browsers often paste clipboard images with an empty/extension-less name.
+        uploaded = SimpleUploadedFile(
+            "image",
+            self._png_bytes(),
+            content_type="image/png",
+        )
+        response = self.client.post(
+            "/api/editor/v1/media/upload/",
+            {"upload": uploaded},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["uploaded"], 1)
+        self.assertTrue(str(payload["fileName"]).endswith(".png"))
+        self.assertTrue(payload["url"].endswith(".png"))
+
+    def test_upload_rejects_unknown_type(self):
+        uploaded = SimpleUploadedFile(
+            "notes",
+            b"not-an-image",
+            content_type="text/plain",
+        )
+        response = self.client.post(
+            "/api/editor/v1/media/upload/",
+            {"upload": uploaded},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, 400)

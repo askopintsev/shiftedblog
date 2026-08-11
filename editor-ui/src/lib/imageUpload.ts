@@ -1,8 +1,39 @@
 import { t } from "@/i18n";
 
+const EXT_BY_MIME: Record<string, string> = {
+  "image/png": ".png",
+  "image/jpeg": ".jpg",
+  "image/jpg": ".jpg",
+  "image/gif": ".gif",
+  "image/webp": ".webp",
+  "image/bmp": ".bmp",
+  "image/tiff": ".tiff",
+  "image/tif": ".tiff",
+};
+
 function extensionFor(file: File): string {
   const match = file.name.match(/\.[^.]+$/);
   return match?.[0].toLowerCase() ?? "";
+}
+
+/** Clipboard pastes often have an empty name or no extension — fix before upload. */
+export function ensureImageFileName(file: File): File {
+  const ext = extensionFor(file);
+  if (file.name.trim() && ext) {
+    return file;
+  }
+  const inferred =
+    EXT_BY_MIME[file.type] || (file.type.startsWith("image/") ? ".png" : "");
+  if (!inferred) {
+    return file;
+  }
+  const stem =
+    file.name.replace(/\.[^.]+$/, "").trim() ||
+    `clipboard-image-${Date.now()}`;
+  return new File([file], `${stem}${inferred}`, {
+    type: file.type || "image/png",
+    lastModified: file.lastModified || Date.now(),
+  });
 }
 
 function jpegName(file: File): string {
@@ -49,6 +80,7 @@ async function imageBitmapToJpegFile(file: File): Promise<File> {
 }
 
 export async function normalizeImageFileForUpload(file: File): Promise<File> {
-  if (!(await shouldConvertToJpeg(file))) return file;
-  return imageBitmapToJpegFile(file);
+  const named = ensureImageFileName(file);
+  if (!(await shouldConvertToJpeg(named))) return named;
+  return imageBitmapToJpegFile(named);
 }
