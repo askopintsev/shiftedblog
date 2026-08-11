@@ -2,13 +2,14 @@
 from django.conf import settings
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
-from django.db.models import Count
 from django.http import Http404, HttpRequest, HttpResponsePermanentRedirect
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.cache import cache_page
 from taggit.models import Tag
 
 from blog.category_helpers import resolve_category_for_list
+from blog.querysets import public_posts_queryset
+from blog.related_posts import series_navigation, similar_and_newest_posts
 from editor.forms import SearchForm
 from editor.models import Category, Post, PostSlugRedirect
 
@@ -175,8 +176,9 @@ def post_list(request, tag_slug=None, category_slug=None):
 @_public_page_cache("editor.post_detail")
 def post_detail(request, slug):
     post = (
-        Post.objects.prefetch_related("gallery_images")
-        .filter(slug=slug, status="published")
+        public_posts_queryset()
+        .prefetch_related("gallery_images")
+        .filter(slug=slug)
         .first()
     )
     if post is None:
@@ -185,48 +187,23 @@ def post_detail(request, slug):
             .filter(old_slug=slug)
             .first()
         )
-        if redirect_row and redirect_row.post.status == "published":
+        if (
+            redirect_row
+            and redirect_row.post.status == "published"
+            and hasattr(redirect_row.post, "site_publication")
+        ):
             return HttpResponsePermanentRedirect(redirect_row.post.get_absolute_url())
         raise Http404("No published post matches this URL.")
 
-    previous_post = None
-    next_post = None
-    current_series = None
-
-    post_series = post.post_series.filter(order_position__isnull=False).first()
-    if post_series:
-        current_series = post_series.series
-        previous_post = post.get_previous_post_in_series(current_series)
-        if previous_post and previous_post.status != "published":
-            previous_post = None
-        next_post = post.get_next_post_in_series(current_series)
-        if next_post and next_post.status != "published":
-            next_post = None
-
+    current_series, previous_post, next_post = series_navigation(post)
     excluded_series_post_ids = [
         series_post.id
         for series_post in (previous_post, next_post)
         if series_post is not None
     ]
-
-    post_tags_ids = post.tags.values_list("id", flat=True)
-    similar_posts = (
-        Post.objects.filter(status="published")
-        .filter(tags__in=post_tags_ids)
-        .exclude(id=post.id)
-    )
-    if excluded_series_post_ids:
-        similar_posts = similar_posts.exclude(id__in=excluded_series_post_ids)
-    similar_posts = similar_posts.annotate(same_tags=Count("tags")).order_by(
-        "-same_tags", "-published"
-    )[:3]
-
-    newest_posts = (
-        Post.objects.filter(status="published")
-        .exclude(id=post.id)
-        .exclude(id__in=excluded_series_post_ids)
-        .exclude(id__in=similar_posts)
-        .order_by("-published")[: 5 - len(similar_posts)]
+    similar_posts, newest_posts = similar_and_newest_posts(
+        post,
+        excluded_ids=excluded_series_post_ids,
     )
 
     return render(
@@ -251,43 +228,15 @@ def post_detail_by_uuid(request, uuid):
     )
     # Don't increment views for draft preview
 
-    previous_post = None
-    next_post = None
-    current_series = None
-    post_series = post.post_series.filter(order_position__isnull=False).first()
-    if post_series:
-        current_series = post_series.series
-        previous_post = post.get_previous_post_in_series(current_series)
-        if previous_post and previous_post.status != "published":
-            previous_post = None
-        next_post = post.get_next_post_in_series(current_series)
-        if next_post and next_post.status != "published":
-            next_post = None
-
+    current_series, previous_post, next_post = series_navigation(post)
     excluded_series_post_ids = [
         series_post.id
         for series_post in (previous_post, next_post)
         if series_post is not None
     ]
-
-    post_tags_ids = post.tags.values_list("id", flat=True)
-    similar_posts = (
-        Post.objects.filter(status="published")
-        .filter(tags__in=post_tags_ids)
-        .exclude(id=post.id)
-    )
-    if excluded_series_post_ids:
-        similar_posts = similar_posts.exclude(id__in=excluded_series_post_ids)
-    similar_posts = similar_posts.annotate(same_tags=Count("tags")).order_by(
-        "-same_tags", "-published"
-    )[:3]
-
-    newest_posts = (
-        Post.objects.filter(status="published")
-        .exclude(id=post.id)
-        .exclude(id__in=excluded_series_post_ids)
-        .exclude(id__in=similar_posts)
-        .order_by("-published")[: 5 - len(similar_posts)]
+    similar_posts, newest_posts = similar_and_newest_posts(
+        post,
+        excluded_ids=excluded_series_post_ids,
     )
 
     response = render(

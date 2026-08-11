@@ -70,6 +70,63 @@ class BlogPublicVisibilityTests(TestCase):
         )
         self.assertEqual(hidden_response.status_code, 404)
 
+    def test_similar_and_newest_exclude_off_site_and_draft_posts(self):
+        self.visible_post.tags.add("shared-tag")
+        self.hidden_post.tags.add("shared-tag")
+        draft = Post(
+            title="Draft similar",
+            slug="draft-similar",
+            author=self.author,
+            cover_image=_minimal_jpeg_upload("cover-draft.jpg"),
+            body="Draft body",
+            status="draft",
+            category=self.category,
+        )
+        draft.save()
+        draft.tags.add("shared-tag")
+
+        on_site_peer = Post(
+            title="On-site peer",
+            slug="on-site-peer",
+            author=self.author,
+            cover_image=_minimal_jpeg_upload("cover-peer.jpg"),
+            body="Peer body",
+            status="published",
+            category=self.category,
+        )
+        on_site_peer.save(_allow_publish_via_sender=True)
+        SitePublication.objects.create(
+            post=on_site_peer,
+            published_at=on_site_peer.published,
+        )
+        on_site_peer.tags.add("shared-tag")
+
+        response = self.client.get(
+            reverse("blog:post_detail", args=[self.visible_post.slug]),
+        )
+        self.assertEqual(response.status_code, 200)
+        similar = list(response.context["similar_posts"])
+        newest = list(response.context["newest_posts"])
+        related_titles = {post.title for post in [*similar, *newest]}
+        self.assertIn(on_site_peer.title, related_titles)
+        self.assertNotIn(self.hidden_post.title, related_titles)
+        self.assertNotIn(draft.title, related_titles)
+
+        preview = self.client.get(
+            reverse("editor:post_detail_by_uuid", args=[self.visible_post.uuid]),
+        )
+        self.assertEqual(preview.status_code, 200)
+        preview_titles = {
+            post.title
+            for post in [
+                *preview.context["similar_posts"],
+                *preview.context["newest_posts"],
+            ]
+        }
+        self.assertIn(on_site_peer.title, preview_titles)
+        self.assertNotIn(self.hidden_post.title, preview_titles)
+        self.assertNotIn(draft.title, preview_titles)
+
     def test_draft_preview_route_stays_under_editor_namespace(self):
         response = self.client.get(
             reverse("editor:post_detail_by_uuid", args=[self.visible_post.uuid])
