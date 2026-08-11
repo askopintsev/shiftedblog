@@ -11,6 +11,7 @@ import {
   tryRestoreDraftFromLocal,
   useAutosave,
 } from "@/features/posts/hooks/useAutosave";
+import { useI18n } from "@/i18n";
 import { formatApiErrors } from "@/lib/formatApiErrors";
 import { mediaUrl } from "@/lib/mediaUrl";
 import { publicUrl } from "@/lib/publicUrl";
@@ -77,6 +78,7 @@ export function PostEditPage() {
   const isNew = !id || id === "new";
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { t, bcp47 } = useI18n();
   const [focusMode, setFocusMode] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -198,7 +200,7 @@ export function PostEditPage() {
         setSaveError(formatApiErrors(error.payload));
         return;
       }
-      setSaveError("Не удалось сохранить.");
+      setSaveError(t("postEdit.saveFailed"));
     },
   });
 
@@ -222,7 +224,7 @@ export function PostEditPage() {
         setCoverError(formatApiErrors(error.payload));
         return;
       }
-      setCoverError("Не удалось загрузить обложку.");
+      setCoverError(t("postEdit.coverUploadFailed"));
     },
   });
 
@@ -242,7 +244,7 @@ export function PostEditPage() {
         setCoverError(formatApiErrors(error.payload));
         return;
       }
-      setCoverError("Не удалось очистить обложку.");
+      setCoverError(t("postEdit.coverClearFailed"));
     },
   });
 
@@ -334,7 +336,7 @@ export function PostEditPage() {
   }, [navigate, saveMutation]);
 
   if (!isNew && (isLoading || !isFormReady || !postMatchesRoute)) {
-    return <div className="p-6">Загрузка…</div>;
+    return <div className="p-6">{t("postEdit.loading")}</div>;
   }
 
   const publishReady =
@@ -352,8 +354,8 @@ export function PostEditPage() {
         <div className="flex w-16 shrink-0 flex-col items-center gap-3 border-r border-border bg-surface px-2 py-4">
           <button
             type="button"
-            title="К списку постов"
-            aria-label="К списку постов"
+            title={t("postEdit.backToList")}
+            aria-label={t("postEdit.backToList")}
             disabled={saveMutation.isPending}
             className="inline-flex size-10 items-center justify-center rounded-xl border border-border bg-surface-muted text-text-secondary shadow-sm transition hover:border-accent hover:bg-accent/5 hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
             onClick={() => {
@@ -365,8 +367,8 @@ export function PostEditPage() {
           {!isNew && (
             <button
               type="button"
-              title="История"
-              aria-label="История"
+              title={t("postEdit.history")}
+              aria-label={t("postEdit.history")}
               className="inline-flex size-10 items-center justify-center rounded-xl border border-border bg-surface-muted text-text-secondary shadow-sm transition hover:border-accent hover:bg-accent/5 hover:text-accent"
               onClick={() => setHistoryOpen(true)}
             >
@@ -375,8 +377,8 @@ export function PostEditPage() {
           )}
           <button
             type="button"
-            title="Фокус"
-            aria-label="Фокус"
+            title={t("postEdit.focus")}
+            aria-label={t("postEdit.focus")}
             className="inline-flex size-10 items-center justify-center rounded-xl border border-border bg-surface-muted text-text-secondary shadow-sm transition hover:border-accent hover:bg-accent/5 hover:text-accent"
             onClick={() => setFocusMode(true)}
           >
@@ -391,7 +393,7 @@ export function PostEditPage() {
             className="rounded-full border border-border bg-surface/95 px-4 py-2 text-sm text-text-secondary shadow-lg backdrop-blur transition hover:border-accent hover:text-accent"
             onClick={() => setFocusMode(false)}
           >
-            Выйти из фокуса · Esc
+            {t("postEdit.exitFocus")}
           </button>
         </div>
       )}
@@ -405,9 +407,14 @@ export function PostEditPage() {
               {saveError ? (
                 <span className="text-red-600">{saveError}</span>
               ) : savedAt ? (
-                `Сохранено ${savedAt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`
+                t("postEdit.savedAt", {
+                  time: savedAt.toLocaleTimeString(bcp47, {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }),
+                })
               ) : (
-                "Не сохранено"
+                t("postEdit.notSaved")
               )}
             </div>
             <div className="flex gap-2">
@@ -418,7 +425,7 @@ export function PostEditPage() {
                   rel="noreferrer"
                   className="inline-flex h-9 items-center rounded-lg border border-border px-3 text-sm text-accent hover:bg-surface-muted"
                 >
-                  Превью
+                  {t("postEdit.preview")}
                 </a>
               )}
               {!isNew && form.status === "ready_to_publish" && (
@@ -426,7 +433,7 @@ export function PostEditPage() {
                   to="/publish"
                   className="inline-flex h-9 items-center rounded-lg border border-border px-3 text-sm text-accent hover:bg-surface-muted"
                 >
-                  Публикация →
+                  {t("postEdit.publishLink")}
                 </Link>
               )}
               <button
@@ -435,14 +442,16 @@ export function PostEditPage() {
                 onClick={() => saveMutation.mutate(formRef.current)}
                 className="inline-flex h-9 items-center rounded-lg bg-accent px-4 text-sm text-white disabled:opacity-60"
               >
-                {saveMutation.isPending ? "Сохранение…" : "Сохранить"}
+                {saveMutation.isPending
+                  ? t("postEdit.saving")
+                  : t("common.save")}
               </button>
             </div>
           </div>
           <input
             value={form.title}
             onChange={(e) => updateTitle(e.target.value)}
-            placeholder="Заголовок"
+            placeholder={t("postEdit.titlePlaceholder")}
             className={cn(
               "mb-4 w-full border-0 bg-transparent text-3xl font-semibold outline-none",
               publishReady && "rounded-lg border-l-4 border-warning pl-3",
@@ -462,13 +471,15 @@ export function PostEditPage() {
                       : "border-transparent text-text-muted",
                   )}
                 >
-                  {tab === "editor" ? "Редактор" : "Галерии"}
+                  {tab === "editor"
+                    ? t("postEdit.tabEditor")
+                    : t("postEdit.tabGallery")}
                 </button>
               ))}
             </div>
           )}
           {activeTab === "editor" && (
-            <section aria-label="Текст поста" className="min-h-[420px]">
+            <section aria-label={t("postEdit.bodyAria")} className="min-h-[420px]">
               <Suspense fallback={<PostBodyEditorFallback />}>
                 <PostBodyEditor
                   key={id}
@@ -495,7 +506,7 @@ export function PostEditPage() {
         {!focusMode && (
           <aside className="w-72 shrink-0 border-l border-border bg-surface p-4">
             <label className="mb-3 block text-sm">
-              Статус
+              {t("postEdit.status")}
               <select
                 value={form.status}
                 onChange={(e) =>
@@ -503,15 +514,19 @@ export function PostEditPage() {
                 }
                 className="mt-1 w-full rounded-lg border border-border px-2 py-1.5"
               >
-                <option value="draft">Черновик</option>
-                <option value="ready_to_publish">Готов к публикации</option>
+                <option value="draft">{t("postEdit.statusDraft")}</option>
+                <option value="ready_to_publish">
+                  {t("postEdit.statusReady")}
+                </option>
                 {form.status === "published" && (
-                  <option value="published">Опубликован</option>
+                  <option value="published">
+                    {t("postEdit.statusPublished")}
+                  </option>
                 )}
               </select>
               {form.status !== "published" && (
                 <p className="mt-1 text-xs text-text-muted">
-                  «Опубликован» только через мультиканал.
+                  {t("postEdit.publishedOnlyMultichannel")}
                 </p>
               )}
             </label>
@@ -523,7 +538,7 @@ export function PostEditPage() {
                     className="text-red-600"
                     onClick={() => siteUnpublish.mutate()}
                   >
-                    Убрать с сайта
+                    {t("postEdit.removeFromSite")}
                   </button>
                 ) : (
                   <button
@@ -531,26 +546,26 @@ export function PostEditPage() {
                     className="text-green-700"
                     onClick={() => sitePublish.mutate()}
                   >
-                    Опубликовать на сайте
+                    {t("postEdit.publishOnSite")}
                   </button>
                 )}
               </div>
             )}
             <div className="mb-3">
-              <div className="mb-1 text-sm">Обложка</div>
+              <div className="mb-1 text-sm">{t("postEdit.cover")}</div>
               {isNew ? (
                 <p className="rounded-lg border border-dashed border-border bg-surface-muted px-3 py-3 text-xs text-text-muted">
-                  Сохраните пост, чтобы загрузить обложку.
+                  {t("postEdit.coverSaveFirst")}
                 </p>
               ) : (
                 <>
                   <ImageFileInput
                     buttonLabel={
                       post?.cover_image_url
-                        ? "Заменить обложку"
-                        : "Загрузить обложку"
+                        ? t("postEdit.replaceCover")
+                        : t("postEdit.uploadCover")
                     }
-                    hint="JPEG, PNG или WebP"
+                    hint={t("common.imageFormats")}
                     loading={coverMutation.isPending}
                     className={cn(publishReady && "rounded-lg ring-1 ring-warning")}
                     onFileSelect={(file) => coverMutation.mutate(file)}
@@ -564,7 +579,7 @@ export function PostEditPage() {
                 <div className="mt-2 space-y-2">
                   <img
                     src={mediaUrl(post.cover_image_url)}
-                    alt="Cover"
+                    alt={t("postEdit.coverAlt")}
                     className="max-h-32 rounded-lg object-cover"
                   />
                   <button
@@ -574,56 +589,56 @@ export function PostEditPage() {
                     onClick={() => clearCoverMutation.mutate()}
                   >
                     {clearCoverMutation.isPending
-                      ? "Очищаем…"
-                      : "Очистить обложку"}
+                      ? t("postEdit.clearingCover")
+                      : t("postEdit.clearCover")}
                   </button>
                 </div>
               )}
             </div>
             <label className="mb-3 block text-sm">
-              Описание обложки
+              {t("postEdit.coverDescription")}
               <textarea
                 value={form.cover_description}
                 onChange={(e) =>
                   updateForm({ cover_description: e.target.value })
                 }
                 rows={2}
-                placeholder="Краткое описание изображения"
+                placeholder={t("postEdit.coverDescriptionPlaceholder")}
                 className="mt-1 w-full rounded-lg border border-border px-2 py-1.5"
               />
               <p className="mt-1 text-xs text-text-muted">
-                Используется как описание изображения обложки.
+                {t("postEdit.coverDescriptionHelp")}
               </p>
             </label>
             <label className="mb-3 block text-sm">
-              Краткое описание
+              {t("postEdit.shortDescription")}
               <textarea
                 value={form.short_description}
                 onChange={(e) =>
                   updateForm({ short_description: e.target.value })
                 }
                 rows={3}
-                placeholder="Короткий анонс поста"
+                placeholder={t("postEdit.shortDescriptionPlaceholder")}
                 className={cn(
                   "mt-1 w-full rounded-lg border border-border px-2 py-1.5",
                   publishReady && "border-warning",
                 )}
               />
               <p className="mt-1 text-xs text-text-muted">
-                Используется для SEO, карточек и превью в соцсетях.
+                {t("postEdit.shortDescriptionHelp")}
               </p>
             </label>
             <label className="mb-3 block text-sm">
-              Slug
+              {t("postEdit.slug")}
               <input
                 value={form.slug}
                 onChange={(e) => updateSlug(e.target.value)}
-                placeholder="Заполнится из заголовка"
+                placeholder={t("postEdit.slugPlaceholder")}
                 className="mt-1 w-full rounded-lg border border-border px-2 py-1.5"
               />
             </label>
             <label className="mb-3 block text-sm">
-              Категория
+              {t("postEdit.category")}
               <select
                 value={form.category_id ?? ""}
                 onChange={(e) => {
@@ -634,7 +649,7 @@ export function PostEditPage() {
                 }}
                 className="mt-1 w-full rounded-lg border border-border px-2 py-1.5"
               >
-                <option value="">Без категории</option>
+                <option value="">{t("postEdit.noCategory")}</option>
                 {(categoriesQuery.data?.results ?? []).map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
@@ -642,11 +657,13 @@ export function PostEditPage() {
                 ))}
               </select>
               {categoriesQuery.isLoading ? (
-                <p className="mt-1 text-xs text-text-muted">Загрузка категорий…</p>
+                <p className="mt-1 text-xs text-text-muted">
+                  {t("postEdit.loadingCategories")}
+                </p>
               ) : null}
             </label>
             <label className="block text-sm">
-              Теги
+              {t("postEdit.tags")}
               <textarea
                 ref={tagsTextareaRef}
                 value={form.tags}
@@ -655,11 +672,11 @@ export function PostEditPage() {
                   updateForm({ tags: e.target.value });
                 }}
                 rows={2}
-                placeholder="news, django"
+                placeholder={t("postEdit.tagsPlaceholder")}
                 className="mt-1 min-h-16 w-full resize-none overflow-hidden rounded-lg border border-border px-2 py-1.5"
               />
               <p className="mt-1 text-xs text-text-muted">
-                Введите теги через запятую.
+                {t("postEdit.tagsHelp")}
               </p>
             </label>
           </aside>
@@ -668,7 +685,7 @@ export function PostEditPage() {
       {historyOpen && (
         <div className="fixed inset-y-0 left-0 z-50 w-80 border-r border-border bg-surface p-4 shadow-xl">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-semibold">История автосохранения</h2>
+            <h2 className="font-semibold">{t("postEdit.historyTitle")}</h2>
             <button type="button" onClick={() => setHistoryOpen(false)}>
               ✕
             </button>
@@ -701,7 +718,7 @@ export function PostEditPage() {
                     }
                   }}
                 >
-                  Восстановить
+                  {t("postEdit.restore")}
                 </button>
               </li>
             ))}

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, apiUpload } from "@/api/client";
 import type { GalleryImage } from "@/api/types";
 import { ImageFileInput } from "@/components/ImageFileInput";
+import { useT } from "@/i18n";
 import { normalizeImageFileForUpload } from "@/lib/imageUpload";
 import { mediaUrl } from "@/lib/mediaUrl";
 
@@ -15,6 +16,7 @@ export function GalleryTab({ postId }: GalleryTabProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [galleryKey, setGalleryKey] = useState(1);
   const [caption, setCaption] = useState("");
+  const t = useT();
 
   const { data } = useQuery({
     queryKey: ["post-gallery", postId],
@@ -75,14 +77,12 @@ export function GalleryTab({ postId }: GalleryTabProps) {
   return (
     <div className="mt-6 rounded-xl border border-border bg-surface p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-medium">Галерея</h2>
-        <p className="text-xs text-text-muted">
-          Вставьте в текст маркер <code>[gallery:N]</code>
-        </p>
+        <h2 className="font-medium">{t("gallery.title")}</h2>
+        <p className="text-xs text-text-muted">{t("gallery.markerHelp")}</p>
       </div>
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <label className="text-sm">
-          Группа N
+          {t("gallery.groupN")}
           <input
             type="number"
             min={1}
@@ -92,7 +92,7 @@ export function GalleryTab({ postId }: GalleryTabProps) {
           />
         </label>
         <label className="text-sm">
-          Подпись
+          {t("gallery.caption")}
           <input
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
@@ -101,8 +101,8 @@ export function GalleryTab({ postId }: GalleryTabProps) {
         </label>
         <ImageFileInput
           inputRef={fileRef}
-          buttonLabel="Добавить в галерею"
-          hint="JPEG, PNG или WebP"
+          buttonLabel={t("gallery.add")}
+          hint={t("common.imageFormats")}
           loading={uploadMutation.isPending}
           className="min-w-[220px] flex-1"
           onFileSelect={(file) => uploadMutation.mutate(file)}
@@ -113,7 +113,7 @@ export function GalleryTab({ postId }: GalleryTabProps) {
           <li key={img.id} className="rounded-lg border border-border p-2">
             <img
               src={mediaUrl(img.image_url)}
-              alt={img.caption || `Gallery ${img.gallery_key}`}
+              alt={img.caption || t("gallery.alt", { n: img.gallery_key })}
               className="mb-2 max-h-40 w-full rounded object-cover"
             />
             <div className="flex items-center gap-2 text-xs">
@@ -122,7 +122,7 @@ export function GalleryTab({ postId }: GalleryTabProps) {
               </span>
               <input
                 defaultValue={img.caption}
-                placeholder="Подпись"
+                placeholder={t("gallery.caption")}
                 className="flex-1 rounded border border-border px-1 py-0.5"
                 onBlur={(e) => {
                   if (e.target.value !== img.caption) {
@@ -138,14 +138,14 @@ export function GalleryTab({ postId }: GalleryTabProps) {
                 className="text-red-600"
                 onClick={() => deleteMutation.mutate(img.id)}
               >
-                Удалить
+                {t("common.delete")}
               </button>
             </div>
           </li>
         ))}
       </ul>
       {!images.length && (
-        <p className="text-sm text-text-muted">Изображений пока нет.</p>
+        <p className="text-sm text-text-muted">{t("gallery.empty")}</p>
       )}
     </div>
   );

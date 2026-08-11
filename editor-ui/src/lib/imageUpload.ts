@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+
 function extensionFor(file: File): string {
   const match = file.name.match(/\.[^.]+$/);
   return match?.[0].toLowerCase() ?? "";
@@ -30,7 +32,7 @@ async function imageBitmapToJpegFile(file: File): Promise<File> {
   const ctx = canvas.getContext("2d");
   if (!ctx) {
     bitmap.close();
-    throw new Error("Canvas is not available.");
+    throw new Error(t("image.canvasUnavailable"));
   }
   ctx.drawImage(bitmap, 0, 0);
   bitmap.close();
@@ -38,7 +40,7 @@ async function imageBitmapToJpegFile(file: File): Promise<File> {
     canvas.toBlob(resolve, "image/jpeg", 0.92),
   );
   if (!blob) {
-    throw new Error("Could not encode image.");
+    throw new Error(t("image.encodeFailed"));
   }
   return new File([blob], jpegName(file), {
     type: "image/jpeg",

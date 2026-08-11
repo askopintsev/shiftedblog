@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/api/client";
+import { useT } from "@/i18n";
 
 export function TelegramSettingsPage() {
   const queryClient = useQueryClient();
   const [continuationText, setContinuationText] = useState("");
+  const t = useT();
 
   const { data } = useQuery({
     queryKey: ["telegram-settings"],
@@ -34,7 +36,7 @@ export function TelegramSettingsPage() {
 
   return (
     <div className="p-6">
-      <h1 className="mb-4 text-2xl font-semibold">Telegram settings</h1>
+      <h1 className="mb-4 text-2xl font-semibold">{t("telegramSettings.title")}</h1>
       {data?.settings ? (
         <form
           className="max-w-xl space-y-4 rounded-lg border border-border bg-surface p-4"
@@ -44,7 +46,7 @@ export function TelegramSettingsPage() {
           }}
         >
           <label className="block text-sm">
-            Текст продолжения поста
+            {t("telegramSettings.continuation")}
             <textarea
               value={continuationText}
               onChange={(e) => setContinuationText(e.target.value)}
@@ -57,11 +59,11 @@ export function TelegramSettingsPage() {
             disabled={patchMutation.isPending}
             className="rounded-lg bg-accent px-4 py-2 text-sm text-white"
           >
-            Сохранить
+            {t("common.save")}
           </button>
         </form>
       ) : (
-        <p className="text-text-muted">Не настроено.</p>
+        <p className="text-text-muted">{t("telegramSettings.notConfigured")}</p>
       )}
     </div>
   );

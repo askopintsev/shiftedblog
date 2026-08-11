@@ -1,6 +1,7 @@
 import { useRef, useState, type RefObject } from "react";
 import { Images } from "lucide-react";
 import type { Editor } from "ckeditor5";
+import { useT } from "@/i18n";
 import { insertGalleryMarker } from "../galleryMarkerPlugin";
 import { EditorToolbarButton } from "./EditorToolbarButton";
 import { FloatingEditorPopover } from "./FloatingEditorPopover";
@@ -13,6 +14,7 @@ export function GalleryInsertButton({ editorRef }: GalleryInsertButtonProps) {
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState(false);
   const [galleryKey, setGalleryKey] = useState("1");
+  const t = useT();
 
   const insertGallery = () => {
     const editor = editorRef.current;
@@ -31,16 +33,16 @@ export function GalleryInsertButton({ editorRef }: GalleryInsertButtonProps) {
         active={open}
         aria-expanded={open}
         aria-haspopup="dialog"
-        title="Вставить блок галереи"
+        title={t("editor.insertGallery")}
         onClick={() => setOpen((value) => !value)}
       >
-        Добавить галерею
+        {t("editor.addGallery")}
       </EditorToolbarButton>
       <FloatingEditorPopover
         open={open}
         onClose={() => setOpen(false)}
         anchorRef={buttonRef}
-        ariaLabel="Вставка галереи"
+        ariaLabel={t("editor.galleryInsert")}
         className="w-72 max-h-none overflow-visible p-4"
       >
         <div className="space-y-3">
@@ -49,10 +51,10 @@ export function GalleryInsertButton({ editorRef }: GalleryInsertButtonProps) {
               htmlFor="gallery-key-input"
               className="block text-sm font-medium text-text-primary"
             >
-              Номер галереи
+              {t("editor.galleryNumber")}
             </label>
             <p className="mt-1 text-xs text-text-muted">
-              Блок с изображениями из вкладки «Галерии» с этим номером.
+              {t("editor.galleryNumberHelp")}
             </p>
           </div>
           <input
@@ -76,14 +78,14 @@ export function GalleryInsertButton({ editorRef }: GalleryInsertButtonProps) {
               className="rounded-lg border border-border px-3 py-1.5 text-sm text-text-secondary hover:bg-surface-muted"
               onClick={() => setOpen(false)}
             >
-              Отмена
+              {t("common.cancel")}
             </button>
             <button
               type="button"
               className="rounded-lg bg-accent px-3 py-1.5 text-sm text-white hover:opacity-90"
               onClick={insertGallery}
             >
-              Вставить
+              {t("editor.insert")}
             </button>
           </div>
         </div>

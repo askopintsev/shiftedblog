@@ -1,33 +1,35 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Editor } from "ckeditor5";
+import { useT } from "@/i18n";
+import type { MessageKey } from "@/i18n";
 import { EditorToolbarButton } from "./EditorToolbarButton";
 import { FloatingEditorPopover } from "./FloatingEditorPopover";
 
-const GROUPS = [
+const GROUP_DEFS: { labelKey: MessageKey; chars: string }[] = [
   {
-    label: "Смайлы",
+    labelKey: "editor.emoji.smiles",
     chars:
       "😀 😃 😄 😁 😅 😂 🤣 🥲 🥹 🙂 😉 😊 😇 🥰 😍 🤩 😘 😗 😚 😙 😋 😛 😜 🤪 😝 🤑 🤗 🤭 🤫 🤔 🤐 🫢 🫣 🫡 😐 😑 😶 🙄 😏 😒 🙃 😬 😮‍💨 🤥 😌 😔 😪 🤤 😴 😷 🤒 🤕 🤢 🤮 🤧 🥵 🥶 🥴 😵 🤯 🤠 🥳 🥸 😎 🤓 🧐 😕 😟 🙁 😮 😯 😲 😳 🥺 😦 😧 😨 😰 😥 😢 😭 😱 😖 😣 😞 😓 😩 😫 🥱 😤 😡 😠 🤬 😈 👿 💀 💩 🤡 👹 👺 👻 👽 👾 🤖",
   },
   {
-    label: "Жесты / люди",
+    labelKey: "editor.emoji.people",
     chars:
       "👍 👎 ✊ 👊 🤛 🤜 👏 🙌 👐 🤲 🤝 🙏 ✌️ 🤞 🤟 🤘 🤙 👌 🤌 👈 👉 👆 👇 ☝️ 💪 🦾 🦵 🦶 👂 👃 🧠 🫀 🫁 🦷 🦴 👀 👅 🤦 🤷 👶 🧒 👦 👧 🧑 👨 👩 🧔 👴 👵",
   },
   {
-    label: "Сердца / символы",
+    labelKey: "editor.emoji.hearts",
     chars:
       "❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 💟 ☮️ ✝️ ☪️ 🕎 ☸️ ⚛️ 🔯 ♈ ♉ ♊ ♋ ♌ ♍ ♎ ♏ ♐ ♑ ♒ ♓ ✅ ☑️ ✔️ ❌ ❎ ➕ ➖ ✖️ ➗ ♾️ ⁉️ ❓ ❔ ❗ ❕ ⚠️ 💯 ♻️",
   },
   {
-    label: "Техно / офис",
+    labelKey: "editor.emoji.tech",
     chars:
       "💻 🖥️ 🖨️ ⌨️ 🖱️ 📱 📞 ☎️ 📠 📺 📻 🎙️ 📷 📸 📹 💾 💿 📀 📁 📂 📌 📎 ✏️ ✒️ 📏 📐 📊 📈 📉 📧 📨 📩 📪 💡 🔦 🔌 🔋 🔗 🧭 🕐 ⏱️ 🔒 🔓 🔑",
   },
   {
-    label: "Идеи / письмо",
+    labelKey: "editor.emoji.ideas",
     chars:
-      "💡 📌 ✅ ❗ ❓ 📎 ✍️ 📝 📋 📚 📖 🔍 🔎 📣 📢 💬 💭 📰 🗂️ 🎯 🏆 🥇 🎉 🎊 🎁 🔥 ⚡ 💥 ✨ 🌟 ⭐ 💧 🌍 🌎 🌏 🌞 🌙 🚀",
+      "💡 📌 ✅ ❗ ❓ 📎 💬 📝 📋 📚 📖 🔍 🔎 📣 📢 💬 💭 📰 🗂️ 🎯 🏆 🥇 🎉 🎊 🎁 🔥 ⚡ 💥 ✨ 🌟 ⭐ 💧 🌍 🌎 🌏 🌞 🌙 🚀",
   },
 ];
 
@@ -42,6 +44,16 @@ function splitChars(chars: string): string[] {
 export function EmojiPalette({ onInsert }: EmojiPaletteProps) {
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState(false);
+  const t = useT();
+
+  const groups = useMemo(
+    () =>
+      GROUP_DEFS.map((group) => ({
+        label: t(group.labelKey),
+        chars: group.chars,
+      })),
+    [t],
+  );
 
   const handleInsert = (text: string) => {
     onInsert(null, text);
@@ -55,18 +67,18 @@ export function EmojiPalette({ onInsert }: EmojiPaletteProps) {
         active={open}
         aria-expanded={open}
         aria-haspopup="dialog"
-        title="Открыть палитру эмодзи"
+        title={t("editor.openEmoji")}
         onClick={() => setOpen((value) => !value)}
       >
-        Эмодзи
+        {t("editor.emoji")}
       </EditorToolbarButton>
       <FloatingEditorPopover
         open={open}
         onClose={() => setOpen(false)}
         anchorRef={buttonRef}
-        ariaLabel="Палитра эмодзи"
+        ariaLabel={t("editor.emojiPalette")}
       >
-        {GROUPS.map((group) => (
+        {groups.map((group) => (
           <div key={group.label} className="mb-3 last:mb-0">
             <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-text-muted">
               {group.label}
@@ -78,7 +90,7 @@ export function EmojiPalette({ onInsert }: EmojiPaletteProps) {
                   type="button"
                   className="inline-flex size-8 items-center justify-center rounded-md text-xl leading-none transition hover:bg-surface-muted"
                   onClick={() => handleInsert(char)}
-                  aria-label={`Вставить ${char}`}
+                  aria-label={t("editor.insertChar", { char })}
                 >
                   {char}
                 </button>

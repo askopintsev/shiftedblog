@@ -1,6 +1,7 @@
 import { useId, useRef, type RefObject } from "react";
 import { ImagePlus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/i18n";
 
 interface ImageFileInputProps {
   buttonLabel?: string;
@@ -14,8 +15,8 @@ interface ImageFileInputProps {
 }
 
 export function ImageFileInput({
-  buttonLabel = "Выбрать изображение",
-  hint = "JPEG, PNG или WebP",
+  buttonLabel,
+  hint,
   disabled = false,
   loading = false,
   accept = "image/*",
@@ -23,10 +24,13 @@ export function ImageFileInput({
   inputRef,
   onFileSelect,
 }: ImageFileInputProps) {
+  const t = useT();
   const autoId = useId();
   const localRef = useRef<HTMLInputElement>(null);
   const ref = inputRef ?? localRef;
   const inactive = disabled || loading;
+  const resolvedHint = hint ?? t("common.imageFormats");
+  const resolvedLabel = buttonLabel ?? t("common.chooseImage");
 
   return (
     <div className={cn("space-y-2", className)}>
@@ -58,9 +62,11 @@ export function ImageFileInput({
         ) : (
           <ImagePlus className="size-4 shrink-0" aria-hidden />
         )}
-        <span>{loading ? "Загрузка…" : buttonLabel}</span>
+        <span>{loading ? t("common.loading") : resolvedLabel}</span>
       </label>
-      {hint ? <p className="text-xs text-text-muted">{hint}</p> : null}
+      {resolvedHint ? (
+        <p className="text-xs text-text-muted">{resolvedHint}</p>
+      ) : null}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/api/client";
 import type { PostListItem, PublishResult, TelegramPreviewResponse } from "@/api/types";
 import { TelegramPreviewCards } from "@/features/publish/TelegramPreviewCards";
+import { useT } from "@/i18n";
 
 export function PublishPage() {
   const [postId, setPostId] = useState<number | "">("");
@@ -13,6 +14,7 @@ export function PublishPage() {
   const [telegramStory, setTelegramStory] = useState(false);
   const [result, setResult] = useState<PublishResult | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const t = useT();
 
   const readyQuery = useQuery({
     queryKey: ["publish-ready"],
@@ -61,11 +63,11 @@ export function PublishPage() {
 
   return (
     <div className="p-6">
-      <h1 className="mb-6 text-2xl font-semibold">Мультиканальная публикация</h1>
+      <h1 className="mb-6 text-2xl font-semibold">{t("publish.title")}</h1>
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-4 rounded-xl border border-border bg-surface p-4">
           <label className="block text-sm">
-            Пост (готов к публикации)
+            {t("publish.postReady")}
             <select
               value={postId}
               onChange={(e) => {
@@ -74,7 +76,7 @@ export function PublishPage() {
               }}
               className="mt-1 w-full rounded-lg border border-border px-3 py-2"
             >
-              <option value="">— выберите —</option>
+              <option value="">{t("publish.selectPost")}</option>
               {readyQuery.data?.results.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.title || `#${p.id}`} ({p.slug})
@@ -83,14 +85,14 @@ export function PublishPage() {
             </select>
           </label>
           <fieldset className="space-y-2">
-            <legend className="text-sm font-medium">Каналы</legend>
+            <legend className="text-sm font-medium">{t("publish.channels")}</legend>
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={destSite}
                 onChange={(e) => setDestSite(e.target.checked)}
               />
-              Сайт (SitePublication)
+              {t("publish.site")}
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -98,7 +100,7 @@ export function PublishPage() {
                 checked={destTelegram}
                 onChange={(e) => setDestTelegram(e.target.checked)}
               />
-              Telegram
+              {t("common.telegram")}
             </label>
           </fieldset>
           {destTelegram && (
@@ -110,7 +112,7 @@ export function PublishPage() {
                   checked={telegramFormat === "full_text"}
                   onChange={() => setTelegramFormat("full_text")}
                 />
-                Полный пост
+                {t("publish.fullPost")}
               </label>
               <label className="flex items-center gap-2 text-sm">
                 <input
@@ -119,7 +121,7 @@ export function PublishPage() {
                   checked={telegramFormat === "crosslink"}
                   onChange={() => setTelegramFormat("crosslink")}
                 />
-                Crosslink
+                {t("publish.crosslink")}
               </label>
               {telegramFormat === "crosslink" && (
                 <select
@@ -127,8 +129,8 @@ export function PublishPage() {
                   onChange={(e) => setCrosslinkNetwork(e.target.value)}
                   className="w-full rounded-lg border border-border px-2 py-1.5 text-sm"
                 >
-                  <option value="">— цель crosslink —</option>
-                  {destSite && <option value="site">Site</option>}
+                  <option value="">{t("publish.crosslinkTarget")}</option>
+                  {destSite && <option value="site">{t("publish.site")}</option>}
                 </select>
               )}
               <label className="flex items-center gap-2 text-sm">
@@ -138,7 +140,7 @@ export function PublishPage() {
                   disabled={!storyQuery.data?.available}
                   onChange={(e) => setTelegramStory(e.target.checked)}
                 />
-                Telegram Story
+                {t("publish.telegramStory")}
               </label>
               {storyQuery.data && (
                 <p className="text-xs text-text-muted">{storyQuery.data.reason}</p>
@@ -152,7 +154,7 @@ export function PublishPage() {
               onClick={() => setShowPreview(true)}
               className="rounded-lg border border-border px-4 py-2 text-sm"
             >
-              Превью Telegram
+              {t("publish.previewButton")}
             </button>
             <button
               type="button"
@@ -160,14 +162,14 @@ export function PublishPage() {
               onClick={() => publishMutation.mutate()}
               className="rounded-lg bg-accent px-4 py-2 text-sm text-white"
             >
-              Опубликовать
+              {t("publish.submit")}
             </button>
           </div>
         </div>
         <div className="rounded-xl border border-border bg-surface p-4">
-          <h2 className="mb-3 font-medium">Превью Telegram</h2>
+          <h2 className="mb-3 font-medium">{t("publish.previewHeading")}</h2>
           {previewQuery.isFetching && (
-            <p className="text-sm text-text-muted">Загрузка превью…</p>
+            <p className="text-sm text-text-muted">{t("publish.previewLoading")}</p>
           )}
           {previewQuery.data?.preview_cards?.length ? (
             <TelegramPreviewCards
@@ -178,16 +180,14 @@ export function PublishPage() {
               telegramFormat={telegramFormat}
             />
           ) : showPreview && !previewQuery.isFetching ? (
-            <p className="text-sm text-text-muted">Нет данных превью для выбранного поста.</p>
+            <p className="text-sm text-text-muted">{t("publish.previewEmpty")}</p>
           ) : (
-            <p className="text-sm text-text-muted">
-              Выберите пост и нажмите «Превью Telegram».
-            </p>
+            <p className="text-sm text-text-muted">{t("publish.previewHint")}</p>
           )}
           {result && (
             <div className="mt-4 border-t border-border pt-4">
               <h3 className="font-medium">
-                {result.all_ok ? "Успешно" : "Есть ошибки"}
+                {result.all_ok ? t("publish.success") : t("publish.hasErrors")}
               </h3>
               <ul className="mt-2 space-y-1 text-sm">
                 {Object.entries(result.by_network).map(([network, item]) => (
@@ -199,7 +199,7 @@ export function PublishPage() {
                           {item.message_url}
                         </a>
                       ) : (
-                        "OK"
+                        t("common.ok")
                       )
                     ) : (
                       <span className="text-red-600">{item.error || item.detail}</span>

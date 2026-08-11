@@ -1,14 +1,16 @@
-const FIELD_LABELS: Record<string, string> = {
-  body: "Текст",
-  title: "Заголовок",
-  slug: "Slug",
-  status: "Статус",
-  short_description: "Краткое описание",
-};
+import { t } from "@/i18n";
+
+const FIELD_KEYS = {
+  body: "field.body",
+  title: "field.title",
+  slug: "field.slug",
+  status: "field.status",
+  short_description: "field.shortDescription",
+} as const;
 
 export function formatApiErrors(payload: unknown): string {
   if (!payload || typeof payload !== "object") {
-    return "Не удалось сохранить.";
+    return t("postEdit.saveFailed");
   }
   const record = payload as {
     errors?: Record<string, string[] | string>;
@@ -19,10 +21,11 @@ export function formatApiErrors(payload: unknown): string {
     return Object.entries(record.errors)
       .flatMap(([field, msgs]) => {
         const list = Array.isArray(msgs) ? msgs : [String(msgs)];
-        const label = FIELD_LABELS[field] ?? field;
+        const key = FIELD_KEYS[field as keyof typeof FIELD_KEYS];
+        const label = key ? t(key) : field;
         return list.map((message) => `${label}: ${message}`);
       })
       .join(" · ");
   }
-  return record.error || record.detail || "Не удалось сохранить.";
+  return record.error || record.detail || t("postEdit.saveFailed");
 }
