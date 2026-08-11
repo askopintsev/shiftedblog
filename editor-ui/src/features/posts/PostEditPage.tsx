@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Focus, History } from "lucide-react";
 import { apiFetch, apiUpload, ApiError } from "@/api/client";
-import type { Category, PostDetail, PostStatus } from "@/api/types";
+import type { Category, PostDetail, PostStatus, Series } from "@/api/types";
 import { PostBodyEditorFallback } from "@/features/posts/body-editor/PostBodyEditorFallback";
 import { GalleryTab } from "@/features/posts/components/GalleryTab";
 import { ImageFileInput } from "@/components/ImageFileInput";
@@ -27,6 +27,8 @@ type PostFormState = {
   cover_description: string;
   slug: string;
   category_id: number | null;
+  series_id: number | null;
+  series_order_position: number | null;
   tags: string;
 };
 
@@ -39,11 +41,16 @@ function toApiPayload(form: PostFormState) {
     cover_description: form.cover_description,
     slug: form.slug,
     category_id: form.category_id,
+    series_id: form.series_id,
+    series_order_position: form.series_id
+      ? form.series_order_position
+      : null,
     tags: parseTagsInput(form.tags),
   };
 }
 
 function postToForm(post: PostDetail): PostFormState {
+  const membership = post.series?.[0] ?? null;
   return {
     title: post.title ?? "",
     body: post.body ?? "",
@@ -52,6 +59,8 @@ function postToForm(post: PostDetail): PostFormState {
     cover_description: post.cover_description ?? "",
     slug: post.slug ?? "",
     category_id: post.category?.id ?? null,
+    series_id: membership?.id ?? null,
+    series_order_position: membership?.order_position ?? null,
     tags: formatTagsInput(post.tags ?? []),
   };
 }
@@ -64,6 +73,8 @@ const emptyFormState = (): PostFormState => ({
   cover_description: "",
   slug: "",
   category_id: null,
+  series_id: null,
+  series_order_position: null,
   tags: "",
 });
 
@@ -108,6 +119,11 @@ export function PostEditPage() {
     queryKey: ["categories"],
     queryFn: () =>
       apiFetch<{ ok: boolean; results: Category[] }>("/categories/"),
+  });
+
+  const seriesQuery = useQuery({
+    queryKey: ["series"],
+    queryFn: () => apiFetch<{ ok: boolean; results: Series[] }>("/series/"),
   });
 
   const [form, setForm] = useState<PostFormState>(emptyFormState);
@@ -662,6 +678,61 @@ export function PostEditPage() {
                 </p>
               ) : null}
             </label>
+            <label className="mb-3 block text-sm">
+              {t("postEdit.series")}
+              <select
+                value={form.series_id ?? ""}
+                onChange={(e) => {
+                  setSaveError(null);
+                  const nextId = e.target.value
+                    ? Number(e.target.value)
+                    : null;
+                  updateForm({
+                    series_id: nextId,
+                    series_order_position: nextId
+                      ? form.series_order_position
+                      : null,
+                  });
+                }}
+                className="mt-1 w-full rounded-lg border border-border px-2 py-1.5"
+              >
+                <option value="">{t("postEdit.noSeries")}</option>
+                {(seriesQuery.data?.results ?? []).map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+              {seriesQuery.isLoading ? (
+                <p className="mt-1 text-xs text-text-muted">
+                  {t("postEdit.loadingSeries")}
+                </p>
+              ) : null}
+            </label>
+            {form.series_id ? (
+              <label className="mb-3 block text-sm">
+                {t("postEdit.seriesNumber")}
+                <input
+                  type="number"
+                  min={1}
+                  value={form.series_order_position ?? ""}
+                  onChange={(e) => {
+                    setSaveError(null);
+                    const raw = e.target.value;
+                    updateForm({
+                      series_order_position: raw
+                        ? Number(raw)
+                        : null,
+                    });
+                  }}
+                  placeholder={t("postEdit.seriesNumberPlaceholder")}
+                  className="mt-1 w-full rounded-lg border border-border px-2 py-1.5"
+                />
+                <p className="mt-1 text-xs text-text-muted">
+                  {t("postEdit.seriesNumberHelp")}
+                </p>
+              </label>
+            ) : null}
             <label className="block text-sm">
               {t("postEdit.tags")}
               <textarea

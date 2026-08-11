@@ -17,6 +17,7 @@ export const ru = {
   "nav.brand": "Shifted Editor",
   "nav.content": "Контент",
   "nav.posts": "Посты",
+  "nav.series": "Серии",
   "nav.publish": "Публикация",
   "nav.multichannel": "Мультиканал",
   "nav.settings": "Настройки",
@@ -104,6 +105,13 @@ export const ru = {
   "postEdit.category": "Категория",
   "postEdit.noCategory": "Без категории",
   "postEdit.loadingCategories": "Загрузка категорий…",
+  "postEdit.series": "Серия",
+  "postEdit.noSeries": "Без серии",
+  "postEdit.loadingSeries": "Загрузка серий…",
+  "postEdit.seriesNumber": "Номер в серии",
+  "postEdit.seriesNumberPlaceholder": "1",
+  "postEdit.seriesNumberHelp":
+    "Порядок поста в серии (для навигации предыдущий/следующий).",
   "postEdit.tags": "Теги",
   "postEdit.tagsPlaceholder": "news, django",
   "postEdit.tagsHelp": "Введите теги через запятую.",
@@ -247,6 +255,13 @@ export const ru = {
   "preview.stepLabel.post": "Пост",
 
   "networks.title": "Сети",
+
+  "series.title": "Серии постов",
+  "series.help":
+    "Создавайте серии здесь, затем назначайте пост и номер в редакторе поста.",
+  "series.namePlaceholder": "Название серии",
+  "series.create": "Создать",
+  "series.empty": "Серий пока нет.",
 
   "siteSettings.title": "Настройки сайта",
   "siteSettings.help":

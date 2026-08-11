@@ -19,6 +19,7 @@ export const en: Record<MessageKey, string> = {
   "nav.brand": "Shifted Editor",
   "nav.content": "Content",
   "nav.posts": "Posts",
+  "nav.series": "Series",
   "nav.publish": "Publish",
   "nav.multichannel": "Multichannel",
   "nav.settings": "Settings",
@@ -107,6 +108,13 @@ export const en: Record<MessageKey, string> = {
   "postEdit.category": "Category",
   "postEdit.noCategory": "No category",
   "postEdit.loadingCategories": "Loading categories…",
+  "postEdit.series": "Series",
+  "postEdit.noSeries": "No series",
+  "postEdit.loadingSeries": "Loading series…",
+  "postEdit.seriesNumber": "Number in series",
+  "postEdit.seriesNumberPlaceholder": "1",
+  "postEdit.seriesNumberHelp":
+    "Post order in the series (used for previous/next navigation).",
   "postEdit.tags": "Tags",
   "postEdit.tagsPlaceholder": "news, django",
   "postEdit.tagsHelp": "Enter tags separated by commas.",
@@ -250,6 +258,13 @@ export const en: Record<MessageKey, string> = {
   "preview.stepLabel.post": "Post",
 
   "networks.title": "Networks",
+
+  "series.title": "Post series",
+  "series.help":
+    "Create series here, then assign a post and number in the post editor.",
+  "series.namePlaceholder": "Series name",
+  "series.create": "Create",
+  "series.empty": "No series yet.",
 
   "siteSettings.title": "Site settings",
   "siteSettings.help":

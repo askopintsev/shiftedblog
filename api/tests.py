@@ -8,7 +8,7 @@ from django.test import TestCase
 from PIL import Image
 from rest_framework.test import APIClient
 
-from editor.models import Post
+from editor.models import Post, PostSeries, Series
 
 User = get_user_model()
 
@@ -317,3 +317,61 @@ class EditorSiteSettingsApiTests(TestCase):
 
         again = self.client.get("/api/editor/v1/config/site-settings/")
         self.assertEqual(again.json()["settings"]["site_name"], "Editor Site")
+
+
+class EditorSeriesApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email="series@example.com",
+            password="test-pass-123",
+            is_staff=True,
+        )
+        self.client.force_authenticate(user=self.user)
+        self.series = Series.objects.create(name="Roadmap")
+        self.post = Post.objects.create(
+            title="Part one",
+            slug="part-one",
+            author=self.user,
+            status="draft",
+            body="<p>hi</p>",
+        )
+
+    def test_create_series_and_assign_with_position(self):
+        create = self.client.post(
+            "/api/editor/v1/series/",
+            {"name": "New series"},
+            format="json",
+        )
+        self.assertEqual(create.status_code, 201)
+        series_id = create.json()["series"]["id"]
+
+        patch = self.client.patch(
+            f"/api/editor/v1/posts/{self.post.pk}/",
+            {"series_id": series_id, "series_order_position": 2},
+            format="json",
+        )
+        self.assertEqual(patch.status_code, 200)
+        memberships = patch.json()["post"]["series"]
+        self.assertEqual(len(memberships), 1)
+        self.assertEqual(memberships[0]["id"], series_id)
+        self.assertEqual(memberships[0]["order_position"], 2)
+
+        row = PostSeries.objects.get(post=self.post)
+        self.assertEqual(row.series_id, series_id)
+        self.assertEqual(row.order_position, 2)
+
+    def test_clear_series_membership(self):
+        PostSeries.objects.create(
+            post=self.post,
+            series=self.series,
+            order_position=1,
+        )
+        patch = self.client.patch(
+            f"/api/editor/v1/posts/{self.post.pk}/",
+            {"series_id": None, "series_order_position": None},
+            format="json",
+        )
+        self.assertEqual(patch.status_code, 200)
+        self.assertEqual(patch.json()["post"]["series"], [])
+        self.assertFalse(PostSeries.objects.filter(post=self.post).exists())

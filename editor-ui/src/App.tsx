@@ -11,6 +11,7 @@ import { NetworksPage } from "@/features/config/NetworksPage";
 import { SiteSettingsPage } from "@/features/config/SiteSettingsPage";
 import { TelegramSettingsPage } from "@/features/config/TelegramSettingsPage";
 import { PostsListPage } from "@/features/posts/PostsListPage";
+import { SeriesPage } from "@/features/series/SeriesPage";
 import { PublishPage } from "@/features/publish/PublishPage";
 import { SessionKeepalive } from "@/features/auth/SessionKeepalive";
 import { useT } from "@/i18n";
@@ -58,6 +59,7 @@ export default function App() {
                     <Route path="/posts" element={<PostsListPage />} />
                     <Route path="/posts/new" element={<PostEditPage />} />
                     <Route path="/posts/:id" element={<PostEditPage />} />
+                    <Route path="/series" element={<SeriesPage />} />
                     <Route path="/publish" element={<PublishPage />} />
                     <Route path="/config/site" element={<SiteSettingsPage />} />
                     <Route path="/config/networks" element={<NetworksPage />} />

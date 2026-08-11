@@ -5,6 +5,7 @@ import {
   FileText,
   Globe,
   Languages,
+  Layers,
   Link2,
   LogOut,
   Network,
@@ -32,7 +33,10 @@ type NavGroup = {
 const navGroups: NavGroup[] = [
   {
     labelKey: "nav.content",
-    items: [{ to: "/posts", labelKey: "nav.posts", icon: FileText }],
+    items: [
+      { to: "/posts", labelKey: "nav.posts", icon: FileText },
+      { to: "/series", labelKey: "nav.series", icon: Layers },
+    ],
   },
   {
     labelKey: "nav.publish",
