@@ -1,4 +1,16 @@
+import { translateApiMessage } from "@/lib/translateApiMessage";
 import { DEFAULT_EDITOR_API_BASE, resolveApiBase } from "./resolveApiBase";
+
+function errorMessageFromPayload(payload: unknown, statusText: string): string {
+  if (payload && typeof payload === "object") {
+    const record = payload as { error?: string; detail?: string };
+    const raw = record.error || record.detail;
+    if (raw) {
+      return translateApiMessage(raw);
+    }
+  }
+  return statusText;
+}
 
 const API_BASE = resolveApiBase(import.meta.env.VITE_API_BASE);
 
@@ -87,7 +99,7 @@ export async function apiFetch<T>(
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new ApiError(
-      (payload as { error?: string }).error ?? res.statusText,
+      errorMessageFromPayload(payload, res.statusText),
       res.status,
       payload,
     );
@@ -107,7 +119,7 @@ export async function apiUpload<T>(
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new ApiError(
-      (payload as { error?: string }).error ?? res.statusText,
+      errorMessageFromPayload(payload, res.statusText),
       res.status,
       payload,
     );

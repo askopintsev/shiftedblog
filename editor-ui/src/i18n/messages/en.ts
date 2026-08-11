@@ -173,6 +173,10 @@ export const en: Record<MessageKey, string> = {
   "field.status": "Status",
   "field.shortDescription": "Short description",
 
+  "apiError.fieldRequired": "This field is required.",
+  "apiError.authCredentialsMissing":
+    "Authentication credentials were not provided.",
+
   "publish.title": "Multichannel publishing",
   "publish.postReady": "Post (ready to publish)",
   "publish.selectPost": "— select —",

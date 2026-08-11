@@ -170,6 +170,10 @@ export const ru = {
   "field.status": "Статус",
   "field.shortDescription": "Краткое описание",
 
+  "apiError.fieldRequired": "Обязательное поле.",
+  "apiError.authCredentialsMissing":
+    "Учётные данные для аутентификации не предоставлены.",
+
   "publish.title": "Мультиканальная публикация",
   "publish.postReady": "Пост (готов к публикации)",
   "publish.selectPost": "— выберите —",
