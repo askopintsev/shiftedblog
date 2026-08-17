@@ -470,9 +470,9 @@ rsa==4.9.1 \
     --hash=sha256:68635866661c6836b8d39430f97a996acbd61bfa49406748ea243539fe239762 \
     --hash=sha256:e7bdbfdb5497da4c07dfd35530e1a902659db6ff241e39d9953cad06ebd0ae75
     # via telethon
-sqlparse==0.5.5 \
-    --hash=sha256:12a08b3bf3eec877c519589833aed092e2444e68240a3577e8e26148acc7b1ba \
-    --hash=sha256:e20d4a9b0b8585fdf63b10d30066c7c94c5d7a7ec47c889a2d83a3caa93ff28e
+sqlparse==0.6.0 \
+    --hash=sha256:113c35c75365ab9cc9c7231d68c6428fb11c085fc8e9eb1ad659b7ddbf6cd2b9 \
+    --hash=sha256:b861c0288ce2fa56209a9a6412d2e066ac664b3873b89c26c9d8415e8e32996f
     # via django
 telethon==1.44.0 \
     --hash=sha256:52fc49efb67a4916c2aedcb295ad286f4afa2aba9bf15d83ed2acdc64af0c718 \
