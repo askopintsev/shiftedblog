@@ -31,41 +31,27 @@ Exit code `1` means threshold alerts were detected (see command output).
 
 Lockout notifications are emailed to `ADMIN_EMAIL` when SMTP is configured.
 
-### Beget SMTP (VPS + smtp.beget.com)
-
-Per [Beget mail docs](https://beget.com/ru/kb/how-to/mail/obshhie-svedeniya):
-
-| Setting | Value |
-|---------|--------|
-| `EMAIL_HOST` | `smtp.beget.com` |
-| `EMAIL_PORT` | `465` |
-| `EMAIL_USE_SSL` | `True` |
-| `EMAIL_USE_TLS` | `False` |
-| `EMAIL_HOST_USER` | Full Beget mailbox (e.g. `noreply@shiftedstuff.ru`) |
-| `EMAIL_HOST_PASSWORD` | Mailbox password from Beget panel |
-| `DEFAULT_FROM_EMAIL` | Same as `EMAIL_HOST_USER` |
-| `ADMIN_EMAIL` | Where alerts are received (can be any address) |
-
-`Connection unexpectedly closed` usually means wrong port/TLS mode (587+TLS instead of 465+SSL).
-
-**Docker Compose `.env`:** escape `$` in passwords as `$$` or Compose strips `$E` etc. and breaks SMTP auth.
-
-Mail can stay on Beget after the site moves to another VPS until the old mailbox domain expires. Host/domain move: [en/host-migration.md](en/host-migration.md).
-
-### Any SMTP / Jino
+### SMTP (any provider)
 
 Non-secret fields (`email_host`, port, user, TLS flags, from/admin) can live in **Admin → Site settings**. The password stays `EMAIL_HOST_PASSWORD` in `secrets.env`.
 
 | Setting | Typical values |
 |---------|----------------|
-| `EMAIL_HOST` | Provider SMTP hostname (Jino: see current mail docs in the Jino panel) |
+| `EMAIL_HOST` | Provider SMTP hostname (see your mail/hosting panel) |
 | `EMAIL_PORT` | `465` (SSL) or `587` (STARTTLS) |
 | `EMAIL_USE_SSL` | `True` on 465; `False` on 587 |
 | `EMAIL_USE_TLS` | `False` on 465; `True` on 587 |
 | `EMAIL_HOST_USER` | Full mailbox address |
 | `DEFAULT_FROM_EMAIL` | Usually the same mailbox |
+| `ADMIN_EMAIL` | Where alerts are received (any address) |
 
-Confirm host/port in the provider panel; they change more often than Beget’s documented pair.
+`Connection unexpectedly closed` often means wrong port/TLS mode (587+TLS vs 465+SSL).
+
+**Docker Compose `.env`:** escape `$` in passwords as `$$` or Compose strips `$E` etc. and breaks SMTP auth.
+
+After a host/domain move, mail can stay on the **old** mailbox/SMTP until you create addresses on the new domain. See [en/host-migration.md](en/host-migration.md).
+
+**Example (one hoster’s documented pair):** `smtp.beget.com:465` with SSL — see the provider’s mail KB for current values.
 
 ## Rate limiting layers
 
@@ -106,6 +92,6 @@ Adjust with `--ip-threshold` and `--username-ip-threshold`.
 ## Editor subdomain (`editor.*`)
 
 1. Set `EDITOR_URL`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` (include editor origin), and cookie domain vars in Doppler (see `env.example`).
-2. Ensure TLS cert covers `editor.shiftedstuff.ru` (SAN or separate cert).
+2. Ensure TLS cert covers your editor hostname (e.g. `editor.example.com`) as a SAN.
 3. After deploy, verify login at `EDITOR_URL/login` and API session from browser devtools (`/api/editor/v1/auth/me/`).
 4. Keep Django admin as fallback; link **Open new editor** appears on Posts changelist when `EDITOR_URL` is set.
