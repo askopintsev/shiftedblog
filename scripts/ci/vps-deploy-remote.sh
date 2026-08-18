@@ -33,10 +33,23 @@ download_secrets() {
   local tmp_secrets
   tmp_secrets="$(mktemp "${ROOT}/secrets.env.XXXXXX")"
 
+  if [[ "${SKIP_DOPPLER:-0}" == "1" ]] && [[ -s "${ROOT}/secrets.env" ]]; then
+    echo "Using secrets.env uploaded by CI."
+    if ! grep -qE '^SITE_URL=' "${ROOT}/secrets.env"; then
+      echo "Uploaded secrets.env must contain SITE_URL." >&2
+      exit 1
+    fi
+    return 0
+  fi
+
   if [[ -n "${DOPPLER_TOKEN:-}" ]]; then
     ensure_doppler
     printf '%s' "${DOPPLER_TOKEN}" | doppler configure set token --scope "$ROOT" >/dev/null
-    doppler secrets download --no-file --format=env >"${tmp_secrets}"
+    doppler secrets download \
+      --project "${DOPPLER_PROJECT:-shifted_blog}" \
+      --config "${DOPPLER_CONFIG:-prd}" \
+      --no-file \
+      --format=env >"${tmp_secrets}"
   elif [[ -s "${ROOT}/secrets.env" ]]; then
     echo "Using existing secrets.env on server."
     cp "${ROOT}/secrets.env" "${tmp_secrets}"
