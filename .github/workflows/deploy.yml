@@ -124,85 +124,20 @@ jobs:
 
     - name: Deploy to VPS
       uses: appleboy/ssh-action@v1.2.5
+      env:
+        DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
       with:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USERNAME }}
         key_path: .deploy-ssh/key
         port: ${{ secrets.VPS_PORT }}
+        envs: DOPPLER_TOKEN
         script: |
-          echo "Current directory: $(pwd)"
+          set -euo pipefail
+          cd /opt/shiftedblog
           echo "Docker version: $(docker --version)"
           echo "Docker compose version: $(docker compose version)"
-
-          # Navigate to correct project directory
-          cd /opt/shiftedblog
-          echo "Project directory: $(pwd)"
-          ls -la
-          
-          # Pull latest changes
-          git pull origin master
-
-          # Install Doppler CLI if not available
-          if ! command -v doppler &> /dev/null; then
-            echo "Installing Doppler CLI..."
-            curl -Ls https://cli.doppler.com/install.sh | sh
-            export PATH="$HOME/.local/bin:$PATH"
-          fi
-          
-          # Set up Doppler authentication
-          echo "${{ secrets.DOPPLER_TOKEN }}" | doppler configure set token
-          
-          # secrets.env is passed to containers via env_file; avoid .env in project root
-          # because Compose auto-interpolates it and breaks values containing $ (e.g. passwords).
-          doppler secrets download --no-file --format=env > secrets.env
-          rm -f .env
-          
-          # Verify secrets.env was created
-          echo "Checking secrets.env file:"
-          ls -la secrets.env
-          echo "File size: $(wc -c < secrets.env)"
-          echo "First few lines of secrets.env (without values):"
-          head -5 secrets.env | sed 's/=.*/=***/'
-          
-          # Ensure writable bind-mount dirs exist before containers start
-          mkdir -p logs backups static media static_blog
-          chown -R 1000:1000 logs backups static media 2>/dev/null || chmod -R a+rwX logs backups static media
-
-          # Stop existing containers
-          docker compose -f docker-compose.prod.yml down || echo "No containers to stop"
-
-          # Free disk before build (small VPS fills up with old images/build cache)
-          docker builder prune -af || true
-          docker image prune -af || true
-          df -h / /var/lib/docker 2>/dev/null || df -h /
-
-          # Build and start (layer cache keeps disk use lower than --no-cache)
-          set -a
-          # shellcheck disable=SC1091
-          source secrets.env
-          set +a
-          site_url="${SITE_URL%/}"
-          if [[ -z "${site_url}" ]]; then
-            echo "SITE_URL must be set in secrets.env for editor-ui production build." >&2
-            exit 1
-          fi
-          export VITE_PUBLIC_SITE_BASE="${VITE_PUBLIC_SITE_BASE:-${site_url}}"
-          export VITE_API_BASE="$(./scripts/sanitize-vite-api-base.sh)"
-          echo "Editor UI build: VITE_API_BASE=${VITE_API_BASE}"
-
-          docker compose -f docker-compose.prod.yml build web
-          docker compose -f docker-compose.prod.yml up -d
-          docker compose -f docker-compose.prod.yml exec -T web \
-            cp -a /editor-ui/dist/. /editor-ui/dist-export/
-          docker compose -f docker-compose.prod.yml restart nginx
-          
-          # Verify deployment
-          echo "Running containers:"
-          docker ps
-          
-          # Check logs if needed
-          echo "Container logs:"
-          docker compose -f docker-compose.prod.yml logs --tail=20
+          bash scripts/ci/vps-deploy-remote.sh
 
     - name: Verify Deployment
       uses: appleboy/ssh-action@v1.2.5
