@@ -155,14 +155,22 @@ if [[ "$MODE" == "local" ]]; then
     upsert_env "$ENV_FILE" "HOST_GID" "$(id -g)"
   fi
 else
-  read -r -p "Primary domain (e.g. example.com): " DOMAIN_IN
+  read -r -p "Primary domain (e.g. example.com, no www): " DOMAIN_IN
   if [[ -z "$DOMAIN_IN" ]]; then
     echo "Domain is required for production." >&2
     exit 1
   fi
-  read -r -p "Extra domains comma-separated (optional, e.g. example.online,www.example.online): " EXTRA_IN
+  if [[ "$DOMAIN_IN" == www.* ]]; then
+    DOMAIN_IN="${DOMAIN_IN#www.}"
+  fi
+  read -r -p "Canonical public URL [https://${DOMAIN_IN}]: " SITE_URL_IN
+  SITE_URL_IN="${SITE_URL_IN:-https://${DOMAIN_IN}}"
+  SITE_URL_IN="${SITE_URL_IN%/}"
+  read -r -p "Extra domains comma-separated (optional; same site, not redirects): " EXTRA_IN
+  read -r -p "Legacy domains to 301 to the canonical URL (optional, e.g. old.com,www.old.com): " REDIRECT_IN
   read -r -p "Editor subdomain [editor.${DOMAIN_IN}]: " EDITOR_IN
   EDITOR_IN="${EDITOR_IN:-editor.${DOMAIN_IN}}"
+  read -r -p "Legacy editor hosts to 301 (optional, e.g. editor.old.com): " REDIRECT_EDITOR_IN
   read -r -p "Let's Encrypt cert name [${DOMAIN_IN}]: " CERT_IN
   CERT_IN="${CERT_IN:-${DOMAIN_IN}}"
   read -r -p "Server public IP (optional, for nginx server_name): " SERVER_IP_IN
@@ -173,8 +181,10 @@ else
   upsert_env "$ENV_FILE" "EDITOR_DOMAIN" "$EDITOR_IN"
   upsert_env "$ENV_FILE" "SSL_CERT_NAME" "$CERT_IN"
   upsert_env "$ENV_FILE" "EXTRA_DOMAINS" "$EXTRA_IN"
+  upsert_env "$ENV_FILE" "REDIRECT_FROM_DOMAINS" "$REDIRECT_IN"
+  upsert_env "$ENV_FILE" "REDIRECT_FROM_EDITOR_DOMAINS" "$REDIRECT_EDITOR_IN"
   upsert_env "$ENV_FILE" "SERVER_IP" "$SERVER_IP_IN"
-  upsert_env "$ENV_FILE" "SITE_URL" "https://${DOMAIN_IN}"
+  upsert_env "$ENV_FILE" "SITE_URL" "$SITE_URL_IN"
   upsert_env "$ENV_FILE" "ALLOWED_HOSTS" "${DOMAIN_IN},www.${DOMAIN_IN},${EDITOR_IN},localhost,127.0.0.1"
   upsert_env "$ENV_FILE" "CSRF_TRUSTED_ORIGINS" "https://${DOMAIN_IN},https://www.${DOMAIN_IN},https://${EDITOR_IN}"
   upsert_env "$ENV_FILE" "EDITOR_URL" "https://${EDITOR_IN}"
@@ -186,7 +196,7 @@ else
   upsert_env "$ENV_FILE" "SECURE_SSL_REDIRECT" "True"
   upsert_env "$ENV_FILE" "SECURE_HSTS_SECONDS" "31536000"
   upsert_env "$ENV_FILE" "ADMIN_URL" "$ADMIN_URL_VAL"
-  upsert_env "$ENV_FILE" "VITE_PUBLIC_SITE_BASE" "https://${DOMAIN_IN}"
+  upsert_env "$ENV_FILE" "VITE_PUBLIC_SITE_BASE" "$SITE_URL_IN"
   upsert_env "$ENV_FILE" "VITE_API_BASE" "/api/editor/v1"
 fi
 
@@ -197,9 +207,11 @@ if [[ "$MODE" == "production" ]]; then
   echo ""
   echo "Nginx config generated. Before first HTTPS deploy:"
   echo "  1. Point DNS A records for ${DOMAIN_IN} / www / ${EDITOR_IN} to this server"
-  echo "  2. Obtain certificates, e.g.:"
+  echo "  2. Obtain certificates (include REDIRECT_FROM_* names if set), e.g.:"
   echo "       sudo certbot certonly --webroot -w /var/www/html -d ${DOMAIN_IN} -d www.${DOMAIN_IN} -d ${EDITOR_IN}"
   echo "  3. Re-run deploy if certs were missing on first start"
+  echo "  4. Changing domain later: ./scripts/apply-domain.sh (does not rotate keys)"
+  echo "  5. Host/domain move: docs/en/host-migration.md"
 fi
 
 read -r -p "Start Docker now? [Y/n]: " start_docker

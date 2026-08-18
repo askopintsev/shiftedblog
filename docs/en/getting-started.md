@@ -8,6 +8,7 @@ ShiftedBlog is a self-hosted Django blog. The recommended path for new users is 
 
 1. **Local** — try the app on your machine ([local-deploy.md](local-deploy.md))
 2. **Production** — deploy on a VPS with HTTPS ([production-deploy.md](production-deploy.md))
+3. **Migrate** — move host and/or domain ([host-migration.md](host-migration.md))
 
 ```bash
 ./scripts/setup.sh
@@ -25,5 +26,6 @@ The wizard creates `.env` (local) or `secrets.env` (production), generates secre
 
 - [Configuration: env vs Site settings](configuration.md)
 - [Site settings](site-settings.md)
+- [Host/domain migration](host-migration.md)
 - [Security runbook](../security-runbook.md) (operations)
 - [Maintainer / CI notes](maintainer.md)
