@@ -104,16 +104,23 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4
 
-    - name: Install Doppler CLI
-      uses: dopplerhq/cli-action@v4
-
     - name: Fetch Doppler Secrets
-      uses: dopplerhq/cli-action@v4
-      with:
-          token: ${{ secrets.DOPPLER_TOKEN }}
-          project: shifted_blog
-          config: prd
-          command: secrets download --no-file --format=env > secrets.env
+      env:
+        DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+      run: |
+        mkdir -p "${HOME}/.local/bin"
+        curl -fsSL -o /tmp/doppler.tgz \
+          "https://github.com/DopplerHQ/cli/releases/download/3.75.1/doppler_3.75.1_linux_amd64.tar.gz"
+        tar -xzf /tmp/doppler.tgz -C /tmp
+        install -m 0755 /tmp/doppler "${HOME}/.local/bin/doppler"
+        export PATH="${HOME}/.local/bin:${PATH}"
+        doppler secrets download \
+          --project shifted_blog \
+          --config prd \
+          --no-file \
+          --format=env > secrets.env
+        echo "secrets.env size: $(wc -c < secrets.env) bytes"
+        test -s secrets.env
 
     - name: Write VPS deploy key
       run: |
