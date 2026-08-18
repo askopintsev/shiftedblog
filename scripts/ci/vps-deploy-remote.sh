@@ -97,6 +97,12 @@ validate_and_build_env() {
 }
 
 deploy_containers() {
+  if ss -tln 2>/dev/null | grep -qE ':(80|443) '; then
+    echo "Ports 80/443 are already in use on the host (often system nginx)." >&2
+    echo "Stop host nginx before deploy: sudo systemctl stop nginx && sudo systemctl disable nginx" >&2
+    exit 1
+  fi
+
   docker compose -f docker-compose.prod.yml down || echo "No containers to stop"
 
   docker builder prune -af || true
