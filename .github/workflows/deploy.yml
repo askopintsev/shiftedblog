@@ -115,12 +115,19 @@ jobs:
           config: prd
           command: secrets download --no-file --format=env > secrets.env
 
+    - name: Write VPS deploy key
+      run: |
+        install -m 700 -d .deploy-ssh
+        printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > .deploy-ssh/key
+        chmod 600 .deploy-ssh/key
+        ssh-keygen -y -f .deploy-ssh/key >/dev/null
+
     - name: Deploy to VPS
       uses: appleboy/ssh-action@v1.2.5
       with:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USERNAME }}
-        key: ${{ secrets.VPS_SSH_KEY }}
+        key_path: .deploy-ssh/key
         port: ${{ secrets.VPS_PORT }}
         script: |
           echo "Current directory: $(pwd)"
@@ -202,6 +209,6 @@ jobs:
       with:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USERNAME }}
-        key: ${{ secrets.VPS_SSH_KEY }}
+        key_path: .deploy-ssh/key
         port: ${{ secrets.VPS_PORT }}
         script: docker ps

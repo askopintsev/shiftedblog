@@ -16,6 +16,10 @@ chmod 700 "$SSH_DIR"
 touch "$AUTH_KEYS"
 chmod 600 "$AUTH_KEYS"
 
+if [[ -s "$AUTH_KEYS" ]] && [[ $(tail -c 1 "$AUTH_KEYS" | wc -l) -eq 0 ]]; then
+  echo >> "$AUTH_KEYS"
+fi
+
 if [[ -f "$1" ]]; then
   PUBKEY="$(cat "$1")"
 else
