@@ -19,7 +19,7 @@ git clone https://github.com/askopintsev/shiftedblog.git
 cd shiftedblog && ./scripts/setup.sh   # local → http://localhost:8888/
 ```
 
-More: [getting started](docs/en/getting-started.md) · [production](docs/en/production-deploy.md)
+More: [getting started](docs/en/getting-started.md) · [production](docs/en/production-deploy.md) · [host/domain move](docs/en/host-migration.md)
 
 ## Русский
 
@@ -34,7 +34,7 @@ git clone https://github.com/askopintsev/shiftedblog.git
 cd shiftedblog && ./scripts/setup.sh   # local → http://localhost:8888/
 ```
 
-Подробнее: [быстрый старт](docs/ru/getting-started.md) · [production](docs/ru/production-deploy.md)
+Подробнее: [быстрый старт](docs/ru/getting-started.md) · [production](docs/ru/production-deploy.md) · [перенос](docs/ru/host-migration.md)
 
 ## License
 

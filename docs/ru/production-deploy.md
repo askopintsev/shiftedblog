@@ -61,3 +61,7 @@ ENV_FILE=secrets.env ./scripts/check-env.sh production
 ## Опциональный CI
 
 GitHub Actions + Doppler — путь мейнтейнера: [../en/maintainer.md](../en/maintainer.md). Для стороннего self-host достаточно `secrets.env` и `deploy.sh`.
+
+## Перенос хоста или домена
+
+Не кладите старые имена в `EXTRA_DOMAINS` (это дубль сайта). Для HTTPS 301 на `SITE_URL` используйте `REDIRECT_FROM_DOMAINS` / `REDIRECT_FROM_EDITOR_DOMAINS`. Смена домена без ротации секретов: `./scripts/apply-domain.sh`. Восстановление: `./scripts/backup/restore.sh`. Плейбук: [host-migration.md](host-migration.md).

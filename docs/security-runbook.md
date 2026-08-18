@@ -50,6 +50,23 @@ Per [Beget mail docs](https://beget.com/ru/kb/how-to/mail/obshhie-svedeniya):
 
 **Docker Compose `.env`:** escape `$` in passwords as `$$` or Compose strips `$E` etc. and breaks SMTP auth.
 
+Mail can stay on Beget after the site moves to another VPS until the old mailbox domain expires. Host/domain move: [en/host-migration.md](en/host-migration.md).
+
+### Any SMTP / Jino
+
+Non-secret fields (`email_host`, port, user, TLS flags, from/admin) can live in **Admin → Site settings**. The password stays `EMAIL_HOST_PASSWORD` in `secrets.env`.
+
+| Setting | Typical values |
+|---------|----------------|
+| `EMAIL_HOST` | Provider SMTP hostname (Jino: see current mail docs in the Jino panel) |
+| `EMAIL_PORT` | `465` (SSL) or `587` (STARTTLS) |
+| `EMAIL_USE_SSL` | `True` on 465; `False` on 587 |
+| `EMAIL_USE_TLS` | `False` on 465; `True` on 587 |
+| `EMAIL_HOST_USER` | Full mailbox address |
+| `DEFAULT_FROM_EMAIL` | Usually the same mailbox |
+
+Confirm host/port in the provider panel; they change more often than Beget’s documented pair.
+
 ## Rate limiting layers
 
 | Layer | Config | Logs |

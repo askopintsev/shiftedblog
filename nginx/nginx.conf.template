@@ -195,4 +195,5 @@ http {
             try_files $uri $uri/ /index.html;
         }
     }
+__REDIRECT_HTTPS_BLOCKS__
 }

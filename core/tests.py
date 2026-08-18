@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 from datetime import date
+from pathlib import Path
 from typing import cast
 from unittest.mock import patch
 
 from cryptography.fernet import Fernet
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
@@ -17,6 +21,11 @@ from core.models import Credential, Network
 from core.models.user import User as CoreUser
 from core.models.user import UserManager
 from core.security_warnings import collect_secrets_rotation_warnings
+from core.services.site_domain import (
+    cookie_parent_domain,
+    hostname_from_site_url,
+    sync_sites_framework_from_site_url,
+)
 from core.signals import rotate_session_on_login
 
 User = get_user_model()
@@ -192,6 +201,97 @@ class SiteSettingsTests(TestCase):
         cache.clear()
         cfg = SiteSettingsService.effective_email()
         self.assertEqual(cfg.admin_email, "env-admin@example.com")
+
+
+class SiteDomainSyncTests(TestCase):
+    def test_hostname_and_cookie_parent(self):
+        self.assertEqual(
+            hostname_from_site_url("https://www.shiftedstuff.space/"),
+            "www.shiftedstuff.space",
+        )
+        self.assertEqual(
+            cookie_parent_domain("www.shiftedstuff.space"),
+            "shiftedstuff.space",
+        )
+
+    @override_settings(SITE_URL="https://www.shiftedstuff.space", SITE_ID=1)
+    def test_sync_updates_contrib_sites(self):
+        from django.contrib.sites.models import Site
+
+        site = sync_sites_framework_from_site_url()
+        self.assertEqual(site.pk, 1)
+        self.assertEqual(site.domain, "www.shiftedstuff.space")
+        stored = Site.objects.get(pk=1)
+        self.assertEqual(stored.domain, "www.shiftedstuff.space")
+
+
+class RestoreDbCommandTests(TestCase):
+    @override_settings(SITE_URL="https://www.example.com")
+    @patch.dict(
+        "os.environ",
+        {
+            "DB_NAME": "shiftedblog",
+            "DB_USER": "shiftedblog",
+            "DB_PASS": "secret",
+            "DB_HOST": "db",
+        },
+        clear=False,
+    )
+    def test_refuses_non_empty_database_without_force(self):
+        dump = Path("/tmp/shiftedblog_pg_dump_test.sql.gz")
+        with (
+            patch(
+                "core.management.commands.restore_db.Command._public_table_count",
+                return_value=12,
+            ),
+            patch(
+                "core.management.commands.restore_db.Path.is_file", return_value=True
+            ),
+            self.assertRaises(CommandError) as ctx,
+        ):
+            call_command("restore_db", dump=str(dump), skip_media=True)
+        self.assertIn("not empty", str(ctx.exception))
+
+
+def _load_render_nginx_conf():
+    path = Path(__file__).resolve().parents[1] / "scripts" / "render_nginx_conf.py"
+    spec = importlib.util.spec_from_file_location("render_nginx_conf", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class NginxRedirectRenderTests(TestCase):
+    def test_legacy_and_apex_redirect_to_www_site_url(self):
+        render = _load_render_nginx_conf()
+        template = (
+            "HTTP:__HTTP_SERVER_NAMES__\n"
+            "HTTPS:__HTTPS_SERVER_NAMES__\n"
+            "EDITOR:__EDITOR_SERVER_NAMES__\n"
+            "BLOCKS:__REDIRECT_HTTPS_BLOCKS__\n"
+        )
+        text = render.render(
+            {
+                "DOMAIN": "shiftedstuff.space",
+                "SITE_URL": "https://www.shiftedstuff.space",
+                "EDITOR_DOMAIN": "editor.shiftedstuff.space",
+                "REDIRECT_FROM_DOMAINS": "shiftedstuff.ru,www.shiftedstuff.ru",
+                "REDIRECT_FROM_EDITOR_DOMAINS": "editor.shiftedstuff.ru",
+            },
+            template,
+        )
+        self.assertIn("www.shiftedstuff.space", text)
+        self.assertIn("shiftedstuff.ru", text)
+        https_line = next(
+            line for line in text.splitlines() if line.startswith("HTTPS:")
+        )
+        self.assertIn("www.shiftedstuff.space", https_line)
+        self.assertNotIn("shiftedstuff.ru", https_line)
+        self.assertIn("return 301 https://www.shiftedstuff.space$request_uri", text)
+        self.assertIn("return 301 https://editor.shiftedstuff.space$request_uri", text)
+        blocks = text.split("BLOCKS:", 1)[1]
+        self.assertIn("shiftedstuff.space", blocks)
 
 
 @override_settings(ADMIN_URL="mellon")

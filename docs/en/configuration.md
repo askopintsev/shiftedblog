@@ -22,6 +22,8 @@ See [`env.example`](../../env.example) for the full list.
 
 `SITE_URL` stays in env (Django boot checks + editor-ui production build).
 
+Changing host or domain later: `./scripts/apply-domain.sh` and [host-migration.md](host-migration.md). Do not put legacy 301 hosts in `EXTRA_DOMAINS`.
+
 ## Site settings (admin)
 
 After migrate, open **Admin → Core → Site settings**:

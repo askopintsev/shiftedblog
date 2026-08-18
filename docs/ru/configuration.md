@@ -22,6 +22,8 @@ English: [../en/configuration.md](../en/configuration.md)
 
 `SITE_URL` остаётся в env (проверка при старте Django + сборка editor-ui).
 
+Смена хоста или домена: `./scripts/apply-domain.sh` и [host-migration.md](host-migration.md). Не кладите legacy 301-имена в `EXTRA_DOMAINS`.
+
 ## Site settings (админка)
 
 После migrate: **Admin → Core → Site settings** — бренд, соцсети, несекретные email-поля, feature toggles.

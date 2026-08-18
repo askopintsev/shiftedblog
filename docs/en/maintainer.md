@@ -20,6 +20,8 @@ Required repository secrets: `VPS_HOST`, `VPS_USERNAME`, `VPS_SSH_KEY`, `VPS_POR
 
 SSH helper scripts live under `scripts/ssh/` (`GITHUB_REPO` can point at a fork).
 
+After a VPS move, update `VPS_HOST` (and `VPS_SSH_KEY` if the deploy user is new) before the next push to `master`. After a hostname change, refresh Doppler `SITE_URL`, `ALLOWED_HOSTS`, cookie domains, and `REDIRECT_FROM_*`. Playbook: [host-migration.md](host-migration.md).
+
 ## Security runbook
 
 Operational hardening (SMTP providers, axes, editor subdomain): [../security-runbook.md](../security-runbook.md).

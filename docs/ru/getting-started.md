@@ -8,6 +8,7 @@ English: [../en/getting-started.md](../en/getting-started.md)
 
 1. **Local** — запуск на своей машине ([local-deploy.md](local-deploy.md))
 2. **Production** — деплой на VPS с HTTPS ([production-deploy.md](production-deploy.md))
+3. **Перенос** — смена VPS и/или домена ([host-migration.md](host-migration.md))
 
 ```bash
 ./scripts/setup.sh
@@ -25,5 +26,6 @@ English: [../en/getting-started.md](../en/getting-started.md)
 
 - [Конфигурация: env и Site settings](configuration.md)
 - [Site settings](site-settings.md)
+- [Перенос хоста и домена](host-migration.md)
 - [Security runbook](../security-runbook.md)
 - [Заметки для мейнтейнера / CI](../en/maintainer.md)

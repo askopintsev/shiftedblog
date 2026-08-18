@@ -66,3 +66,7 @@ Production builds bake `VITE_PUBLIC_SITE_BASE` / `VITE_API_BASE` into the SPA. S
 ## Optional CI
 
 GitHub Actions + Doppler is an optional maintainer path — see [maintainer.md](maintainer.md). Third-party installs only need `secrets.env` + `deploy.sh`.
+
+## Moving host or domain
+
+Do not put legacy hostnames in `EXTRA_DOMAINS` (that serves a duplicate site). Use `REDIRECT_FROM_DOMAINS` / `REDIRECT_FROM_EDITOR_DOMAINS` for HTTPS 301s to `SITE_URL`. Change domain keys without rotating secrets via `./scripts/apply-domain.sh`. Restore dumps with `./scripts/backup/restore.sh`. Full playbook: [host-migration.md](host-migration.md).
