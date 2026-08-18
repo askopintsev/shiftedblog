@@ -80,13 +80,13 @@ prepare_dirs() {
 }
 
 validate_and_build_env() {
-  set +u
-  set -a
-  # shellcheck disable=SC1091
-  source secrets.env
-  set +a
-  set -u
-  site_url="${SITE_URL%/}"
+  site_url="$(
+    grep -m1 '^SITE_URL=' secrets.env \
+      | cut -d= -f2- \
+      | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//" \
+      | tr -d '\r'
+  )"
+  site_url="${site_url%/}"
   if [[ -z "${site_url}" ]]; then
     echo "SITE_URL must be set in secrets.env for editor-ui production build." >&2
     exit 1
@@ -97,6 +97,12 @@ validate_and_build_env() {
 }
 
 deploy_containers() {
+  if ss -tln 2>/dev/null | grep -qE ':(80|443) '; then
+    echo "Ports 80/443 are already in use on the host (often system nginx)." >&2
+    echo "Stop host nginx before deploy: sudo systemctl stop nginx && sudo systemctl disable nginx" >&2
+    exit 1
+  fi
+
   docker compose -f docker-compose.prod.yml down || echo "No containers to stop"
 
   docker builder prune -af || true
