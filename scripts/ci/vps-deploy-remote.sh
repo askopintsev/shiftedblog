@@ -80,10 +80,12 @@ prepare_dirs() {
 }
 
 validate_and_build_env() {
+  set +u
   set -a
   # shellcheck disable=SC1091
   source secrets.env
   set +a
+  set -u
   site_url="${SITE_URL%/}"
   if [[ -z "${site_url}" ]]; then
     echo "SITE_URL must be set in secrets.env for editor-ui production build." >&2
