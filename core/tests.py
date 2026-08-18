@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import tempfile
 from datetime import date
 from pathlib import Path
 from typing import cast
@@ -238,7 +239,7 @@ class RestoreDbCommandTests(TestCase):
         clear=False,
     )
     def test_refuses_non_empty_database_without_force(self):
-        dump = Path("/tmp/shiftedblog_pg_dump_test.sql.gz")
+        dump = Path(tempfile.gettempdir()) / "shiftedblog_pg_dump_test.sql.gz"
         with (
             patch(
                 "core.management.commands.restore_db.Command._public_table_count",
