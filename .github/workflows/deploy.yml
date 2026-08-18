@@ -122,19 +122,30 @@ jobs:
         chmod 600 .deploy-ssh/key
         ssh-keygen -y -f .deploy-ssh/key >/dev/null
 
-    - name: Deploy to VPS
-      uses: appleboy/ssh-action@v1.2.5
-      env:
-        DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+    - name: Copy secrets.env to VPS
+      uses: appleboy/scp-action@v1.0.0
       with:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USERNAME }}
         key_path: .deploy-ssh/key
         port: ${{ secrets.VPS_PORT }}
-        envs: DOPPLER_TOKEN
+        source: secrets.env
+        target: /opt/shiftedblog
+
+    - name: Deploy to VPS
+      uses: appleboy/ssh-action@v1.2.5
+      env:
+        SKIP_DOPPLER: "1"
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key_path: .deploy-ssh/key
+        port: ${{ secrets.VPS_PORT }}
+        envs: SKIP_DOPPLER
         script: |
           set -euo pipefail
           cd /opt/shiftedblog
+          chmod 600 secrets.env
           echo "Docker version: $(docker --version)"
           echo "Docker compose version: $(docker compose version)"
           bash scripts/ci/vps-deploy-remote.sh
