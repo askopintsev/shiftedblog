@@ -79,6 +79,13 @@ prepare_dirs() {
   mkdir -p logs backups static media static_blog
 }
 
+render_nginx_conf() {
+  if grep -qE '^SITE_URL=' secrets.env; then
+    echo "Rendering nginx/nginx.conf from template..."
+    ENV_FILE=secrets.env ./scripts/generate-nginx-conf.sh
+  fi
+}
+
 validate_and_build_env() {
   site_url="$(
     grep -m1 '^SITE_URL=' secrets.env \
@@ -126,6 +133,7 @@ echo "First few lines of secrets.env (without values):"
 head -5 secrets.env | sed 's/=.*/=***/'
 
 prepare_dirs
+render_nginx_conf
 validate_and_build_env
 deploy_containers
 
