@@ -160,7 +160,7 @@ push master  →  lint + editor-ui tests  →  deploy job (if green)
 
 Remote script: [`scripts/ci/vps-deploy-remote.sh`](../../scripts/ci/vps-deploy-remote.sh).
 
-First CI deploy may take **several minutes** (image build). Later runs are similar — the script prunes builders/images each time.
+First CI deploy may take **15–30+ minutes** on a small VPS (cold Docker build: `npm ci`, pip, editor-ui). The SSH deploy step uses a **45m** command timeout. Later runs are faster when Docker layer cache is warm; unused images are pruned each deploy.
 
 ---
 

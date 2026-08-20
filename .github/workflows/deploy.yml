@@ -149,6 +149,8 @@ jobs:
         key_path: .deploy-ssh/key
         port: ${{ secrets.VPS_PORT }}
         envs: SKIP_DOPPLER
+        # Cold Docker builds on the VPS (npm ci + pip) often exceed the 10m default.
+        command_timeout: 45m
         script: |
           set -euo pipefail
           cd /opt/shiftedblog
