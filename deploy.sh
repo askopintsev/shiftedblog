@@ -20,6 +20,11 @@ if [[ ! -f secrets.env ]]; then
   exit 1
 fi
 
+if [[ -f .env ]]; then
+  echo "Removing legacy .env (Docker Compose interpolates \$ in values; use secrets.env only)."
+  rm -f .env
+fi
+
 # Pull latest changes when this is a git checkout
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   git pull origin master || git pull || true
@@ -42,13 +47,8 @@ fi
 # shellcheck disable=SC1091
 source ./scripts/load-editor-ui-build-env.sh
 
-docker compose -f docker-compose.prod.yml down
-
-docker builder prune -af || true
-docker image prune -af || true
-
-docker compose -f docker-compose.prod.yml build
-docker compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml build web
+docker compose -f docker-compose.prod.yml up -d --remove-orphans --force-recreate
 
 # Sync editor dist volume / reload nginx when containers are up
 docker compose -f docker-compose.prod.yml exec -T web \

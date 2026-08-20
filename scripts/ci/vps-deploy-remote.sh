@@ -7,7 +7,16 @@ cd "$ROOT"
 
 export PATH="${HOME}/.local/bin:/usr/local/bin:${PATH}"
 
-COMPOSE=(docker compose -f docker-compose.prod.yml --env-file secrets.env)
+# Build args use exported VITE_*; services load secrets.env via compose env_file.
+# Do not pass --env-file here — compose also auto-loads .env and interpolates $VAR.
+COMPOSE=(docker compose -f docker-compose.prod.yml)
+
+remove_legacy_env_file() {
+  if [[ -f "${ROOT}/.env" ]]; then
+    echo "Removing legacy .env (compose interpolates \$ in passwords; use secrets.env only)."
+    rm -f "${ROOT}/.env"
+  fi
+}
 
 ensure_doppler() {
   if command -v doppler >/dev/null 2>&1; then
@@ -39,6 +48,7 @@ download_secrets() {
       echo "Uploaded secrets.env must contain SITE_URL." >&2
       exit 1
     fi
+    remove_legacy_env_file
     return 0
   fi
 
@@ -72,7 +82,7 @@ download_secrets() {
 
   chmod 600 "${tmp_secrets}"
   mv "${tmp_secrets}" "${ROOT}/secrets.env"
-  rm -f "${ROOT}/.env"
+  remove_legacy_env_file
 }
 
 prepare_dirs() {
@@ -111,42 +121,28 @@ check_env_mode() {
   fi
 }
 
-ports_in_use() {
-  ss -tln 2>/dev/null | grep -qE ':(80|443) '
-}
-
-wait_for_ports_release() {
-  local attempt
-  for attempt in 1 2 3 4 5 6 7 8 9 10; do
-    if ! ports_in_use; then
-      return 0
-    fi
-    sleep 1
-  done
-  return 1
-}
-
 report_port_conflict() {
-  echo "Ports 80/443 are still in use after stopping the stack:" >&2
+  echo "Ports 80/443 are in use and blocked docker compose up:" >&2
   ss -tlnp 2>/dev/null | grep -E ':(80|443) ' || true
   echo "If host nginx holds these ports: sudo systemctl stop nginx && sudo systemctl disable nginx" >&2
 }
 
 deploy_containers() {
-  echo "Stopping existing stack..."
-  "${COMPOSE[@]}" down --remove-orphans --timeout 30 || echo "Warning: docker compose down failed (continuing)"
-
-  if ! wait_for_ports_release; then
-    report_port_conflict
-    exit 1
-  fi
+  remove_legacy_env_file
 
   # Keep builder cache between deploys; full prune makes every build cold and slow.
   docker image prune -af || true
   df -h / /var/lib/docker 2>/dev/null || df -h /
 
+  echo "Building web image (existing stack may stay up during build)..."
   "${COMPOSE[@]}" build web
-  "${COMPOSE[@]}" up -d
+
+  echo "Recreating stack..."
+  if ! "${COMPOSE[@]}" up -d --remove-orphans --force-recreate; then
+    report_port_conflict
+    exit 1
+  fi
+
   "${COMPOSE[@]}" exec -T web \
     cp -a /editor-ui/dist/. /editor-ui/dist-export/
   "${COMPOSE[@]}" restart nginx

@@ -215,6 +215,7 @@ git pull origin master   # или fetch/reset как в CI
 | `Permission denied (publickey)` | Неверный `VPS_SSH_KEY` или ключ не в `authorized_keys` |
 | `git fetch` падает на VPS | Нет git deploy key или неверный remote |
 | `Ports 80/443 are already in use` | Хостовый nginx/apache — остановите (см. [production-deploy.md](production-deploy.md), шаг 3) |
+| Deploy падает после «Stopping existing stack» / предупреждения compose про `$E` | Устаревший `.env` в `/opt/shiftedblog` — удалите; CI использует только `secrets.env` |
 | Редактор с неверным URL сайта | `SITE_URL` в secrets; нужен `./deploy.sh` для пересборки UI |
 | Пустой `secrets.env` в CI | `DOPPLER_TOKEN` или имя project/config в Doppler |
 
