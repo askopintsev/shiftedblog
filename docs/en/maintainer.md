@@ -226,7 +226,7 @@ Re-run steps 2–3 if the deploy user or server was recreated.
 | `git fetch` fails on VPS | Git deploy key missing or wrong remote |
 | `Ports 80/443 are already in use` | Host nginx/apache — stop it (see [production-deploy.md](production-deploy.md) step 3) |
 | Deploy fails right after “Stopping existing stack” / compose `$E` warnings | Stale `.env` in `/opt/shiftedblog` — remove it; CI deploy uses `secrets.env` only |
-| `failed to bind host port 0.0.0.0:80` / port 80 in use during `compose up` | Old nginx container or host web server — run `./scripts/vps-prepare-for-ci.sh` on the VPS; deploy now stops nginx before `up` |
+| `failed to bind host port 0.0.0.0:80` / port 80 in use during `compose up` | Old nginx container or host web server — run `./scripts/vps-prepare-for-ci.sh` on the VPS; CI deploy uses rolling update (nginx stays up when already running) |
 | Editor shows wrong site URL | `SITE_URL` in secrets; run `./deploy.sh` to rebuild editor UI |
 | Empty `secrets.env` in CI | `DOPPLER_TOKEN` or Doppler project/config name |
 

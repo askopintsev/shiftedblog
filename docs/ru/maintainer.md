@@ -226,7 +226,7 @@ git pull origin master   # или fetch/reset как в CI
 | `git fetch` падает на VPS | Нет git deploy key или неверный remote |
 | `Ports 80/443 are already in use` | Хостовый nginx/apache — остановите (см. [production-deploy.md](production-deploy.md), шаг 3) |
 | Deploy падает после «Stopping existing stack» / предупреждения compose про `$E` | Устаревший `.env` в `/opt/shiftedblog` — удалите; CI использует только `secrets.env` |
-| `failed to bind host port 0.0.0.0:80` / порт 80 занят при `compose up` | Старый контейнер nginx или системный веб-сервер — `./scripts/vps-prepare-for-ci.sh` на VPS; deploy теперь останавливает nginx перед `up` |
+| `failed to bind host port 0.0.0.0:80` / порт 80 занят при `compose up` | Старый контейнер nginx или системный веб-сервер — `./scripts/vps-prepare-for-ci.sh` на VPS; CI использует rolling deploy (nginx не снимается, если уже работает) |
 | Редактор с неверным URL сайта | `SITE_URL` в secrets; нужен `./deploy.sh` для пересборки UI |
 | Пустой `secrets.env` в CI | `DOPPLER_TOKEN` или имя project/config в Doppler |
 

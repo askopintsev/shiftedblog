@@ -137,11 +137,25 @@ deploy_containers() {
   echo "Building web image (stack may stay up during build)..."
   "${COMPOSE[@]}" build web
 
-  echo "Releasing ports 80/443 before nginx start..."
+  nginx_running="$("${COMPOSE[@]}" ps --status running -q nginx 2>/dev/null | head -1 || true)"
+
+  if [[ -n "$nginx_running" ]]; then
+    echo "Rolling deploy (keeping nginx on 80/443)..."
+    if ! "${COMPOSE[@]}" up -d --no-build web db redis; then
+      report_port_conflict
+      exit 1
+    fi
+    "${COMPOSE[@]}" exec -T web \
+      cp -a /editor-ui/dist/. /editor-ui/dist-export/
+    "${COMPOSE[@]}" exec -T nginx nginx -s reload
+    return 0
+  fi
+
+  echo "Cold start (nginx not running)..."
   COMPOSE_FILE=docker-compose.prod.yml WAIT_SECONDS=45 \
     "${ROOT}/scripts/free-web-ports.sh" "$ROOT"
 
-  echo "Starting/updating stack..."
+  echo "Starting stack..."
   if ! "${COMPOSE[@]}" up -d --remove-orphans; then
     report_port_conflict
     exit 1
@@ -149,7 +163,6 @@ deploy_containers() {
 
   "${COMPOSE[@]}" exec -T web \
     cp -a /editor-ui/dist/. /editor-ui/dist-export/
-  "${COMPOSE[@]}" restart nginx
 }
 
 run_deploy_phase() {
