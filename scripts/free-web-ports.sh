@@ -21,11 +21,29 @@ port_in_use() {
   ss -tln 2>/dev/null | grep -qE ":${port} "
 }
 
+kill_port_listeners() {
+  local port="$1"
+  if ! command -v fuser >/dev/null 2>&1; then
+    return 0
+  fi
+  local pid comm
+  for pid in $(fuser -n tcp "${port}" 2>/dev/null || true); do
+    [[ "$pid" =~ ^[0-9]+$ ]] || continue
+    comm="$(ps -p "$pid" -o comm= 2>/dev/null || true)"
+    echo "Port ${port}: stopping pid ${pid} (${comm})..."
+    kill "$pid" 2>/dev/null || true
+  done
+}
+
 wait_for_ports() {
   local attempt
   for ((attempt = 1; attempt <= WAIT_SECONDS; attempt++)); do
     if ! port_in_use 80 && ! port_in_use 443; then
       return 0
+    fi
+    if ((attempt % 5 == 0)); then
+      kill_port_listeners 80
+      kill_port_listeners 443
     fi
     sleep 1
   done

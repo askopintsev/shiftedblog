@@ -49,8 +49,13 @@ source ./scripts/load-editor-ui-build-env.sh
 
 docker compose -f docker-compose.prod.yml build web
 
-COMPOSE_FILE=docker-compose.prod.yml WAIT_SECONDS=45 ./scripts/free-web-ports.sh .
-docker compose -f docker-compose.prod.yml up -d --remove-orphans
+if docker compose -f docker-compose.prod.yml ps --status running -q nginx 2>/dev/null | grep -q .; then
+  echo "Rolling deploy (keeping nginx on 80/443)..."
+  docker compose -f docker-compose.prod.yml up -d --no-build web db redis
+else
+  COMPOSE_FILE=docker-compose.prod.yml WAIT_SECONDS=45 ./scripts/free-web-ports.sh .
+  docker compose -f docker-compose.prod.yml up -d --remove-orphans
+fi
 
 # Sync editor dist volume / reload nginx when containers are up
 docker compose -f docker-compose.prod.yml exec -T web \
