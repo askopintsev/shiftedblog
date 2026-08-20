@@ -5,9 +5,9 @@ set -euo pipefail
 ROOT="${DEPLOY_ROOT:-/opt/shiftedblog}"
 cd "$ROOT"
 
-echo "Project directory: $(pwd)"
-
 export PATH="${HOME}/.local/bin:/usr/local/bin:${PATH}"
+
+COMPOSE=(docker compose -f docker-compose.prod.yml --env-file secrets.env)
 
 ensure_doppler() {
   if command -v doppler >/dev/null 2>&1; then
@@ -111,12 +111,33 @@ check_env_mode() {
   fi
 }
 
-deploy_containers() {
-  docker compose -f docker-compose.prod.yml down || echo "No containers to stop"
+ports_in_use() {
+  ss -tln 2>/dev/null | grep -qE ':(80|443) '
+}
 
-  if ss -tln 2>/dev/null | grep -qE ':(80|443) '; then
-    echo "Ports 80/443 are still in use after stopping the stack (often host nginx)." >&2
-    echo "Stop host nginx before deploy: sudo systemctl stop nginx && sudo systemctl disable nginx" >&2
+wait_for_ports_release() {
+  local attempt
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    if ! ports_in_use; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+report_port_conflict() {
+  echo "Ports 80/443 are still in use after stopping the stack:" >&2
+  ss -tlnp 2>/dev/null | grep -E ':(80|443) ' || true
+  echo "If host nginx holds these ports: sudo systemctl stop nginx && sudo systemctl disable nginx" >&2
+}
+
+deploy_containers() {
+  echo "Stopping existing stack..."
+  "${COMPOSE[@]}" down --remove-orphans --timeout 30 || echo "Warning: docker compose down failed (continuing)"
+
+  if ! wait_for_ports_release; then
+    report_port_conflict
     exit 1
   fi
 
@@ -124,29 +145,44 @@ deploy_containers() {
   docker image prune -af || true
   df -h / /var/lib/docker 2>/dev/null || df -h /
 
-  docker compose -f docker-compose.prod.yml build web
-  docker compose -f docker-compose.prod.yml up -d
-  docker compose -f docker-compose.prod.yml exec -T web \
+  "${COMPOSE[@]}" build web
+  "${COMPOSE[@]}" up -d
+  "${COMPOSE[@]}" exec -T web \
     cp -a /editor-ui/dist/. /editor-ui/dist-export/
-  docker compose -f docker-compose.prod.yml restart nginx
+  "${COMPOSE[@]}" restart nginx
 }
 
-sync_git
-download_secrets
+run_deploy_phase() {
+  echo "Project directory: $(pwd)"
+  echo "Deploy script revision: $(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 
-echo "Checking secrets.env file:"
-ls -la secrets.env
-echo "File size: $(wc -c <secrets.env)"
-echo "First few lines of secrets.env (without values):"
-head -5 secrets.env | sed 's/=.*/=***/'
+  echo "Checking secrets.env file:"
+  ls -la secrets.env
+  echo "File size: $(wc -c <secrets.env)"
+  echo "First few lines of secrets.env (without values):"
+  head -5 secrets.env | sed 's/=.*/=***/'
 
-prepare_dirs
-render_nginx_conf
-check_env_mode
-validate_and_build_env
-deploy_containers
+  prepare_dirs
+  render_nginx_conf
+  check_env_mode
+  validate_and_build_env
+  deploy_containers
 
-echo "Running containers:"
-docker ps
-echo "Container logs:"
-docker compose -f docker-compose.prod.yml logs --tail=20
+  echo "Running containers:"
+  docker ps
+  echo "Container logs:"
+  "${COMPOSE[@]}" logs --tail=20
+}
+
+if [[ "${VPS_DEPLOY_PHASE:-}" != "deploy" ]]; then
+  sync_git
+  download_secrets
+  # Bash parses the whole script before sync_git runs; re-exec so deploy uses
+  # the synced tree (including deploy_containers ordering and messages).
+  export VPS_DEPLOY_PHASE=deploy
+  export SKIP_DOPPLER="${SKIP_DOPPLER:-0}"
+  export DEPLOY_ROOT="$ROOT"
+  exec env VPS_DEPLOY_PHASE=deploy SKIP_DOPPLER="$SKIP_DOPPLER" DEPLOY_ROOT="$ROOT" bash "$0"
+fi
+
+run_deploy_phase
