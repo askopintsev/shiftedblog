@@ -141,7 +141,7 @@ deploy_containers() {
     exit 1
   fi
 
-  docker builder prune -af || true
+  # Keep builder cache between deploys; full prune makes every build cold and slow.
   docker image prune -af || true
   df -h / /var/lib/docker 2>/dev/null || df -h /
 

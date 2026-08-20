@@ -160,7 +160,7 @@ push master  →  lint + editor-ui tests  →  deploy job (если зелёны
 
 Скрипт на сервере: [`scripts/ci/vps-deploy-remote.sh`](../../scripts/ci/vps-deploy-remote.sh).
 
-Первый CI-деплой может занять **несколько минут** (сборка образов). Дальнейшие похожи — скрипт каждый раз чистит builder/image cache.
+Первый CI-деплой на небольшом VPS может занять **15–30+ минут** (холодная сборка Docker: `npm ci`, pip, editor-ui). SSH-шаг deploy использует **command_timeout 45m**. Повторные запуски быстрее при тёплом кэше слоёв Docker; неиспользуемые образы удаляются при каждом deploy.
 
 ---
 
