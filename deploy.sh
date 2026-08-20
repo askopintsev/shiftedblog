@@ -16,7 +16,7 @@ if [[ "${SKIP_DOPPLER:-0}" != "1" ]] && command -v doppler >/dev/null 2>&1; then
 fi
 
 if [[ ! -f secrets.env ]]; then
-  echo "secrets.env not found. Run ./scripts/setup.sh (online) or provide secrets.env." >&2
+  echo "secrets.env not found. Run ./scripts/setup.sh (online or private) or provide secrets.env." >&2
   exit 1
 fi
 
@@ -33,7 +33,11 @@ if grep -qE '^(DOMAIN|SITE_URL)=' secrets.env; then
   ./scripts/generate-nginx-conf.sh || true
 fi
 
-./scripts/check-env.sh online
+if grep -qE '^PUBLIC_SITE_ENABLED=false' secrets.env 2>/dev/null; then
+  ./scripts/check-env.sh private
+else
+  ./scripts/check-env.sh online
+fi
 
 # shellcheck disable=SC1091
 source ./scripts/load-editor-ui-build-env.sh

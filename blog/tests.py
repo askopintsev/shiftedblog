@@ -364,6 +364,27 @@ class FeedLentaTests(TestCase):
         self.assertContains(response, "Bingo t,dfsbfo")
         self.assertNotContains(response, "Bingot,dfsbfo")
 
+    def test_feed_shows_published_without_site_publication(self):
+        author = cast(UserManager, User.objects).create_user(
+            email="telegramonly@example.com",
+            password="secret12345",
+        )
+        category = Category.objects.create(name="Telegram only")
+        post = Post(
+            title="Telegram only post",
+            slug="telegram-only-post",
+            author=author,
+            body="<p>Published via Telegram.</p>",
+            status="published",
+            category=category,
+        )
+        post.save(_allow_publish_via_sender=True)
+
+        self.client.login(email="feedreader@example.com", password="secret12345")
+        response = self.client.get(reverse("blog:post_lenta"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Telegram only post")
+
 
 class CategorySlugTests(TestCase):
     def setUp(self):

@@ -22,6 +22,7 @@ That is the workspace: posts, series, multichannel dispatch. The public blog and
 |------|------|-------|
 | **Local** | Try it out, write posts, configure channels | [local-deploy.md](local-deploy.md) |
 | **Online deploy (on server)** | Public site on a VPS with HTTPS | [production-deploy.md](production-deploy.md) |
+| **Private editor (VPS)** | HTTPS editor + Telegram, no public blog | [private-editor-deploy.md](private-editor-deploy.md) (`3) private` or `4) private-ip` if no domain) |
 | **Host/domain migration** | Existing production, new VPS or domain | [host-migration.md](host-migration.md) |
 
 **Online first-run (short):** DNS → clone project → ports → `./scripts/setup.sh` (**`2) online`**, answer **`n`** to “Start Docker now?”) → TLS → `./deploy.sh` → login. Details: [production-deploy.md](production-deploy.md).
@@ -75,6 +76,7 @@ Launchers: `Start ShiftedBlog.command` (macOS), `start-shiftedblog.desktop` (Lin
 |-----|---------|
 | http://localhost:5173/login | **Editor UI — start here** |
 | http://localhost:8888/ | Public blog preview |
+| http://localhost:8888/lenta/ | Staff feed (Django login on port 8888) |
 | http://localhost:8888/mellon/ | Django admin (settings, channels) |
 
 Full guide: [local-deploy.md](local-deploy.md)
@@ -93,6 +95,7 @@ Full guide: [local-deploy.md](local-deploy.md)
 
 - [Local deploy (full guide)](local-deploy.md)
 - [Online deploy (on server)](production-deploy.md)
+- [Private editor (VPS, no public blog)](private-editor-deploy.md)
 - [Host and domain migration](host-migration.md)
 - [Configuration](configuration.md)
 - [Site settings](site-settings.md)

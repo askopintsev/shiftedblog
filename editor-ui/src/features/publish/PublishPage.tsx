@@ -1,15 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/api/client";
 import type { PostListItem, PublishResult, TelegramPreviewResponse } from "@/api/types";
+import { useAuth } from "@/features/auth/useAuth";
 import { PublishResultDialog } from "@/features/publish/PublishResultDialog";
 import { TelegramPreviewCards } from "@/features/publish/TelegramPreviewCards";
 import { useT } from "@/i18n";
 
 export function PublishPage() {
+  const { publicSiteEnabled } = useAuth();
   const [postId, setPostId] = useState<number | "">("");
-  const [destSite, setDestSite] = useState(true);
-  const [destTelegram, setDestTelegram] = useState(false);
+  const [destSite, setDestSite] = useState(publicSiteEnabled);
+  const [destTelegram, setDestTelegram] = useState(!publicSiteEnabled);
   const [telegramFormat, setTelegramFormat] = useState("full_text");
   const [crosslinkNetwork, setCrosslinkNetwork] = useState("");
   const [telegramStory, setTelegramStory] = useState(false);
@@ -17,6 +19,13 @@ export function PublishPage() {
   const [requestError, setRequestError] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const t = useT();
+
+  useEffect(() => {
+    if (!publicSiteEnabled) {
+      setDestSite(false);
+      setDestTelegram(true);
+    }
+  }, [publicSiteEnabled]);
 
   const readyQuery = useQuery({
     queryKey: ["publish-ready"],
@@ -131,14 +140,16 @@ export function PublishPage() {
           </label>
           <fieldset className="space-y-2">
             <legend className="text-sm font-medium">{t("publish.channels")}</legend>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={destSite}
-                onChange={(e) => setDestSite(e.target.checked)}
-              />
-              {t("publish.site")}
-            </label>
+            {publicSiteEnabled && (
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={destSite}
+                  onChange={(e) => setDestSite(e.target.checked)}
+                />
+                {t("publish.site")}
+              </label>
+            )}
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -175,7 +186,9 @@ export function PublishPage() {
                   className="w-full rounded-lg border border-border px-2 py-1.5 text-sm"
                 >
                   <option value="">{t("publish.crosslinkTarget")}</option>
-                  {destSite && <option value="site">{t("publish.site")}</option>}
+                  {publicSiteEnabled && destSite && (
+                    <option value="site">{t("publish.site")}</option>
+                  )}
                 </select>
               )}
               <label className="flex items-center gap-2 text-sm">

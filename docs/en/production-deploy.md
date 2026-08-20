@@ -12,6 +12,8 @@ That is the main workspace. The public blog at `https://example.com/` and Django
 
 > This guide is **provider-agnostic** (any VPS with Docker). Use a clean server for the simplest path. If an old install is present, optional cleanup is described below.
 
+> **No public blog?** Use [private-editor-deploy.md](private-editor-deploy.md) (`setup.sh` **`3) private`**, `PUBLIC_SITE_ENABLED=false`).
+
 **First-run order:** DNS (step 1) → clone project (2) → ports (3) → `./scripts/setup.sh` with **`2) online`**, answer **`n`** to “Start Docker now?” (4) → TLS (5) → `./deploy.sh` (6) → login (7) → browser check (8).
 
 ## Before you start

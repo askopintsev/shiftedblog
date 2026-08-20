@@ -11,6 +11,10 @@ export interface User {
   has_2fa: boolean;
 }
 
+export interface DeployInfo {
+  public_site_enabled: boolean;
+}
+
 export interface PostListItem {
   id: number;
   title: string;

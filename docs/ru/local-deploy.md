@@ -164,6 +164,7 @@ docker compose exec web python manage.py createsuperuser
 |-------|----------|
 | http://localhost:5173/login | **Интерфейс редактора — начните здесь** |
 | http://localhost:8888/ | Как выглядит блог для читателя (на вашем компьютере) |
+| http://localhost:8888/lenta/ | Лента — все опубликованные посты (вход Django на 8888) |
 | http://localhost:8888/mellon/ | Панель администратора (настройки, доступы к каналам) |
 
 ## Полезные команды

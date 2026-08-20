@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from django.conf import settings
+
 from core.models.network import NETWORK_SLUG_SITE, NETWORK_SLUG_TELEGRAM
 from editor.models import Post
 from sender.admin_views import _build_telegram_preview
@@ -42,6 +44,11 @@ def run_publish(
     crosslink_network: str | None,
     telegram_post_story: bool,
 ) -> dict[str, Any]:
+    if not settings.PUBLIC_SITE_ENABLED:
+        if dest_site:
+            raise ValueError("Site publishing is disabled.")
+        if crosslink_network == NETWORK_SLUG_SITE:
+            raise ValueError("Site crosslink is disabled.")
     slugs: list[str] = []
     if dest_site:
         slugs.append(NETWORK_SLUG_SITE)

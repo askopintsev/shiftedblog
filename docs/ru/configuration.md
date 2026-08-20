@@ -11,7 +11,7 @@ ShiftedBlog хранит настройки в **двух слоях**:
 
 После первой настройки большинство повседневных изменений — в **Site settings** или в **редакторе → Настройки → Сайт**. Файл env трогайте при смене домена, деплое или секретов.
 
-> Полный список переменных — в [`env.example`](../../env.example). Создание файла: `./scripts/setup.sh` (**`1) local`** или **`2) online`**).
+> Полный список переменных — в [`env.example`](../../env.example). Создание файла: `./scripts/setup.sh` (**`1) local`**, **`2) online`**, **`3) private`** или **`4) private-ip`**).
 
 ---
 
@@ -21,15 +21,17 @@ ShiftedBlog хранит настройки в **двух слоях**:
 |-------|------|---------|
 | Локально | `.env` | `docker-compose.yml` |
 | Онлайн (на сервере) | `secrets.env` | `docker-compose.prod.yml` |
+| Приватный редактор (сервер) | `secrets.env` | `docker-compose.prod.yml` |
 
 Проверка перед деплоем:
 
 ```bash
 ./scripts/check-env.sh local          # локально
-ENV_FILE=secrets.env ./scripts/check-env.sh online   # на сервере
+ENV_FILE=secrets.env ./scripts/check-env.sh online   # публичный сайт
+ENV_FILE=secrets.env ./scripts/check-env.sh private  # только editor
 ```
 
-`deploy.sh` на production сам вызывает `check-env.sh online`.
+`deploy.sh` на production сам вызывает `check-env.sh online` или `private` по `PUBLIC_SITE_ENABLED`.
 
 **Docker Compose:** в паролях экранируйте `$` как `$$`, иначе Compose обрежет значение (например `$E` в пароле SMTP).
 
@@ -41,7 +43,7 @@ ENV_FILE=secrets.env ./scripts/check-env.sh online   # на сервере
 |--------|------------|---------------|
 | Криpto | `SECRET_KEY`, `CREDENTIALS_ENCRYPTION_KEY` | Секреты Django и шифрование credentials |
 | База / Redis | `DB_*`, `POSTGRES_*`, `REDIS_URL` | Инфраструктура Docker |
-| Публичный URL | `SITE_URL`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` | Безопасность и canonical URL |
+| Публичный URL | `SITE_URL`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `PUBLIC_SITE_ENABLED`, `FAKE_HOSTNAME` | Безопасность и canonical URL |
 | SSL / cookies | `SESSION_COOKIE_*`, `CSRF_COOKIE_*`, `SECURE_*` | HTTPS и сессии |
 | Админка | `ADMIN_URL` | Нестандартный путь `/mellon/` → свой slug |
 | Почта (секрет) | `EMAIL_HOST_PASSWORD` | Пароль SMTP |
@@ -59,7 +61,9 @@ ENV_FILE=secrets.env ./scripts/check-env.sh online   # на сервере
 |------------|------------|
 | `DOMAIN` | Основной домен без `www` |
 | `EDITOR_DOMAIN` | Поддомен редактора (например `editor.example.com`) |
-| `SITE_URL` | Канонический публичный URL (`https://example.com`) |
+| `SITE_URL` | Канонический URL (`https://example.com`; приватный режим: `https://editor.example.com`) |
+| `PUBLIC_SITE_ENABLED` | `false` — только editor на VPS (без main vhost, канал site скрыт). По умолчанию `true`. |
+| `FAKE_HOSTNAME` | `true` — режим **`4) private-ip`**: без домена, fake hostname (`shiftedblog.local`). Нужен `SERVER_IP`. |
 | `SSL_CERT_NAME` | Имя каталога в `/etc/letsencrypt/live/` |
 | `SERVER_IP` | Публичный IP (nginx `server_name`, `ALLOWED_HOSTS`) |
 | `EXTRA_DOMAINS` | **Тот же** сайт на доп. хостах (дубли) |

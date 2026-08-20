@@ -4,6 +4,8 @@
 # Usage:
 #   ./scripts/check-prerequisites.sh local [--quiet]
 #   ./scripts/check-prerequisites.sh online [--quiet]
+#   ./scripts/check-prerequisites.sh private [--quiet]
+#   ./scripts/check-prerequisites.sh private-ip [--quiet]
 #   ./scripts/check-prerequisites.sh production [--quiet]  # alias for online
 set -euo pipefail
 
@@ -13,9 +15,9 @@ for arg in "$@"; do
   case "$arg" in
     --quiet) QUIET=true ;;
     local) MODE="local" ;;
-    online|production) MODE="production" ;;
+    online|production|private|private-ip) MODE="production" ;;
     *)
-      echo "Usage: $0 local|online [--quiet]" >&2
+      echo "Usage: $0 local|online|private|private-ip [--quiet]" >&2
       exit 2
       ;;
   esac

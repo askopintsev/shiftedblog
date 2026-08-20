@@ -11,7 +11,7 @@ ShiftedBlog stores settings in **two layers**:
 
 After first setup, most day-to-day changes belong in **Site settings** or **Editor → Settings → Site**. Touch the env file when changing domain, deploy secrets, or infrastructure.
 
-> Full variable list: [`env.example`](../../env.example). Create the file with `./scripts/setup.sh` (**`1) local`** or **`2) online`**).
+> Full variable list: [`env.example`](../../env.example). Create the file with `./scripts/setup.sh` (**`1) local`**, **`2) online`**, **`3) private`**, or **`4) private-ip`**).
 
 ---
 
@@ -21,15 +21,17 @@ After first setup, most day-to-day changes belong in **Site settings** or **Edit
 |------|------|---------|
 | Local | `.env` | `docker-compose.yml` |
 | Online (server) | `secrets.env` | `docker-compose.prod.yml` |
+| Private editor (server) | `secrets.env` | `docker-compose.prod.yml` |
 
 Validate before deploy:
 
 ```bash
 ./scripts/check-env.sh local          # local
-ENV_FILE=secrets.env ./scripts/check-env.sh online   # server
+ENV_FILE=secrets.env ./scripts/check-env.sh online   # public site
+ENV_FILE=secrets.env ./scripts/check-env.sh private  # editor-only VPS
 ```
 
-Production `deploy.sh` runs `check-env.sh online` automatically.
+Production `deploy.sh` runs `check-env.sh online` or `private` automatically based on `PUBLIC_SITE_ENABLED`.
 
 **Docker Compose:** escape `$` in passwords as `$$`, or Compose will strip parts of the value (e.g. `$E` in an SMTP password).
 
@@ -41,7 +43,7 @@ Production `deploy.sh` runs `check-env.sh online` automatically.
 |-------|-----------|-----------------|
 | Crypto | `SECRET_KEY`, `CREDENTIALS_ENCRYPTION_KEY` | Django secrets and credential encryption |
 | Database / Redis | `DB_*`, `POSTGRES_*`, `REDIS_URL` | Docker infrastructure |
-| Public URL | `SITE_URL`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` | Security and canonical URL |
+| Public URL | `SITE_URL`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `PUBLIC_SITE_ENABLED`, `FAKE_HOSTNAME` | Security and canonical URL |
 | SSL / cookies | `SESSION_COOKIE_*`, `CSRF_COOKIE_*`, `SECURE_*` | HTTPS and sessions |
 | Admin | `ADMIN_URL` | Non-default path instead of `/mellon/` |
 | Mail (secret) | `EMAIL_HOST_PASSWORD` | SMTP password |
@@ -59,7 +61,9 @@ Production `deploy.sh` runs `check-env.sh online` automatically.
 |----------|---------|
 | `DOMAIN` | Primary domain without `www` |
 | `EDITOR_DOMAIN` | Editor subdomain (e.g. `editor.example.com`) |
-| `SITE_URL` | Canonical public URL (`https://example.com`) |
+| `SITE_URL` | Canonical public URL (`https://example.com`; private editor: `https://editor.example.com`) |
+| `PUBLIC_SITE_ENABLED` | `false` — editor-only VPS (no main nginx vhost, site channel hidden). Default `true`. |
+| `FAKE_HOSTNAME` | `true` — **`4) private-ip`** deploy: no registrar domain; uses `shiftedblog.local` fake names. Requires `SERVER_IP`. |
 | `SSL_CERT_NAME` | Directory name under `/etc/letsencrypt/live/` |
 | `SERVER_IP` | Public IP (nginx `server_name`, `ALLOWED_HOSTS`) |
 | `EXTRA_DOMAINS` | **Same** site on extra hosts (duplicate content) |

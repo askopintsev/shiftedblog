@@ -103,6 +103,14 @@ validate_and_build_env() {
   echo "Editor UI build: VITE_API_BASE=${VITE_API_BASE}"
 }
 
+check_env_mode() {
+  if grep -qE '^PUBLIC_SITE_ENABLED=false' secrets.env 2>/dev/null; then
+    ./scripts/check-env.sh private
+  else
+    ./scripts/check-env.sh online
+  fi
+}
+
 deploy_containers() {
   if ss -tln 2>/dev/null | grep -qE ':(80|443) '; then
     echo "Ports 80/443 are already in use on the host (often system nginx)." >&2
@@ -134,6 +142,7 @@ head -5 secrets.env | sed 's/=.*/=***/'
 
 prepare_dirs
 render_nginx_conf
+check_env_mode
 validate_and_build_env
 deploy_containers
 

@@ -9,6 +9,8 @@
 #       --editor-domain editor.example.com \
 #       --redirect-from old.com,www.old.com \
 #       --redirect-from-editor editor.old.com
+#   ./scripts/apply-domain.sh --domain example.com --private \
+#       --editor-domain editor.example.com
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -25,6 +27,7 @@ REDIRECT_IN=""
 REDIRECT_EDITOR_IN=""
 REDIRECT_FROM_SET=0
 REDIRECT_EDITOR_SET=0
+PRIVATE_MODE=0
 
 usage() {
   sed -n '2,16p' "$0" | sed 's/^# \?//'
@@ -70,6 +73,10 @@ while [[ $# -gt 0 ]]; do
       REDIRECT_EDITOR_SET=1
       shift 2
       ;;
+    --private)
+      PRIVATE_MODE=1
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -100,6 +107,10 @@ SITE_URL_IN="${SITE_URL_IN:-https://${DOMAIN_IN}}"
 SITE_URL_IN="${SITE_URL_IN%/}"
 EDITOR_IN="${EDITOR_IN:-editor.${DOMAIN_IN}}"
 CERT_IN="${CERT_IN:-${DOMAIN_IN}}"
+
+if [[ "$PRIVATE_MODE" -eq 1 ]]; then
+  SITE_URL_IN="https://${EDITOR_IN}"
+fi
 
 set -a
 set +u
@@ -139,14 +150,22 @@ upsert_env "$ENV_FILE" "DOMAIN" "$DOMAIN_IN"
 upsert_env "$ENV_FILE" "EDITOR_DOMAIN" "$EDITOR_IN"
 upsert_env "$ENV_FILE" "SSL_CERT_NAME" "$CERT_IN"
 upsert_env "$ENV_FILE" "SITE_URL" "$SITE_URL_IN"
-upsert_env "$ENV_FILE" "ALLOWED_HOSTS" "${DOMAIN_IN},www.${DOMAIN_IN},${EDITOR_IN},localhost,127.0.0.1${SERVER_IP_FOR_HOSTS:+,${SERVER_IP_FOR_HOSTS}}"
-upsert_env "$ENV_FILE" "CSRF_TRUSTED_ORIGINS" "https://${DOMAIN_IN},https://www.${DOMAIN_IN},https://${EDITOR_IN}"
 upsert_env "$ENV_FILE" "EDITOR_URL" "https://${EDITOR_IN}"
 upsert_env "$ENV_FILE" "CORS_ALLOWED_ORIGINS" "https://${EDITOR_IN}"
 upsert_env "$ENV_FILE" "SESSION_COOKIE_DOMAIN" ".${DOMAIN_IN}"
 upsert_env "$ENV_FILE" "CSRF_COOKIE_DOMAIN" ".${DOMAIN_IN}"
 upsert_env "$ENV_FILE" "VITE_PUBLIC_SITE_BASE" "$SITE_URL_IN"
 upsert_env "$ENV_FILE" "VITE_API_BASE" "/api/editor/v1"
+
+if [[ "$PRIVATE_MODE" -eq 1 ]]; then
+  upsert_env "$ENV_FILE" "PUBLIC_SITE_ENABLED" "false"
+  upsert_env "$ENV_FILE" "ALLOWED_HOSTS" "${EDITOR_IN},localhost,127.0.0.1${SERVER_IP_FOR_HOSTS:+,${SERVER_IP_FOR_HOSTS}}"
+  upsert_env "$ENV_FILE" "CSRF_TRUSTED_ORIGINS" "https://${EDITOR_IN}"
+else
+  upsert_env "$ENV_FILE" "PUBLIC_SITE_ENABLED" "true"
+  upsert_env "$ENV_FILE" "ALLOWED_HOSTS" "${DOMAIN_IN},www.${DOMAIN_IN},${EDITOR_IN},localhost,127.0.0.1${SERVER_IP_FOR_HOSTS:+,${SERVER_IP_FOR_HOSTS}}"
+  upsert_env "$ENV_FILE" "CSRF_TRUSTED_ORIGINS" "https://${DOMAIN_IN},https://www.${DOMAIN_IN},https://${EDITOR_IN}"
+fi
 
 if [[ -n "$EXTRA_IN" ]]; then
   upsert_env "$ENV_FILE" "EXTRA_DOMAINS" "$EXTRA_IN"
@@ -161,7 +180,7 @@ if [[ "$REDIRECT_EDITOR_SET" -eq 1 ]]; then
   upsert_env "$ENV_FILE" "REDIRECT_FROM_EDITOR_DOMAINS" "$REDIRECT_EDITOR_IN"
 fi
 
-ENV_FILE="$ENV_FILE" ./scripts/check-env.sh online
+ENV_FILE="$ENV_FILE" ./scripts/check-env.sh "$([[ "$PRIVATE_MODE" -eq 1 ]] && echo private || echo online)"
 ./scripts/generate-nginx-conf.sh
 
 echo ""

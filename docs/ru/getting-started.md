@@ -22,6 +22,7 @@ English: [Getting started](../en/getting-started.md)
 |----------|-------|------------|
 | **На своём компьютере** | Попробовать, писать посты, настроить каналы | [local-deploy.md](local-deploy.md) |
 | **Онлайн запуск (на сервере)** | Публичный сайт на VPS с HTTPS | [production-deploy.md](production-deploy.md) |
+| **Приватный редактор (VPS)** | HTTPS-редактор + Telegram, без публичного блога | [private-editor-deploy.md](private-editor-deploy.md) (`3) private` или `4) private-ip` без домена) |
 | **Перенос хоста или домена** | Уже был production, меняете VPS или домен | [host-migration.md](host-migration.md) |
 
 **Порядок онлайн запуска (кратко):** DNS → скачать проект → порты → `./scripts/setup.sh` (**`2) online`**, «Start Docker now?» → **`n`**) → TLS → `./deploy.sh` → логин. Подробно — в [production-deploy.md](production-deploy.md).
@@ -75,6 +76,7 @@ docker compose exec web python manage.py createsuperuser   # если масте
 |-------|----------|
 | http://localhost:5173/login | **Интерфейс редактора — начните здесь** |
 | http://localhost:8888/ | Как выглядит блог для читателя |
+| http://localhost:8888/lenta/ | Лента — все опубликованные (вход Django на 8888) |
 | http://localhost:8888/mellon/ | Панель администратора (настройки, каналы) |
 
 Полная инструкция: [local-deploy.md](local-deploy.md)
@@ -93,6 +95,7 @@ docker compose exec web python manage.py createsuperuser   # если масте
 
 - [Локальный запуск (полная инструкция)](local-deploy.md)
 - [Онлайн запуск (на сервере)](production-deploy.md)
+- [Приватный редактор (VPS, без публичного блога)](private-editor-deploy.md)
 - [Перенос хоста и домена](host-migration.md)
 - [Настройки](configuration.md)
 - [Site settings](site-settings.md)

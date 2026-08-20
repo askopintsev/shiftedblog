@@ -12,6 +12,8 @@ English: [Online deploy (on server)](../en/production-deploy.md)
 
 > Инструкция **не привязана к конкретному хостингу** — подойдёт любой VPS с Docker. На чистом сервере проще всего. Если уже стояла старая установка — ниже описана **необязательная** очистка.
 
+> **Без публичного блога?** См. [private-editor-deploy.md](private-editor-deploy.md) (`setup.sh` **`3) private`**, `PUBLIC_SITE_ENABLED=false`).
+
 **Порядок первого запуска:** DNS (шаг 1) → скачать проект (2) → порты (3) → `./scripts/setup.sh` с **`2) online`**, на «Start Docker now?» ответить **`n`** (4) → TLS (5) → `./deploy.sh` (6) → логин (7) → проверка в браузере (8).
 
 ## Что нужно заранее

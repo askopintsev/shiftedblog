@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Focus, History } from "lucide-react";
 import { apiFetch, apiUpload, ApiError } from "@/api/client";
 import type { Category, PostDetail, PostStatus, Series } from "@/api/types";
+import { useAuth } from "@/features/auth/useAuth";
 import { PostBodyEditorFallback } from "@/features/posts/body-editor/PostBodyEditorFallback";
 import { GalleryTab } from "@/features/posts/components/GalleryTab";
 import { TagsInput } from "@/features/posts/components/TagsInput";
@@ -90,6 +91,7 @@ export function PostEditPage() {
   const isNew = !id || id === "new";
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { publicSiteEnabled } = useAuth();
   const { t, bcp47 } = useI18n();
   const [focusMode, setFocusMode] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
@@ -427,7 +429,7 @@ export function PostEditPage() {
               )}
             </div>
             <div className="flex gap-2">
-              {!isNew && post?.draft_preview_url && (
+              {!isNew && publicSiteEnabled && post?.draft_preview_url && (
                 <a
                   href={publicUrl(post.draft_preview_url)}
                   target="_blank"
@@ -539,7 +541,7 @@ export function PostEditPage() {
                 </p>
               )}
             </label>
-            {!isNew && form.status === "published" && (
+            {!isNew && publicSiteEnabled && form.status === "published" && (
               <div className="mb-3 text-sm">
                 {post?.is_on_site ? (
                   <button

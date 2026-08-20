@@ -9,11 +9,18 @@ echo "ShiftedBlog setup"
 echo "================="
 echo "1) local      — Docker Compose on this machine (port 8888)"
 echo "2) online     — VPS / public site (secrets.env + nginx + HTTPS)"
-read -r -p "Choose mode [1/2]: " mode_choice
+echo "3) private    — VPS editor only (your domain, no public blog)"
+echo "4) private-ip — VPS editor only, no domain (fake hostname + public IP)"
+read -r -p "Choose mode [1/2/3/4]: " mode_choice
+
+FAKE_DOMAIN="shiftedblog.local"
+FAKE_EDITOR="editor.shiftedblog.local"
 
 case "${mode_choice}" in
   1|local|Local|LOCAL) MODE="local" ;;
   2|online|Online|ONLINE|production|Production|PRODUCTION|prod) MODE="production" ;;
+  3|private|Private|PRIVATE) MODE="private" ;;
+  4|private-ip|Private-IP|PRIVATE-IP|ip) MODE="private-ip" ;;
   *)
     echo "Invalid choice." >&2
     exit 2
@@ -37,8 +44,8 @@ if [[ "$MODE" == "local" ]]; then
     fi
     ./scripts/check-prerequisites.sh local || exit 1
   fi
-elif [[ "$MODE" == "production" ]]; then
-  ./scripts/check-prerequisites.sh online || exit 1
+elif [[ "$MODE" == "production" || "$MODE" == "private" || "$MODE" == "private-ip" ]]; then
+  ./scripts/check-prerequisites.sh "${MODE}" || exit 1
 fi
 
 generate_secret_key() {
@@ -170,38 +177,69 @@ if [[ "$MODE" == "local" ]]; then
     upsert_env "$ENV_FILE" "HOST_GID" "$(id -g)"
   fi
 else
-  read -r -p "Primary domain (e.g. example.com, no www): " DOMAIN_IN
-  if [[ -z "$DOMAIN_IN" ]]; then
-    echo "Domain is required for production." >&2
-    exit 1
+  if [[ "$MODE" == "private-ip" ]]; then
+    read -r -p "Server public IP (required): " SERVER_IP_IN
+    if [[ -z "$SERVER_IP_IN" ]]; then
+      SERVER_IP_IN="$(curl -fsS --max-time 8 https://api.ipify.org 2>/dev/null || true)"
+      if [[ -n "$SERVER_IP_IN" ]]; then
+        echo "Detected public IP: ${SERVER_IP_IN}"
+      fi
+    fi
+    if [[ -z "$SERVER_IP_IN" ]]; then
+      echo "Public IP is required for private-ip deploy (no domain)." >&2
+      exit 1
+    fi
+    DOMAIN_IN="$FAKE_DOMAIN"
+    EDITOR_IN="$FAKE_EDITOR"
+    CERT_IN="$FAKE_DOMAIN"
+    SITE_URL_IN="https://${FAKE_EDITOR}"
+    REDIRECT_EDITOR_IN=""
+  elif [[ "$MODE" == "private" ]]; then
+    read -r -p "Parent domain for cookies (e.g. example.com, no www): " DOMAIN_IN
+    if [[ -z "$DOMAIN_IN" ]]; then
+      echo "Domain is required for private deploy." >&2
+      exit 1
+    fi
+    if [[ "$DOMAIN_IN" == www.* ]]; then
+      DOMAIN_IN="${DOMAIN_IN#www.}"
+    fi
+    read -r -p "Editor hostname [editor.${DOMAIN_IN}]: " EDITOR_IN
+    EDITOR_IN="${EDITOR_IN:-editor.${DOMAIN_IN}}"
+    read -r -p "Legacy editor hosts to 301 (optional, e.g. editor.old.com): " REDIRECT_EDITOR_IN
+    read -r -p "Let's Encrypt cert name [${DOMAIN_IN}]: " CERT_IN
+    CERT_IN="${CERT_IN:-${DOMAIN_IN}}"
+    read -r -p "Server public IP (optional, for nginx server_name): " SERVER_IP_IN
+    SITE_URL_IN="https://${EDITOR_IN}"
+  else
+    read -r -p "Primary domain (e.g. example.com, no www): " DOMAIN_IN
+    if [[ -z "$DOMAIN_IN" ]]; then
+      echo "Domain is required for production." >&2
+      exit 1
+    fi
+    if [[ "$DOMAIN_IN" == www.* ]]; then
+      DOMAIN_IN="${DOMAIN_IN#www.}"
+    fi
+    read -r -p "Canonical public URL [https://${DOMAIN_IN}]: " SITE_URL_IN
+    SITE_URL_IN="${SITE_URL_IN:-https://${DOMAIN_IN}}"
+    SITE_URL_IN="${SITE_URL_IN%/}"
+    read -r -p "Extra domains comma-separated (optional; same site, not redirects): " EXTRA_IN
+    read -r -p "Legacy domains to 301 to the canonical URL (optional, e.g. old.com,www.old.com): " REDIRECT_IN
+    read -r -p "Editor subdomain [editor.${DOMAIN_IN}]: " EDITOR_IN
+    EDITOR_IN="${EDITOR_IN:-editor.${DOMAIN_IN}}"
+    read -r -p "Legacy editor hosts to 301 (optional, e.g. editor.old.com): " REDIRECT_EDITOR_IN
+    read -r -p "Let's Encrypt cert name [${DOMAIN_IN}]: " CERT_IN
+    CERT_IN="${CERT_IN:-${DOMAIN_IN}}"
+    read -r -p "Server public IP (optional, for nginx server_name): " SERVER_IP_IN
   fi
-  if [[ "$DOMAIN_IN" == www.* ]]; then
-    DOMAIN_IN="${DOMAIN_IN#www.}"
-  fi
-  read -r -p "Canonical public URL [https://${DOMAIN_IN}]: " SITE_URL_IN
-  SITE_URL_IN="${SITE_URL_IN:-https://${DOMAIN_IN}}"
-  SITE_URL_IN="${SITE_URL_IN%/}"
-  read -r -p "Extra domains comma-separated (optional; same site, not redirects): " EXTRA_IN
-  read -r -p "Legacy domains to 301 to the canonical URL (optional, e.g. old.com,www.old.com): " REDIRECT_IN
-  read -r -p "Editor subdomain [editor.${DOMAIN_IN}]: " EDITOR_IN
-  EDITOR_IN="${EDITOR_IN:-editor.${DOMAIN_IN}}"
-  read -r -p "Legacy editor hosts to 301 (optional, e.g. editor.old.com): " REDIRECT_EDITOR_IN
-  read -r -p "Let's Encrypt cert name [${DOMAIN_IN}]: " CERT_IN
-  CERT_IN="${CERT_IN:-${DOMAIN_IN}}"
-  read -r -p "Server public IP (optional, for nginx server_name): " SERVER_IP_IN
 
   ADMIN_URL_VAL="$(generate_admin_url)"
   upsert_env "$ENV_FILE" "DEBUG" "False"
   upsert_env "$ENV_FILE" "DOMAIN" "$DOMAIN_IN"
   upsert_env "$ENV_FILE" "EDITOR_DOMAIN" "$EDITOR_IN"
   upsert_env "$ENV_FILE" "SSL_CERT_NAME" "$CERT_IN"
-  upsert_env "$ENV_FILE" "EXTRA_DOMAINS" "$EXTRA_IN"
-  upsert_env "$ENV_FILE" "REDIRECT_FROM_DOMAINS" "$REDIRECT_IN"
   upsert_env "$ENV_FILE" "REDIRECT_FROM_EDITOR_DOMAINS" "$REDIRECT_EDITOR_IN"
   upsert_env "$ENV_FILE" "SERVER_IP" "$SERVER_IP_IN"
   upsert_env "$ENV_FILE" "SITE_URL" "$SITE_URL_IN"
-  upsert_env "$ENV_FILE" "ALLOWED_HOSTS" "${DOMAIN_IN},www.${DOMAIN_IN},${EDITOR_IN},localhost,127.0.0.1${SERVER_IP_IN:+,${SERVER_IP_IN}}"
-  upsert_env "$ENV_FILE" "CSRF_TRUSTED_ORIGINS" "https://${DOMAIN_IN},https://www.${DOMAIN_IN},https://${EDITOR_IN}"
   upsert_env "$ENV_FILE" "EDITOR_URL" "https://${EDITOR_IN}"
   upsert_env "$ENV_FILE" "CORS_ALLOWED_ORIGINS" "https://${EDITOR_IN}"
   upsert_env "$ENV_FILE" "SESSION_COOKIE_DOMAIN" ".${DOMAIN_IN}"
@@ -211,26 +249,79 @@ else
   upsert_env "$ENV_FILE" "SECURE_SSL_REDIRECT" "True"
   upsert_env "$ENV_FILE" "SECURE_HSTS_SECONDS" "31536000"
   upsert_env "$ENV_FILE" "ADMIN_URL" "$ADMIN_URL_VAL"
-  upsert_env "$ENV_FILE" "VITE_PUBLIC_SITE_BASE" "$SITE_URL_IN"
   upsert_env "$ENV_FILE" "VITE_API_BASE" "/api/editor/v1"
+
+  if [[ "$MODE" == "private" || "$MODE" == "private-ip" ]]; then
+    upsert_env "$ENV_FILE" "PUBLIC_SITE_ENABLED" "false"
+    upsert_env "$ENV_FILE" "ALLOWED_HOSTS" "${EDITOR_IN},localhost,127.0.0.1${SERVER_IP_IN:+,${SERVER_IP_IN}}"
+    upsert_env "$ENV_FILE" "CSRF_TRUSTED_ORIGINS" "https://${EDITOR_IN}"
+    upsert_env "$ENV_FILE" "VITE_PUBLIC_SITE_BASE" "$SITE_URL_IN"
+    upsert_env "$ENV_FILE" "EXTRA_DOMAINS" ""
+    upsert_env "$ENV_FILE" "REDIRECT_FROM_DOMAINS" ""
+    if [[ "$MODE" == "private-ip" ]]; then
+      upsert_env "$ENV_FILE" "FAKE_HOSTNAME" "true"
+    else
+      upsert_env "$ENV_FILE" "FAKE_HOSTNAME" "false"
+    fi
+  else
+    upsert_env "$ENV_FILE" "PUBLIC_SITE_ENABLED" "true"
+    upsert_env "$ENV_FILE" "EXTRA_DOMAINS" "${EXTRA_IN:-}"
+    upsert_env "$ENV_FILE" "REDIRECT_FROM_DOMAINS" "${REDIRECT_IN:-}"
+    upsert_env "$ENV_FILE" "ALLOWED_HOSTS" "${DOMAIN_IN},www.${DOMAIN_IN},${EDITOR_IN},localhost,127.0.0.1${SERVER_IP_IN:+,${SERVER_IP_IN}}"
+    upsert_env "$ENV_FILE" "CSRF_TRUSTED_ORIGINS" "https://${DOMAIN_IN},https://www.${DOMAIN_IN},https://${EDITOR_IN}"
+    upsert_env "$ENV_FILE" "VITE_PUBLIC_SITE_BASE" "$SITE_URL_IN"
+  fi
 fi
 
-./scripts/check-env.sh "$MODE"
-
+CHECK_ENV_MODE="$MODE"
 if [[ "$MODE" == "production" ]]; then
+  CHECK_ENV_MODE="online"
+elif [[ "$MODE" == "private" || "$MODE" == "private-ip" ]]; then
+  CHECK_ENV_MODE="private"
+fi
+
+./scripts/check-env.sh "$CHECK_ENV_MODE"
+
+if [[ "$MODE" == "production" || "$MODE" == "private" || "$MODE" == "private-ip" ]]; then
   ./scripts/generate-nginx-conf.sh
   echo ""
-  echo "Nginx config generated. Before first HTTPS deploy:"
-  echo "  1. Point DNS A records for ${DOMAIN_IN} / www / ${EDITOR_IN} to this server"
-  echo "  2. Obtain TLS (first run — port 80 free; stop nginx if needed), e.g.:"
-  echo "       cd $(pwd)"
-  echo "       docker compose -f docker-compose.prod.yml stop nginx 2>/dev/null || true"
-  echo "       sudo certbot certonly --standalone --agree-tos --register-unsafely-without-email \\"
-  echo "         -d ${DOMAIN_IN} -d www.${DOMAIN_IN} -d ${EDITOR_IN}"
-  echo "     Or self-signed if DNS is not ready — see docs/ru/production-deploy.md (step 5)"
-  echo "  3. ./deploy.sh"
-  echo "  4. Changing domain later: ./scripts/apply-domain.sh (does not rotate keys)"
-  echo "  5. Host/domain move: docs/ru/host-migration.md"
+  if [[ "$MODE" == "private-ip" ]]; then
+    echo "Nginx config generated (editor-only, no real domain). Before first HTTPS deploy:"
+    echo "  1. Self-signed TLS (fake hostname + IP):"
+    echo "       cd $(pwd)"
+    echo "       docker compose -f docker-compose.prod.yml stop nginx 2>/dev/null || true"
+    echo "       sudo ./scripts/generate-self-signed-cert.sh"
+    echo "  2. On each computer that opens the editor, add to /etc/hosts (or C:\\Windows\\System32\\drivers\\etc\\hosts):"
+    echo "       ${SERVER_IP_IN}  ${EDITOR_IN}"
+    echo "  3. ./deploy.sh"
+    echo "  4. Open https://${EDITOR_IN}/login (accept browser cert warning once)"
+    echo "  5. Staff feed: https://${EDITOR_IN}/lenta/"
+    echo "  6. Full guide: docs/en/private-editor-deploy.md#no-domain-4-private-ip"
+  elif [[ "$MODE" == "private" ]]; then
+    echo "Nginx config generated (editor-only). Before first HTTPS deploy:"
+    echo "  1. Point DNS A record for ${EDITOR_IN} to this server"
+    echo "  2. Obtain TLS, e.g.:"
+    echo "       cd $(pwd)"
+    echo "       docker compose -f docker-compose.prod.yml stop nginx 2>/dev/null || true"
+    echo "       sudo certbot certonly --standalone --agree-tos --register-unsafely-without-email \\"
+    echo "         -d ${EDITOR_IN}"
+    echo "     Or self-signed if DNS is not ready — see docs/ru/private-editor-deploy.md"
+    echo "  3. ./deploy.sh"
+    echo "  4. Staff feed: https://${EDITOR_IN}/lenta/ (Django login)"
+    echo "  5. Full guide: docs/ru/private-editor-deploy.md"
+  else
+    echo "Nginx config generated. Before first HTTPS deploy:"
+    echo "  1. Point DNS A records for ${DOMAIN_IN} / www / ${EDITOR_IN} to this server"
+    echo "  2. Obtain TLS (first run — port 80 free; stop nginx if needed), e.g.:"
+    echo "       cd $(pwd)"
+    echo "       docker compose -f docker-compose.prod.yml stop nginx 2>/dev/null || true"
+    echo "       sudo certbot certonly --standalone --agree-tos --register-unsafely-without-email \\"
+    echo "         -d ${DOMAIN_IN} -d www.${DOMAIN_IN} -d ${EDITOR_IN}"
+    echo "     Or self-signed if DNS is not ready — see docs/ru/production-deploy.md (step 5)"
+    echo "  3. ./deploy.sh"
+    echo "  4. Changing domain later: ./scripts/apply-domain.sh (does not rotate keys)"
+    echo "  5. Host/domain move: docs/ru/host-migration.md"
+  fi
 fi
 
 read -r -p "Start Docker now? [Y/n]: " start_docker || true
@@ -249,6 +340,13 @@ if [[ "$start_docker" =~ ^[Yy]$ ]]; then
     echo ""
     echo "Production stack started."
     echo "Admin path: /${ADMIN_URL_VAL}/"
+    if [[ "$MODE" == "private" || "$MODE" == "private-ip" ]]; then
+      echo "Editor: https://${EDITOR_IN}/login"
+      echo "Staff feed: https://${EDITOR_IN}/lenta/"
+      if [[ "$MODE" == "private-ip" ]]; then
+        echo "Hosts file on your PC: ${SERVER_IP_IN}  ${EDITOR_IN}"
+      fi
+    fi
   fi
 
   read -r -p "Create Django superuser now? [y/N]: " create_su || true

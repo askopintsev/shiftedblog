@@ -109,6 +109,7 @@ Stop when done:
 |-----|---------|
 | http://localhost:5173/login | **Editor UI — start here** |
 | http://localhost:8888/ | Public blog preview on your machine |
+| http://localhost:8888/lenta/ | Staff feed — all published posts (Django login on 8888) |
 | http://localhost:8888/mellon/ | Django admin (site settings, credentials) |
 
 ## Useful commands
