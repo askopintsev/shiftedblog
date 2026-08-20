@@ -3,6 +3,9 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
+const devHost = process.env.VITE_DEV_HOST || "127.0.0.1";
+const proxyTarget = process.env.VITE_PROXY_TARGET || "http://localhost:8888";
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
@@ -10,22 +13,22 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
-    server: {
-    host: "127.0.0.1",
+  server: {
+    host: devHost,
     port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:8888",
+        target: proxyTarget,
         changeOrigin: false,
       },
       "/media": {
-        target: "http://localhost:8888",
+        target: proxyTarget,
         changeOrigin: false,
       },
     },
   },
   preview: {
-    host: "127.0.0.1",
+    host: devHost,
     port: 5173,
   },
   build: {

@@ -1,31 +1,67 @@
 # Быстрый старт
 
-ShiftedBlog — self-hosted блог на Django. Рекомендуемый путь для новых пользователей: Docker и мастер настройки.
+ShiftedBlog — **управление блогом** на вашем компьютере или сервере. Главное после настройки — **интерфейс редактора**.
 
 English: [../en/getting-started.md](../en/getting-started.md)
 
-## Выберите сценарий
+## Что вы получите
 
-1. **Local** — запуск на своей машине ([local-deploy.md](local-deploy.md))
-2. **Production** — деплой на VPS с HTTPS ([production-deploy.md](production-deploy.md))
-3. **Перенос** — смена VPS и/или домена ([host-migration.md](host-migration.md))
-
-```bash
-./scripts/setup.sh
+```text
+Интерфейс редактора (рабочее место)  →  http://localhost:5173/login
+Страница блога (для читателя)         →  http://localhost:8888/
+Панель администратора                 →  http://localhost:8888/mellon/
 ```
 
-Мастер создаёт `.env` (local) или `secrets.env` (production), генерирует секреты, проверяет конфигурацию и может сразу поднять Docker.
+**Цель:** один раз настроить → каждый день `./scripts/start-local.sh` (или ярлык) → войти.
 
-## После первого запуска
+> **Установка на компьютер — не сайт в интернете.** Это панель управления в браузере. Мультиканальная отправка работает и локально после настройки каналов.
 
-1. Создайте суперпользователя (запрос мастера или `docker compose exec web python manage.py createsuperuser`)
-2. Откройте админку → **Core → Site settings** — название сайта, соцсети, контактный email
-3. Опционально: Telegram-креды в **Core → Credentials** (нужен `CREDENTIALS_ENCRYPTION_KEY`)
+Подробнее: [local-deploy.md](local-deploy.md)
+
+## Выберите сценарий
+
+1. **На своём компьютере** — [local-deploy.md](local-deploy.md)
+2. **На сервере в интернете** — [production-deploy.md](production-deploy.md)
+3. **Перенос** — [host-migration.md](host-migration.md)
+
+## Что установить (локально)
+
+| Программа | Скачать |
+|-----------|---------|
+| Git | https://git-scm.com/downloads |
+| Docker | https://docs.docker.com/get-docker/ |
+
+## Быстрый старт
+
+**Один раз:**
+
+```bash
+git clone https://github.com/askopintsev/shiftedblog.git
+cd shiftedblog
+./scripts/setup.sh          # выберите 1) local
+docker compose exec web python manage.py createsuperuser   # при необходимости
+```
+
+**Каждый день:**
+
+```bash
+./scripts/start-local.sh
+```
+
+Откроется http://localhost:5173/login в браузере.
+
+Ярлыки: `Start ShiftedBlog.command` (macOS), `start-shiftedblog.desktop` (Linux), `start-shiftedblog.bat` (Windows).
+
+## После первого входа
+
+1. Создавайте посты (**Новый пост**)
+2. По желанию: панель администратора → **Core → Site settings**
+3. По желанию: **Core → Credentials** — Telegram и другие каналы
 
 ## Дальше
 
-- [Конфигурация: env и Site settings](configuration.md)
+- [Локальный запуск (полная инструкция)](local-deploy.md)
+- [Настройки](configuration.md)
 - [Site settings](site-settings.md)
-- [Перенос хоста и домена](host-migration.md)
+- [Перенос](host-migration.md)
 - [Security runbook](../security-runbook.md)
-- [Заметки для мейнтейнера / CI](../en/maintainer.md)

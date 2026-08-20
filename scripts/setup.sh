@@ -26,6 +26,19 @@ else
   ENV_FILE="secrets.env"
 fi
 
+if [[ "$MODE" == "local" ]]; then
+  if ! ./scripts/check-prerequisites.sh local; then
+    read -r -p "Install missing prerequisites now? [y/N]: " install_prereqs
+    install_prereqs="${install_prereqs:-N}"
+    if [[ "$install_prereqs" =~ ^[Yy]$ ]]; then
+      ./scripts/install-prerequisites.sh
+    else
+      exit 1
+    fi
+    ./scripts/check-prerequisites.sh local || exit 1
+  fi
+fi
+
 generate_secret_key() {
   python3 - <<'PY'
 import secrets
@@ -244,6 +257,15 @@ fi
 
 echo ""
 echo "Next steps:"
+if [[ "$MODE" == "local" ]]; then
+  if [[ -f "$ROOT/start-shiftedblog.desktop.in" ]]; then
+    sed "s|@PROJECT_ROOT@|$ROOT|g" "$ROOT/start-shiftedblog.desktop.in" > "$ROOT/start-shiftedblog.desktop"
+  fi
+  echo "  - Daily start: ./scripts/start-local.sh"
+  echo "  - Or double-click: Start ShiftedBlog.command (macOS) / start-shiftedblog.desktop (Linux)"
+  echo "  - Editor login: http://localhost:5173/login"
+  echo "  - Full guide: docs/en/local-deploy.md (docs/ru/local-deploy.md)"
+fi
 echo "  - Configure brand/social/email toggles in admin → Core → Site settings"
 echo "  - Docs (EN): docs/en/getting-started.md"
 echo "  - Docs (RU): docs/ru/getting-started.md"

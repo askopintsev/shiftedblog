@@ -1,3 +1,16 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-go/refs/heads/main/schema/compose-spec.json
+
+name: shiftedblog
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  nginx-network:
+    driver: bridge
+    attachable: true
+
 services:
   db:
     image: postgres:17
@@ -8,6 +21,12 @@ services:
     env_file:
       - .env
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
     networks:
       - nginx-network
 
@@ -49,14 +68,12 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     restart: unless-stopped
-    command: >
-      bash -c "
-        python manage.py migrate
-        python manage.py runserver 0.0.0.0:8000
-      "
+    command: ["bash", "/app/entrypoint.dev.sh"]
     ports:
       - "8888:8000"
     environment:
@@ -67,13 +84,20 @@ services:
     networks:
       - nginx-network
 
-volumes:
-  postgres_data:
-  redis_data:
-  static:
-  media:
-
-networks:
-  nginx-network:
-    driver: bridge
-    attachable: true
+  editor-ui:
+    image: node:26-bookworm
+    working_dir: /editor-ui
+    volumes:
+      - ./editor-ui:/editor-ui
+      - /editor-ui/node_modules
+    environment:
+      VITE_PROXY_TARGET: http://web:8000
+      VITE_DEV_HOST: 0.0.0.0
+    ports:
+      - "5173:5173"
+    depends_on:
+      - web
+    restart: unless-stopped
+    command: ["bash", "/editor-ui/entrypoint.dev.sh"]
+    networks:
+      - nginx-network

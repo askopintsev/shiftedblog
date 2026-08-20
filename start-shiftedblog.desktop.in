@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=ShiftedBlog
+Comment=Start the local blog editor
+Exec=bash -lc 'cd "@PROJECT_ROOT@" && exec ./scripts/start-local.sh'
+Path=@PROJECT_ROOT@
+Terminal=true
+Categories=Office;

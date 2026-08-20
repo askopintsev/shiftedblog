@@ -121,3 +121,6 @@ editor-ui/dist/
 editor-ui/.vite/
 editor-ui/playwright-report/
 editor-ui/test-results/
+
+# Generated local launcher (from start-shiftedblog.desktop.in)
+start-shiftedblog.desktop
