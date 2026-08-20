@@ -160,6 +160,16 @@ push master  →  lint + editor-ui tests  →  deploy job (если зелёны
 
 Скрипт на сервере: [`scripts/ci/vps-deploy-remote.sh`](../../scripts/ci/vps-deploy-remote.sh).
 
+**Один раз на VPS** (чтобы деплой не падал на порту 80):
+
+```bash
+cd /opt/shiftedblog
+git pull origin master   # или дождитесь следующего CI sync
+./scripts/vps-prepare-for-ci.sh
+```
+
+Отключает системный nginx/apache, удаляет устаревший `.env`, освобождает порты 80/443. Только Docker Compose в `/opt/shiftedblog` должен слушать эти порты.
+
 Первый CI-деплой на небольшом VPS может занять **15–30+ минут** (холодная сборка Docker: `npm ci`, pip, editor-ui). SSH-шаг deploy использует **command_timeout 45m**. Повторные запуски быстрее при тёплом кэше слоёв Docker; неиспользуемые образы удаляются при каждом deploy.
 
 ---
@@ -216,6 +226,7 @@ git pull origin master   # или fetch/reset как в CI
 | `git fetch` падает на VPS | Нет git deploy key или неверный remote |
 | `Ports 80/443 are already in use` | Хостовый nginx/apache — остановите (см. [production-deploy.md](production-deploy.md), шаг 3) |
 | Deploy падает после «Stopping existing stack» / предупреждения compose про `$E` | Устаревший `.env` в `/opt/shiftedblog` — удалите; CI использует только `secrets.env` |
+| `failed to bind host port 0.0.0.0:80` / порт 80 занят при `compose up` | Старый контейнер nginx или системный веб-сервер — `./scripts/vps-prepare-for-ci.sh` на VPS; deploy теперь останавливает nginx перед `up` |
 | Редактор с неверным URL сайта | `SITE_URL` в secrets; нужен `./deploy.sh` для пересборки UI |
 | Пустой `secrets.env` в CI | `DOPPLER_TOKEN` или имя project/config в Doppler |
 
