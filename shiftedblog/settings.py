@@ -131,6 +131,9 @@ if not SITE_URL and ALLOWED_HOSTS:
 if SITE_URL:
     SITE_URL = SITE_URL.strip().rstrip("/")
 
+# When False, nginx omits the public blog vhost; editor-only / private VPS deploy.
+PUBLIC_SITE_ENABLED = get_bool_env("PUBLIC_SITE_ENABLED", True)
+
 # Bootstrap / fallback for twitter:site; prefer Core → Site settings in templates.
 TWITTER_SITE = os.environ.get("TWITTER_SITE", "").strip()
 if TWITTER_SITE and not TWITTER_SITE.startswith("@"):

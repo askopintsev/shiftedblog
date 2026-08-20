@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django.shortcuts import get_object_or_404
+from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -67,12 +68,18 @@ class PublishView(APIView):
         ser.is_valid(raise_exception=True)
         data = ser.validated_data
         crosslink = (data.get("crosslink_network") or "").strip() or None
-        result = publish_adapter.run_publish(
-            data["post_id"],
-            dest_site=data["dest_site"],
-            dest_telegram=data["dest_telegram"],
-            telegram_format=data["telegram_format"],
-            crosslink_network=crosslink,
-            telegram_post_story=data["telegram_post_story"],
-        )
+        try:
+            result = publish_adapter.run_publish(
+                data["post_id"],
+                dest_site=data["dest_site"],
+                dest_telegram=data["dest_telegram"],
+                telegram_format=data["telegram_format"],
+                crosslink_network=crosslink,
+                telegram_post_story=data["telegram_post_story"],
+            )
+        except ValueError as exc:
+            return Response(
+                {"ok": False, "error": str(exc)},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         return Response({"ok": result["all_ok"], "result": result})

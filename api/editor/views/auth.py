@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.middleware.csrf import get_token
 from django.utils.decorators import method_decorator
@@ -22,6 +23,10 @@ from api.editor.permissions import (
 )
 
 User = get_user_model()
+
+
+def _deploy_payload() -> dict:
+    return {"public_site_enabled": settings.PUBLIC_SITE_ENABLED}
 
 
 def _user_payload(user: User, request: Request) -> dict:
@@ -75,6 +80,7 @@ class LoginView(APIView):
                     "ok": True,
                     "step": "2fa",
                     "user": _user_payload(user, request),
+                    "deploy": _deploy_payload(),
                 },
             )
         return Response(
@@ -82,6 +88,7 @@ class LoginView(APIView):
                 "ok": True,
                 "step": "complete",
                 "user": _user_payload(user, request),
+                "deploy": _deploy_payload(),
             },
         )
 
@@ -99,7 +106,13 @@ class TwoFactorVerifyView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         otp_login(request, device)
-        return Response({"ok": True, "user": _user_payload(request.user, request)})
+        return Response(
+            {
+                "ok": True,
+                "user": _user_payload(request.user, request),
+                "deploy": _deploy_payload(),
+            },
+        )
 
 
 class LogoutView(APIView):
@@ -114,7 +127,13 @@ class MeView(APIView):
     permission_classes = [IsAuthenticatedStaff]
 
     def get(self, request: Request) -> Response:
-        return Response({"ok": True, "user": _user_payload(request.user, request)})
+        return Response(
+            {
+                "ok": True,
+                "user": _user_payload(request.user, request),
+                "deploy": _deploy_payload(),
+            },
+        )
 
 
 class SessionKeepaliveView(APIView):

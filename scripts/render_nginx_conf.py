@@ -34,6 +34,12 @@ def _join_names(names: list[str]) -> str:
     return "\n                    ".join(names)
 
 
+def _parse_bool(value: str | None, default: bool = True) -> bool:
+    if value is None or value.strip() == "":
+        return default
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
+
 def _canonical_origin(site_url: str, domain: str) -> str:
     url = (site_url or "").strip().rstrip("/")
     if url:
@@ -88,7 +94,72 @@ def _redirect_https_block(
 """
 
 
-def render(env: dict[str, str], template: str) -> str:
+def _proxy_django_block() -> str:
+    return """
+            proxy_connect_timeout 30s;
+            proxy_send_timeout 120s;
+            proxy_read_timeout 120s;
+            proxy_pass http://web:8000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_redirect off;
+"""
+
+
+def _editor_extra_locations(admin_url: str) -> str:
+    admin_path = admin_url.strip().strip("/") or "mellon"
+    proxy = _proxy_django_block()
+    return f"""
+        location /static/ {{
+            alias /static/;
+            expires 7d;
+            add_header Cache-Control "public, immutable";
+        }}
+
+        location ~ ^/(login|account/(login|two_factor)|{admin_path}/) {{
+            limit_req zone=login_limit burst=15 nodelay;
+            limit_conn conn_limit 10;
+{proxy}
+            error_page 429 = @ratelimit_editor;
+            error_page 503 = @ratelimit_editor;
+        }}
+
+        location /lenta/ {{
+            limit_conn conn_limit 10;
+{proxy}
+        }}
+
+        location /{admin_path}/ {{
+            limit_conn conn_limit 10;
+{proxy}
+        }}
+"""
+
+
+def _main_https_server_block(
+    template_root: Path,
+    https_names: list[str],
+    ssl_certificate: str,
+    ssl_certificate_key: str,
+) -> str:
+    if not https_names:
+        return ""
+    snippet_path = template_root / "nginx" / "main-https.server.template"
+    text = snippet_path.read_text(encoding="utf-8")
+    replacements = {
+        "__HTTPS_SERVER_NAMES__": _join_names(https_names),
+        "__SSL_CERTIFICATE__": ssl_certificate,
+        "__SSL_CERTIFICATE_KEY__": ssl_certificate_key,
+    }
+    for key, value in replacements.items():
+        text = text.replace(key, value)
+    return text
+
+
+def render(env: dict[str, str], template: str, *, template_root: Path | None = None) -> str:
+    public_site_enabled = _parse_bool(env.get("PUBLIC_SITE_ENABLED"), default=True)
     domain = env.get("DOMAIN", "").strip()
     site_url = env.get("SITE_URL", "").strip()
     if not domain and site_url:
@@ -105,6 +176,7 @@ def render(env: dict[str, str], template: str) -> str:
     redirect_from = _split_hosts(env.get("REDIRECT_FROM_DOMAINS", ""))
     redirect_from_editor = _split_hosts(env.get("REDIRECT_FROM_EDITOR_DOMAINS", ""))
     server_ip = env.get("SERVER_IP", "").strip()
+    admin_url = env.get("ADMIN_URL", "mellon").strip() or "mellon"
 
     canonical_origin = _canonical_origin(site_url, domain)
     canonical_host = urlparse(canonical_origin).hostname or domain
@@ -121,41 +193,49 @@ def render(env: dict[str, str], template: str) -> str:
     elif canonical_host == apex and www_domain != apex:
         redirect_hosts.add(www_domain)
 
-    https_names: list[str] = [canonical_host]
     editor_names: list[str] = [editor_domain]
-    http_names: list[str] = [apex, www_domain, editor_domain, canonical_host]
+    http_names: list[str] = []
 
-    for host in extra_domains:
-        http_names.append(host)
-        if host in redirect_hosts or host in redirect_editor_hosts:
-            continue
-        if host.startswith("editor."):
-            editor_names.append(host)
-        else:
-            https_names.append(host)
+    if public_site_enabled:
+        https_names: list[str] = [canonical_host]
+        http_names = [apex, www_domain, editor_domain, canonical_host]
+        for host in extra_domains:
+            http_names.append(host)
+            if host in redirect_hosts or host in redirect_editor_hosts:
+                continue
+            if host.startswith("editor."):
+                editor_names.append(host)
+            else:
+                https_names.append(host)
+        http_names.extend(redirect_from)
+        http_names.extend(redirect_from_editor)
+        if server_ip:
+            http_names.append(server_ip)
+            https_names.append(server_ip)
+        https_names = [h for h in _unique(https_names) if h not in redirect_hosts]
+        csp_hosts = {canonical_host, www_domain, apex}
+        for host in extra_domains:
+            if host.startswith("editor.") or host in redirect_hosts:
+                continue
+            csp_hosts.add(host)
+    else:
+        https_names = []
+        http_names = [editor_domain]
+        editor_names = [editor_domain]
+        if server_ip:
+            http_names.append(server_ip)
+            editor_names.append(server_ip)
+        csp_hosts = {editor_domain}
 
-    http_names.extend(redirect_from)
-    http_names.extend(redirect_from_editor)
-    if server_ip:
-        http_names.append(server_ip)
-        https_names.append(server_ip)
-
-    https_names = [h for h in _unique(https_names) if h not in redirect_hosts]
     editor_names = [h for h in _unique(editor_names) if h not in redirect_editor_hosts]
     http_names = _unique(http_names)
-
-    csp_hosts = {canonical_host, www_domain, apex}
-    for host in extra_domains:
-        if host.startswith("editor.") or host in redirect_hosts:
-            continue
-        csp_hosts.add(host)
     csp_origins = " ".join(f"https://{h}" for h in sorted(csp_hosts) if h)
 
     redirect_site_names = [h for h in _unique(list(redirect_hosts)) if h]
     redirect_editor_names = [h for h in _unique(list(redirect_editor_hosts)) if h]
 
     blocks = ""
-    if redirect_site_names:
+    if public_site_enabled and redirect_site_names:
         blocks += _redirect_https_block(
             redirect_site_names,
             canonical_origin,
@@ -170,13 +250,23 @@ def render(env: dict[str, str], template: str) -> str:
             ssl_certificate_key,
         )
 
+    root = template_root or Path(__file__).resolve().parents[1]
+    main_https = _main_https_server_block(
+        root,
+        https_names,
+        ssl_certificate,
+        ssl_certificate_key,
+    )
+    editor_extra = "" if public_site_enabled else _editor_extra_locations(admin_url)
+
     replacements = {
         "__HTTP_SERVER_NAMES__": _join_names(http_names),
-        "__HTTPS_SERVER_NAMES__": _join_names(https_names),
+        "__MAIN_HTTPS_SERVER__": main_https,
         "__EDITOR_SERVER_NAMES__": _join_names(editor_names),
         "__SSL_CERTIFICATE__": ssl_certificate,
         "__SSL_CERTIFICATE_KEY__": ssl_certificate_key,
         "__CSP_CONNECT_ORIGINS__": csp_origins,
+        "__EDITOR_EXTRA_LOCATIONS__": editor_extra,
         "__REDIRECT_HTTPS_BLOCKS__": blocks,
     }
     text = template
@@ -190,7 +280,12 @@ def main() -> None:
         raise SystemExit(f"Usage: {sys.argv[0]} TEMPLATE OUTPUT")
     template_path = Path(sys.argv[1])
     output_path = Path(sys.argv[2])
-    text = render(dict(os.environ), template_path.read_text(encoding="utf-8"))
+    root = template_path.resolve().parents[1]
+    text = render(
+        dict(os.environ),
+        template_path.read_text(encoding="utf-8"),
+        template_root=root,
+    )
     output_path.write_text(text, encoding="utf-8")
     print(f"Wrote {output_path}")
 

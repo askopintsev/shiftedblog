@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 from typing import Any
 
+from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.shortcuts import get_object_or_404
@@ -283,6 +284,11 @@ class PostSitePublishView(APIView):
     permission_classes = [IsStaffUser]
 
     def post(self, request: Request, post_id: int) -> Response:
+        if not settings.PUBLIC_SITE_ENABLED:
+            return Response(
+                {"ok": False, "error": "Public site publishing is disabled."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         post = get_object_or_404(Post, pk=post_id)
         if post.status != "published":
             return Response(
@@ -300,6 +306,11 @@ class PostSiteUnpublishView(APIView):
     permission_classes = [IsStaffUser]
 
     def post(self, request: Request, post_id: int) -> Response:
+        if not settings.PUBLIC_SITE_ENABLED:
+            return Response(
+                {"ok": False, "error": "Public site publishing is disabled."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         post = get_object_or_404(Post, pk=post_id)
         SitePublication.objects.filter(post=post).delete()
         return Response({"ok": True})

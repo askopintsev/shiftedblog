@@ -6,9 +6,89 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def _table_exists(schema_editor, table):
+    with schema_editor.connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name = %s
+            )
+            """,
+            [table],
+        )
+        return cursor.fetchone()[0]
+
+
+def create_blog_editor_tables(apps, schema_editor):
+    if _table_exists(schema_editor, "blog_category"):
+        return
+
+    schema_editor.execute(
+        """
+        CREATE TABLE blog_category (
+            id BIGSERIAL NOT NULL PRIMARY KEY,
+            name VARCHAR(250) NOT NULL
+        )
+        """
+    )
+    schema_editor.execute(
+        """
+        CREATE TABLE blog_series (
+            id BIGSERIAL NOT NULL PRIMARY KEY,
+            name VARCHAR(250) NOT NULL
+        )
+        """
+    )
+    schema_editor.execute(
+        """
+        CREATE TABLE blog_post (
+            id BIGSERIAL NOT NULL PRIMARY KEY,
+            title VARCHAR(250) NOT NULL,
+            slug VARCHAR(250) NOT NULL UNIQUE,
+            cover_image_credits VARCHAR(250) NULL,
+            cover_description VARCHAR(250) NULL,
+            body TEXT NOT NULL,
+            published TIMESTAMP WITH TIME ZONE NULL,
+            created TIMESTAMP WITH TIME ZONE NOT NULL,
+            updated TIMESTAMP WITH TIME ZONE NOT NULL,
+            status VARCHAR(10) NOT NULL,
+            cover_image VARCHAR(100) NOT NULL,
+            short_description VARCHAR(300) NULL,
+            views INTEGER NOT NULL CHECK (views >= 0),
+            author_id BIGINT NOT NULL,
+            category_id BIGINT NOT NULL,
+            CONSTRAINT blog_post_author_id_fk
+                FOREIGN KEY (author_id) REFERENCES blog_user (id)
+                DEFERRABLE INITIALLY DEFERRED,
+            CONSTRAINT blog_post_category_id_fk
+                FOREIGN KEY (category_id) REFERENCES blog_category (id)
+                DEFERRABLE INITIALLY DEFERRED
+        )
+        """
+    )
+    schema_editor.execute(
+        """
+        CREATE TABLE blog_postseries (
+            id BIGSERIAL NOT NULL PRIMARY KEY,
+            order_position INTEGER NULL CHECK (order_position >= 0),
+            post_id BIGINT NOT NULL,
+            series_id BIGINT NOT NULL,
+            CONSTRAINT blog_postseries_post_id_fk
+                FOREIGN KEY (post_id) REFERENCES blog_post (id)
+                DEFERRABLE INITIALLY DEFERRED,
+            CONSTRAINT blog_postseries_series_id_fk
+                FOREIGN KEY (series_id) REFERENCES blog_series (id)
+                DEFERRABLE INITIALLY DEFERRED
+        )
+        """
+    )
+
+
 class Migration(migrations.Migration):
     initial = True
     dependencies = [
+        ("core", "0001_initial"),
         ("auth", "0012_alter_user_first_name_max_length"),
         (
             "taggit",
@@ -192,6 +272,10 @@ class Migration(migrations.Migration):
                     options={"db_table": "blog_postseries"},
                 ),
             ],
-            database_operations=[],
+            database_operations=[
+                migrations.RunPython(
+                    create_blog_editor_tables, migrations.RunPython.noop
+                ),
+            ],
         ),
     ]

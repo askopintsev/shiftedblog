@@ -16,25 +16,35 @@ Write once, publish to your site and other channels from a single workspace.
 
 ```bash
 git clone https://github.com/askopintsev/shiftedblog.git
-cd shiftedblog && ./scripts/setup.sh   # local → http://localhost:8888/
+cd shiftedblog && ./scripts/setup.sh   # one-time setup
+./scripts/start-local.sh             # daily → editor http://localhost:5173/login
 ```
 
-More: [getting started](docs/en/getting-started.md) · [production](docs/en/production-deploy.md) · [host/domain move](docs/en/host-migration.md)
+Prerequisites: [Docker](https://docs.docker.com/get-docker/) · [Git](https://git-scm.com/downloads)
+
+More: [getting started](docs/en/getting-started.md) · [online deploy](docs/en/production-deploy.md) · [private editor](docs/en/private-editor-deploy.md) · [host/domain move](docs/en/host-migration.md)
 
 ## Русский
 
-Пишете один раз — публикуете на сайт и в другие каналы из одного рабочего пространства.
+Пишете один раз — публикуете на сайт и в другие каналы из одного рабочего места.
 
 - **Единый редактор** — черновики и подготовка в одном месте
-- **Диспетчеризация** — отправка релиза в выбранные каналы (сайт, Telegram и др.)
-- **Self-hosted** — данные, домен и доступы остаются у вас
+- **Отправка в каналы** — публикация в выбранные каналы (сайт, Telegram и др.)
+- **На вашем оборудовании** — данные и доступы остаются у вас
+
+Скачайте проект, один раз настройте, затем каждый день запускайте:
 
 ```bash
 git clone https://github.com/askopintsev/shiftedblog.git
-cd shiftedblog && ./scripts/setup.sh   # local → http://localhost:8888/
+cd shiftedblog && ./scripts/setup.sh   # однократная настройка
+./scripts/start-local.sh             # каждый день → http://localhost:5173/login
 ```
 
-Подробнее: [быстрый старт](docs/ru/getting-started.md) · [production](docs/ru/production-deploy.md) · [перенос](docs/ru/host-migration.md)
+Или дважды щёлкните `Start ShiftedBlog.command` / `start-shiftedblog.desktop`.
+
+Сначала установите: [Docker](https://docs.docker.com/get-docker/) · [Git](https://git-scm.com/downloads)
+
+Подробнее: [быстрый старт](docs/ru/getting-started.md) · [онлайн запуск](docs/ru/production-deploy.md) · [приватный редактор](docs/ru/private-editor-deploy.md) · [перенос](docs/ru/host-migration.md)
 
 ## License
 

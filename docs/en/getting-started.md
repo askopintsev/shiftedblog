@@ -1,31 +1,103 @@
 # Getting started
 
-ShiftedBlog is a self-hosted Django blog. The recommended path for new users is Docker + the setup wizard.
+ShiftedBlog is a self-hosted **blog management** tool for your computer or a server on the internet. Your main destination after setup is the **editor UI**.
 
-Русский: [../ru/getting-started.md](../ru/getting-started.md)
+Русский: [Быстрый старт](../ru/getting-started.md)
+
+## Your goal
+
+**On your computer:** **http://localhost:5173/login** → sign in → **http://localhost:5173/posts**
+
+**On a server:** **https://editor.example.com/login** → sign in → **https://editor.example.com/posts**
+
+That is the workspace: posts, series, multichannel dispatch. The public blog and Django admin are secondary.
+
+> **Local setup is not a public website.** It is the management UI in your browser on **localhost**. Nobody outside your machine can reach it. Multichannel dispatch (site, Telegram, …) works locally too once channels are configured in Django admin.
+
+---
 
 ## Choose a path
 
-1. **Local** — try the app on your machine ([local-deploy.md](local-deploy.md))
-2. **Production** — deploy on a VPS with HTTPS ([production-deploy.md](production-deploy.md))
-3. **Migrate** — move host and/or domain ([host-migration.md](host-migration.md))
+| Path | When | Guide |
+|------|------|-------|
+| **Local** | Try it out, write posts, configure channels | [local-deploy.md](local-deploy.md) |
+| **Online deploy (on server)** | Public site on a VPS with HTTPS | [production-deploy.md](production-deploy.md) |
+| **Private editor (VPS)** | HTTPS editor + Telegram, no public blog | [private-editor-deploy.md](private-editor-deploy.md) (`3) private` or `4) private-ip` if no domain) |
+| **Host/domain migration** | Existing production, new VPS or domain | [host-migration.md](host-migration.md) |
+
+**Online first-run (short):** DNS → clone project → ports → `./scripts/setup.sh` (**`2) online`**, answer **`n`** to “Start Docker now?”) → TLS → `./deploy.sh` → login. Details: [production-deploy.md](production-deploy.md).
+
+---
+
+## Local quick start
+
+### Prerequisites
+
+| Tool | Why | Download |
+|------|-----|----------|
+| Docker + Compose | Backend and editor in containers | https://docs.docker.com/get-docker/ |
+| curl | Used by start scripts | usually preinstalled |
+| Git | Clone the repo (or use ZIP) | https://git-scm.com/downloads |
+
+Check:
 
 ```bash
-./scripts/setup.sh
+docker compose version
+curl --version
 ```
 
-The wizard creates `.env` (local) or `secrets.env` (production), generates secrets, validates configuration, and can start Docker for you.
+**Node.js is not required** for normal use — the editor runs in Docker.
 
-## After first boot
+### One-time setup
 
-1. Create a superuser (wizard prompt, or `docker compose exec web python manage.py createsuperuser`)
-2. Open Django admin → **Core → Site settings** — set site name, social links, contact email
-3. Optional: configure Telegram credentials under **Core → Credentials** (needs `CREDENTIALS_ENCRYPTION_KEY`)
+```bash
+git clone https://github.com/askopintsev/shiftedblog.git
+cd shiftedblog
+./scripts/check-prerequisites.sh local
+./scripts/setup.sh          # choose 1) local
+docker compose exec web python manage.py createsuperuser   # if the wizard did not
+```
+
+No Git? Use a ZIP archive — see [local-deploy.md](local-deploy.md) step 1.
+
+### Every day
+
+```bash
+./scripts/start-local.sh
+```
+
+Opens **http://localhost:5173/login** in your browser.
+
+Launchers: `Start ShiftedBlog.command` (macOS), `start-shiftedblog.desktop` (Linux), `start-shiftedblog.bat` (Windows).
+
+### Where to go (local)
+
+| URL | Purpose |
+|-----|---------|
+| http://localhost:5173/login | **Editor UI — start here** |
+| http://localhost:8888/ | Public blog preview |
+| http://localhost:8888/lenta/ | Staff feed (Django login on port 8888) |
+| http://localhost:8888/mellon/ | Django admin (settings, channels) |
+
+Full guide: [local-deploy.md](local-deploy.md)
+
+---
+
+## After first login
+
+1. Create and edit posts in the editor (**New post**)
+2. Optional: Django admin → **Core → Site settings**
+3. Optional: **Core → Credentials** — Telegram and other channels
+
+---
 
 ## Learn more
 
-- [Configuration: env vs Site settings](configuration.md)
+- [Local deploy (full guide)](local-deploy.md)
+- [Online deploy (on server)](production-deploy.md)
+- [Private editor (VPS, no public blog)](private-editor-deploy.md)
+- [Host and domain migration](host-migration.md)
+- [Configuration](configuration.md)
 - [Site settings](site-settings.md)
-- [Host/domain migration](host-migration.md)
-- [Security runbook](../security-runbook.md) (operations)
+- [Security runbook](../security-runbook.md)
 - [Maintainer / CI notes](maintainer.md)

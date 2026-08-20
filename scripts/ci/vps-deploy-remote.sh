@@ -79,6 +79,13 @@ prepare_dirs() {
   mkdir -p logs backups static media static_blog
 }
 
+render_nginx_conf() {
+  if grep -qE '^SITE_URL=' secrets.env; then
+    echo "Rendering nginx/nginx.conf from template..."
+    ENV_FILE=secrets.env ./scripts/generate-nginx-conf.sh
+  fi
+}
+
 validate_and_build_env() {
   site_url="$(
     grep -m1 '^SITE_URL=' secrets.env \
@@ -94,6 +101,14 @@ validate_and_build_env() {
   export VITE_PUBLIC_SITE_BASE="${VITE_PUBLIC_SITE_BASE:-${site_url}}"
   export VITE_API_BASE="$("${ROOT}/scripts/sanitize-vite-api-base.sh")"
   echo "Editor UI build: VITE_API_BASE=${VITE_API_BASE}"
+}
+
+check_env_mode() {
+  if grep -qE '^PUBLIC_SITE_ENABLED=false' secrets.env 2>/dev/null; then
+    ./scripts/check-env.sh private
+  else
+    ./scripts/check-env.sh online
+  fi
 }
 
 deploy_containers() {
@@ -126,6 +141,8 @@ echo "First few lines of secrets.env (without values):"
 head -5 secrets.env | sed 's/=.*/=***/'
 
 prepare_dirs
+render_nginx_conf
+check_env_mode
 validate_and_build_env
 deploy_containers
 

@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { apiFetch } from "@/api/client";
 import type { PostListItem, PostStatus } from "@/api/types";
+import { useAuth } from "@/features/auth/useAuth";
 import { useI18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +17,7 @@ const statusColors: Record<PostStatus, string> = {
 export function PostsListPage() {
   const [status, setStatus] = useState("");
   const queryClient = useQueryClient();
+  const { publicSiteEnabled } = useAuth();
   const { t, bcp47 } = useI18n();
 
   const statusLabels: Record<PostStatus, string> = {
@@ -80,21 +82,29 @@ export function PostsListPage() {
               <th className="px-4 py-3">{t("posts.col.title")}</th>
               <th className="px-4 py-3">{t("posts.col.status")}</th>
               <th className="px-4 py-3">{t("posts.col.updated")}</th>
-              <th className="px-4 py-3">{t("posts.col.onSite")}</th>
+              {publicSiteEnabled && (
+                <th className="px-4 py-3">{t("posts.col.onSite")}</th>
+              )}
               <th className="px-4 py-3">{t("posts.col.actions")}</th>
             </tr>
           </thead>
           <tbody>
             {isLoading && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-text-muted">
+                <td
+                  colSpan={publicSiteEnabled ? 5 : 4}
+                  className="px-4 py-8 text-center text-text-muted"
+                >
                   {t("common.loading")}
                 </td>
               </tr>
             )}
             {isError && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-red-600">
+                <td
+                  colSpan={publicSiteEnabled ? 5 : 4}
+                  className="px-4 py-8 text-center text-red-600"
+                >
                   {t("posts.loadError", {
                     message:
                       error instanceof Error
@@ -106,7 +116,10 @@ export function PostsListPage() {
             )}
             {!isLoading && !isError && !data?.results.length && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-text-muted">
+                <td
+                  colSpan={publicSiteEnabled ? 5 : 4}
+                  className="px-4 py-8 text-center text-text-muted"
+                >
                   {t("posts.empty")}
                 </td>
               </tr>
@@ -132,42 +145,44 @@ export function PostsListPage() {
                 <td className="px-4 py-3 text-text-muted">
                   {new Date(post.updated).toLocaleString(bcp47)}
                 </td>
-                <td className="px-4 py-3">
-                  {post.status === "published" ? (
-                    <div className="flex items-center gap-2">
-                      {post.is_on_site ? (
-                        <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">
-                          {t("common.yes")}
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          className="text-xs text-accent hover:underline disabled:opacity-60"
-                          disabled={siteMutationPending}
-                          onClick={() => sitePublish.mutate(post.id)}
-                        >
-                          {t("common.yes")}
-                        </button>
-                      )}
-                      {!post.is_on_site ? (
-                        <span className="rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-semibold text-gray-800">
-                          {t("common.no")}
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          className="text-xs text-accent hover:underline disabled:opacity-60"
-                          disabled={siteMutationPending}
-                          onClick={() => siteUnpublish.mutate(post.id)}
-                        >
-                          {t("common.no")}
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-text-muted">{t("common.emDash")}</span>
-                  )}
-                </td>
+                {publicSiteEnabled && (
+                  <td className="px-4 py-3">
+                    {post.status === "published" ? (
+                      <div className="flex items-center gap-2">
+                        {post.is_on_site ? (
+                          <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">
+                            {t("common.yes")}
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="text-xs text-accent hover:underline disabled:opacity-60"
+                            disabled={siteMutationPending}
+                            onClick={() => sitePublish.mutate(post.id)}
+                          >
+                            {t("common.yes")}
+                          </button>
+                        )}
+                        {!post.is_on_site ? (
+                          <span className="rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-semibold text-gray-800">
+                            {t("common.no")}
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="text-xs text-accent hover:underline disabled:opacity-60"
+                            disabled={siteMutationPending}
+                            onClick={() => siteUnpublish.mutate(post.id)}
+                          >
+                            {t("common.no")}
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-text-muted">{t("common.emDash")}</span>
+                    )}
+                  </td>
+                )}
                 <td className="px-4 py-3">
                   <Link to={`/posts/${post.id}`} className="text-accent hover:underline">
                     {t("posts.edit")}

@@ -16,7 +16,7 @@ from django.views.decorators.vary import vary_on_cookie
 from taggit.models import Tag
 
 from blog.category_helpers import resolve_category_for_list
-from blog.querysets import public_posts_queryset
+from blog.querysets import feed_posts_queryset, public_posts_queryset
 from blog.related_posts import series_navigation, similar_and_newest_posts
 from blog.tag_helpers import resolve_tag_for_list
 from editor.forms import SearchForm
@@ -333,7 +333,7 @@ def post_search(request):
 def post_feed_lenta(request: HttpRequest):
     """Authenticated feed: all site-published posts with outbound PostLink buttons."""
     queryset = (
-        public_posts_queryset()
+        feed_posts_queryset()
         .select_related("category", "author")
         .prefetch_related(
             Prefetch(

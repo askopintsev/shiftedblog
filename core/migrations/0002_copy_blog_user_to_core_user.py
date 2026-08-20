@@ -44,6 +44,16 @@ def _repoint_fks(cursor, old_table, new_table, exclude=None):
 
 def forwards(apps, schema_editor):
     cursor = schema_editor.connection.cursor()
+    cursor.execute(
+        """
+        SELECT EXISTS (
+            SELECT FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'blog_user'
+        )
+        """
+    )
+    if not cursor.fetchone()[0]:
+        return
 
     # --- 1. Update content type so all references follow automatically ---
     ContentType = apps.get_model("contenttypes", "ContentType")

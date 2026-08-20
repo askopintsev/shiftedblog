@@ -264,14 +264,19 @@ def _load_render_nginx_conf():
 
 
 class NginxRedirectRenderTests(TestCase):
+    _STUB_TEMPLATE = (
+        "HTTP:__HTTP_SERVER_NAMES__\n"
+        "MAIN:__MAIN_HTTPS_SERVER__\n"
+        "EDITOR:__EDITOR_SERVER_NAMES__\n"
+        "EXTRA:__EDITOR_EXTRA_LOCATIONS__\n"
+        "BLOCKS:__REDIRECT_HTTPS_BLOCKS__\n"
+    )
+
+    def _render_root(self):
+        return Path(__file__).resolve().parents[1]
+
     def test_legacy_and_apex_redirect_to_www_site_url(self):
         render = _load_render_nginx_conf()
-        template = (
-            "HTTP:__HTTP_SERVER_NAMES__\n"
-            "HTTPS:__HTTPS_SERVER_NAMES__\n"
-            "EDITOR:__EDITOR_SERVER_NAMES__\n"
-            "BLOCKS:__REDIRECT_HTTPS_BLOCKS__\n"
-        )
         text = render.render(
             {
                 "DOMAIN": "shiftedstuff.space",
@@ -280,19 +285,58 @@ class NginxRedirectRenderTests(TestCase):
                 "REDIRECT_FROM_DOMAINS": "shiftedstuff.ru,www.shiftedstuff.ru",
                 "REDIRECT_FROM_EDITOR_DOMAINS": "editor.shiftedstuff.ru",
             },
-            template,
+            self._STUB_TEMPLATE,
+            template_root=self._render_root(),
         )
         self.assertIn("www.shiftedstuff.space", text)
         self.assertIn("shiftedstuff.ru", text)
-        https_line = next(
-            line for line in text.splitlines() if line.startswith("HTTPS:")
-        )
-        self.assertIn("www.shiftedstuff.space", https_line)
-        self.assertNotIn("shiftedstuff.ru", https_line)
+        main_block = text.split("MAIN:", 1)[1].split("EDITOR:", 1)[0]
+        self.assertIn("www.shiftedstuff.space", main_block)
+        self.assertNotIn("shiftedstuff.ru", main_block)
         self.assertIn("return 301 https://www.shiftedstuff.space$request_uri", text)
         self.assertIn("return 301 https://editor.shiftedstuff.space$request_uri", text)
         blocks = text.split("BLOCKS:", 1)[1]
         self.assertIn("shiftedstuff.space", blocks)
+
+    def test_private_mode_omits_main_https_and_adds_staff_paths(self):
+        render = _load_render_nginx_conf()
+        text = render.render(
+            {
+                "PUBLIC_SITE_ENABLED": "false",
+                "DOMAIN": "example.com",
+                "SITE_URL": "https://editor.example.com",
+                "EDITOR_DOMAIN": "editor.example.com",
+                "ADMIN_URL": "abc123def",
+            },
+            self._STUB_TEMPLATE,
+            template_root=self._render_root(),
+        )
+        self.assertIn("HTTP:editor.example.com", text)
+        self.assertNotIn("MAIN:    # HTTPS server", text)
+        main_block = text.split("MAIN:", 1)[1].split("EDITOR:", 1)[0].strip()
+        self.assertEqual(main_block, "")
+        extra = text.split("EXTRA:", 1)[1].split("BLOCKS:", 1)[0]
+        self.assertIn("/lenta/", extra)
+        self.assertIn("/abc123def/", extra)
+        self.assertIn("/static/", extra)
+
+    def test_private_mode_includes_server_ip_on_editor_vhost(self):
+        render = _load_render_nginx_conf()
+        text = render.render(
+            {
+                "PUBLIC_SITE_ENABLED": "false",
+                "DOMAIN": "shiftedblog.local",
+                "SITE_URL": "https://editor.shiftedblog.local",
+                "EDITOR_DOMAIN": "editor.shiftedblog.local",
+                "SERVER_IP": "203.0.113.10",
+                "ADMIN_URL": "abc123def",
+            },
+            self._STUB_TEMPLATE,
+            template_root=self._render_root(),
+        )
+        editor_block = text.split("EDITOR:", 1)[1].split("EXTRA:", 1)[0]
+        self.assertIn("editor.shiftedblog.local", editor_block)
+        self.assertIn("203.0.113.10", editor_block)
 
 
 @override_settings(ADMIN_URL="mellon")

@@ -1,16 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, fetchCsrf, resetCsrfToken } from "@/api/client";
-import type { User } from "@/api/types";
+import type { DeployInfo, User } from "@/api/types";
 
 interface MeResponse {
   ok: boolean;
   user: User;
+  deploy?: DeployInfo;
 }
 
 interface LoginResponse {
   ok: boolean;
   step: "2fa" | "complete";
   user: User;
+  deploy?: DeployInfo;
 }
 
 export function useAuth() {
@@ -64,12 +66,19 @@ export function useAuth() {
     (meQuery.isSuccess ? meQuery.data?.user : null) ??
     loginMutation.data?.user ??
     null;
+  const deploy =
+    (meQuery.isSuccess ? meQuery.data?.deploy : null) ??
+    loginMutation.data?.deploy ??
+    verify2faMutation.data?.deploy ??
+    null;
+  const publicSiteEnabled = deploy?.public_site_enabled ?? true;
   const pending2fa =
     loginMutation.data?.step === "2fa" ||
     (Boolean(user?.has_2fa) && !user?.is_verified);
 
   return {
     user,
+    publicSiteEnabled,
     pending2fa,
     loading: meQuery.isLoading,
     login: loginMutation,
