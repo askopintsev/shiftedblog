@@ -1,6 +1,6 @@
 # Maintainer notes
 
-Optional path for the upstream project operators (Doppler + GitHub Actions + existing VPS). Third-party self-hosters should follow [production-deploy.md](production-deploy.md) with a plain `secrets.env`.
+Optional path for the upstream project operators (Doppler + GitHub Actions + existing VPS). Third-party self-hosters should follow [Online deploy (on server)](production-deploy.md) with a plain `secrets.env`.
 
 ## Doppler
 

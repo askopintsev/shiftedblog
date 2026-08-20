@@ -208,6 +208,6 @@ sudo certbot certonly --standalone --cert-name new.example.com --expand \
 
 ## См. также
 
-- [production-deploy.md](production-deploy.md)
+- [Онлайн запуск (на сервере)](production-deploy.md)
 - [configuration.md](configuration.md)
 - [maintainer.md](../en/maintainer.md)

@@ -101,6 +101,14 @@ SITE_URL_IN="${SITE_URL_IN%/}"
 EDITOR_IN="${EDITOR_IN:-editor.${DOMAIN_IN}}"
 CERT_IN="${CERT_IN:-${DOMAIN_IN}}"
 
+set -a
+set +u
+# shellcheck disable=SC1090
+source "$ENV_FILE"
+set -u
+set +a
+SERVER_IP_FOR_HOSTS="${SERVER_IP_IN:-${SERVER_IP:-}}"
+
 upsert_env() {
   local file="$1"
   local key="$2"
@@ -131,7 +139,7 @@ upsert_env "$ENV_FILE" "DOMAIN" "$DOMAIN_IN"
 upsert_env "$ENV_FILE" "EDITOR_DOMAIN" "$EDITOR_IN"
 upsert_env "$ENV_FILE" "SSL_CERT_NAME" "$CERT_IN"
 upsert_env "$ENV_FILE" "SITE_URL" "$SITE_URL_IN"
-upsert_env "$ENV_FILE" "ALLOWED_HOSTS" "${DOMAIN_IN},www.${DOMAIN_IN},${EDITOR_IN},localhost,127.0.0.1"
+upsert_env "$ENV_FILE" "ALLOWED_HOSTS" "${DOMAIN_IN},www.${DOMAIN_IN},${EDITOR_IN},localhost,127.0.0.1${SERVER_IP_FOR_HOSTS:+,${SERVER_IP_FOR_HOSTS}}"
 upsert_env "$ENV_FILE" "CSRF_TRUSTED_ORIGINS" "https://${DOMAIN_IN},https://www.${DOMAIN_IN},https://${EDITOR_IN}"
 upsert_env "$ENV_FILE" "EDITOR_URL" "https://${EDITOR_IN}"
 upsert_env "$ENV_FILE" "CORS_ALLOWED_ORIGINS" "https://${EDITOR_IN}"
@@ -153,7 +161,7 @@ if [[ "$REDIRECT_EDITOR_SET" -eq 1 ]]; then
   upsert_env "$ENV_FILE" "REDIRECT_FROM_EDITOR_DOMAINS" "$REDIRECT_EDITOR_IN"
 fi
 
-ENV_FILE="$ENV_FILE" ./scripts/check-env.sh production
+ENV_FILE="$ENV_FILE" ./scripts/check-env.sh online
 ./scripts/generate-nginx-conf.sh
 
 echo ""

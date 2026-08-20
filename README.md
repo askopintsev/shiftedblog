@@ -22,7 +22,7 @@ cd shiftedblog && ./scripts/setup.sh   # one-time setup
 
 Prerequisites: [Docker](https://docs.docker.com/get-docker/) · [Git](https://git-scm.com/downloads)
 
-More: [getting started](docs/en/getting-started.md) · [production](docs/en/production-deploy.md) · [host/domain move](docs/en/host-migration.md)
+More: [getting started](docs/en/getting-started.md) · [online deploy](docs/en/production-deploy.md) · [host/domain move](docs/en/host-migration.md)
 
 ## Русский
 
@@ -44,7 +44,7 @@ cd shiftedblog && ./scripts/setup.sh   # однократная настройк
 
 Сначала установите: [Docker](https://docs.docker.com/get-docker/) · [Git](https://git-scm.com/downloads)
 
-Подробнее: [быстрый старт](docs/ru/getting-started.md) · [production](docs/ru/production-deploy.md) · [перенос](docs/ru/host-migration.md)
+Подробнее: [быстрый старт](docs/ru/getting-started.md) · [онлайн запуск](docs/ru/production-deploy.md) · [перенос](docs/ru/host-migration.md)
 
 ## License
 

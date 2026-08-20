@@ -21,7 +21,7 @@ English: [../en/getting-started.md](../en/getting-started.md)
 ## Выберите сценарий
 
 1. **На своём компьютере** — [local-deploy.md](local-deploy.md)
-2. **На сервере в интернете** — [production-deploy.md](production-deploy.md)
+2. **Онлайн запуск (на сервере)** — [production-deploy.md](production-deploy.md)
 3. **Перенос** — [host-migration.md](host-migration.md)
 
 ## Что установить (локально)

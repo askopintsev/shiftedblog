@@ -38,6 +38,21 @@ Check automatically:
 ./scripts/check-prerequisites.sh local
 ```
 
+Check ports manually (local stack uses **8888** — backend, **5173** — editor UI):
+
+```bash
+ss -tlnp | grep -E ':8888|:5173' || echo "ports 8888 and 5173 are free"
+```
+
+On macOS without `ss`:
+
+```bash
+lsof -nP -iTCP:8888 -sTCP:LISTEN
+lsof -nP -iTCP:5173 -sTCP:LISTEN
+```
+
+If **5173** is in use, stop a host `npm run dev` or run `./scripts/stop-local.sh` if ShiftedBlog was started before.
+
 On Ubuntu/Debian or macOS (Homebrew), optional install:
 
 ```bash

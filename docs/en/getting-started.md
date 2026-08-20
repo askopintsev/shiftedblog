@@ -21,7 +21,7 @@ Full guide: [local-deploy.md](local-deploy.md)
 ## Choose a path
 
 1. **Local** — try on your machine ([local-deploy.md](local-deploy.md))
-2. **Production** — deploy on a VPS with HTTPS ([production-deploy.md](production-deploy.md))
+2. **Online deploy (on server)** — VPS with HTTPS ([production-deploy.md](production-deploy.md))
 3. **Migrate** — move host and/or domain ([host-migration.md](host-migration.md))
 
 ## Prerequisites (local)

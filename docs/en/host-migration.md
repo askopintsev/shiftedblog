@@ -224,7 +224,7 @@ Renewals later can use `--webroot -w /var/www/html` once Compose nginx serves AC
 - [ ] Homepage, post, media image
 - [ ] Canonical / sitemap host = `SITE_URL`
 - [ ] Editor login (cookies on new parent domain — expect re-login)
-- [ ] `ENV_FILE=secrets.env ./scripts/check-env.sh production`
+- [ ] `ENV_FILE=secrets.env ./scripts/check-env.sh online`
 
 ---
 
@@ -283,6 +283,6 @@ Optional weekly report: [security-runbook.md](../security-runbook.md).
 
 ## Related
 
-- [production-deploy.md](production-deploy.md)
+- [Online deploy (on server)](production-deploy.md)
 - [configuration.md](configuration.md)
 - [maintainer.md](maintainer.md)

@@ -1,20 +1,25 @@
 #!/usr/bin/env bash
-# Validate required environment variables for local or production deploy.
+# Validate required environment variables for local or online (server) deploy.
 #
 # Usage:
 #   ./scripts/check-env.sh local
-#   ./scripts/check-env.sh production
-#   ENV_FILE=secrets.env ./scripts/check-env.sh production
+#   ./scripts/check-env.sh online
+#   ENV_FILE=secrets.env ./scripts/check-env.sh online
+#   ./scripts/check-env.sh production  # alias for online
 set -euo pipefail
 
 MODE="${1:-local}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-if [[ "$MODE" != "local" && "$MODE" != "production" ]]; then
-  echo "Usage: $0 local|production" >&2
-  exit 2
-fi
+case "$MODE" in
+  local) ;;
+  online|production) MODE="production" ;;
+  *)
+    echo "Usage: $0 local|online" >&2
+    exit 2
+    ;;
+esac
 
 ENV_FILE="${ENV_FILE:-}"
 if [[ -z "$ENV_FILE" ]]; then
@@ -94,9 +99,14 @@ else
   fi
 fi
 
+MODE_LABEL="$MODE"
+if [[ "$MODE" == "production" ]]; then
+  MODE_LABEL="online"
+fi
+
 if [[ "$errors" -gt 0 ]]; then
-  echo "check-env: $errors error(s) in $ENV_FILE ($MODE)" >&2
+  echo "check-env: $errors error(s) in $ENV_FILE ($MODE_LABEL)" >&2
   exit 1
 fi
 
-echo "check-env: $ENV_FILE OK for $MODE"
+echo "check-env: $ENV_FILE OK for $MODE_LABEL"

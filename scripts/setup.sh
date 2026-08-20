@@ -8,12 +8,12 @@ cd "$ROOT"
 echo "ShiftedBlog setup"
 echo "================="
 echo "1) local      — Docker Compose on this machine (port 8888)"
-echo "2) production — VPS / public site (secrets.env + nginx + HTTPS)"
+echo "2) online     — VPS / public site (secrets.env + nginx + HTTPS)"
 read -r -p "Choose mode [1/2]: " mode_choice
 
 case "${mode_choice}" in
   1|local|Local|LOCAL) MODE="local" ;;
-  2|production|Production|PRODUCTION|prod) MODE="production" ;;
+  2|online|Online|ONLINE|production|Production|PRODUCTION|prod) MODE="production" ;;
   *)
     echo "Invalid choice." >&2
     exit 2
@@ -28,7 +28,7 @@ fi
 
 if [[ "$MODE" == "local" ]]; then
   if ! ./scripts/check-prerequisites.sh local; then
-    read -r -p "Install missing prerequisites now? [y/N]: " install_prereqs
+    read -r -p "Install missing prerequisites now? [y/N]: " install_prereqs || true
     install_prereqs="${install_prereqs:-N}"
     if [[ "$install_prereqs" =~ ^[Yy]$ ]]; then
       ./scripts/install-prerequisites.sh
@@ -37,6 +37,8 @@ if [[ "$MODE" == "local" ]]; then
     fi
     ./scripts/check-prerequisites.sh local || exit 1
   fi
+elif [[ "$MODE" == "production" ]]; then
+  ./scripts/check-prerequisites.sh online || exit 1
 fi
 
 generate_secret_key() {
@@ -198,7 +200,7 @@ else
   upsert_env "$ENV_FILE" "REDIRECT_FROM_EDITOR_DOMAINS" "$REDIRECT_EDITOR_IN"
   upsert_env "$ENV_FILE" "SERVER_IP" "$SERVER_IP_IN"
   upsert_env "$ENV_FILE" "SITE_URL" "$SITE_URL_IN"
-  upsert_env "$ENV_FILE" "ALLOWED_HOSTS" "${DOMAIN_IN},www.${DOMAIN_IN},${EDITOR_IN},localhost,127.0.0.1"
+  upsert_env "$ENV_FILE" "ALLOWED_HOSTS" "${DOMAIN_IN},www.${DOMAIN_IN},${EDITOR_IN},localhost,127.0.0.1${SERVER_IP_IN:+,${SERVER_IP_IN}}"
   upsert_env "$ENV_FILE" "CSRF_TRUSTED_ORIGINS" "https://${DOMAIN_IN},https://www.${DOMAIN_IN},https://${EDITOR_IN}"
   upsert_env "$ENV_FILE" "EDITOR_URL" "https://${EDITOR_IN}"
   upsert_env "$ENV_FILE" "CORS_ALLOWED_ORIGINS" "https://${EDITOR_IN}"
@@ -220,14 +222,18 @@ if [[ "$MODE" == "production" ]]; then
   echo ""
   echo "Nginx config generated. Before first HTTPS deploy:"
   echo "  1. Point DNS A records for ${DOMAIN_IN} / www / ${EDITOR_IN} to this server"
-  echo "  2. Obtain certificates (include REDIRECT_FROM_* names if set), e.g.:"
-  echo "       sudo certbot certonly --webroot -w /var/www/html -d ${DOMAIN_IN} -d www.${DOMAIN_IN} -d ${EDITOR_IN}"
-  echo "  3. Re-run deploy if certs were missing on first start"
+  echo "  2. Obtain TLS (first run — port 80 free; stop nginx if needed), e.g.:"
+  echo "       cd $(pwd)"
+  echo "       docker compose -f docker-compose.prod.yml stop nginx 2>/dev/null || true"
+  echo "       sudo certbot certonly --standalone --agree-tos --register-unsafely-without-email \\"
+  echo "         -d ${DOMAIN_IN} -d www.${DOMAIN_IN} -d ${EDITOR_IN}"
+  echo "     Or self-signed if DNS is not ready — see docs/ru/production-deploy.md (step 5)"
+  echo "  3. ./deploy.sh"
   echo "  4. Changing domain later: ./scripts/apply-domain.sh (does not rotate keys)"
-  echo "  5. Host/domain move: docs/en/host-migration.md"
+  echo "  5. Host/domain move: docs/ru/host-migration.md"
 fi
 
-read -r -p "Start Docker now? [Y/n]: " start_docker
+read -r -p "Start Docker now? [Y/n]: " start_docker || true
 start_docker="${start_docker:-Y}"
 if [[ "$start_docker" =~ ^[Yy]$ ]]; then
   mkdir -p logs backups static media static_blog
@@ -245,8 +251,8 @@ if [[ "$start_docker" =~ ^[Yy]$ ]]; then
     echo "Admin path: /${ADMIN_URL_VAL}/"
   fi
 
-  read -r -p "Create Django superuser now? [y/N]: " create_su
-  if [[ "$create_su" =~ ^[Yy]$ ]]; then
+  read -r -p "Create Django superuser now? [y/N]: " create_su || true
+  if [[ "${create_su:-N}" =~ ^[Yy]$ ]]; then
     if [[ "$MODE" == "local" ]]; then
       docker compose exec web python manage.py createsuperuser
     else
