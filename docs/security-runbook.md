@@ -2,7 +2,7 @@
 
 Lightweight monitoring for the single-VPS shiftedblog deployment (logs + email, no Sentry/Datadog).
 
-Self-host guides: [en/getting-started.md](en/getting-started.md) · [ru/getting-started.md](ru/getting-started.md). Maintainer CI notes: [en/maintainer.md](en/maintainer.md).
+Self-host guides: [en/getting-started.md](en/getting-started.md) · [ru/getting-started.md](ru/getting-started.md). Maintainer CI notes: [en/maintainer.md](en/maintainer.md) · [ru/maintainer.md](ru/maintainer.md).
 
 ## Monthly checklist
 

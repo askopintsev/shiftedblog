@@ -287,7 +287,7 @@ cd /opt/shiftedblog
 
 ## Опциональный CI
 
-GitHub Actions + Doppler — для мейнтейнера: [../en/maintainer.md](../en/maintainer.md). Для self-host достаточно `secrets.env` и `./deploy.sh`.
+GitHub Actions + Doppler — для мейнтейнера: [maintainer.md](maintainer.md). Для self-host достаточно `secrets.env` и `./deploy.sh`.
 
 ## Перенос хоста или домена
 
