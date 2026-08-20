@@ -215,6 +215,7 @@ Re-run steps 2–3 if the deploy user or server was recreated.
 | `Permission denied (publickey)` | `VPS_SSH_KEY` mismatch or key not in `authorized_keys` |
 | `git fetch` fails on VPS | Git deploy key missing or wrong remote |
 | `Ports 80/443 are already in use` | Host nginx/apache — stop it (see [production-deploy.md](production-deploy.md) step 3) |
+| Deploy fails right after “Stopping existing stack” / compose `$E` warnings | Stale `.env` in `/opt/shiftedblog` — remove it; CI deploy uses `secrets.env` only |
 | Editor shows wrong site URL | `SITE_URL` in secrets; run `./deploy.sh` to rebuild editor UI |
 | Empty `secrets.env` in CI | `DOPPLER_TOKEN` or Doppler project/config name |
 
