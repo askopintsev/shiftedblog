@@ -134,11 +134,15 @@ deploy_containers() {
   docker image prune -af || true
   df -h / /var/lib/docker 2>/dev/null || df -h /
 
-  echo "Building web image (existing stack may stay up during build)..."
+  echo "Building web image (stack may stay up during build)..."
   "${COMPOSE[@]}" build web
 
-  echo "Recreating stack..."
-  if ! "${COMPOSE[@]}" up -d --remove-orphans --force-recreate; then
+  echo "Releasing ports 80/443 before nginx start..."
+  COMPOSE_FILE=docker-compose.prod.yml WAIT_SECONDS=45 \
+    "${ROOT}/scripts/free-web-ports.sh" "$ROOT"
+
+  echo "Starting/updating stack..."
+  if ! "${COMPOSE[@]}" up -d --remove-orphans; then
     report_port_conflict
     exit 1
   fi

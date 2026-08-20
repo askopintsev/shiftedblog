@@ -48,7 +48,9 @@ fi
 source ./scripts/load-editor-ui-build-env.sh
 
 docker compose -f docker-compose.prod.yml build web
-docker compose -f docker-compose.prod.yml up -d --remove-orphans --force-recreate
+
+COMPOSE_FILE=docker-compose.prod.yml WAIT_SECONDS=45 ./scripts/free-web-ports.sh .
+docker compose -f docker-compose.prod.yml up -d --remove-orphans
 
 # Sync editor dist volume / reload nginx when containers are up
 docker compose -f docker-compose.prod.yml exec -T web \
