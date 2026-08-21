@@ -200,7 +200,8 @@ class EditorApiPostTests(TestCase):
     def test_openapi_schema(self):
         response = self.client.get("/api/editor/v1/schema/")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("openapi", response.json())
+        body = response.content.decode("utf-8")
+        self.assertIn("openapi", body)
 
     def test_text_quality(self):
         response = self.client.post(

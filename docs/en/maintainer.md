@@ -143,7 +143,7 @@ Helper scripts: `scripts/ssh/` (`GITHUB_REPO` can point at a fork).
 ## Step 6. What happens on push to `master`
 
 ```text
-push master  →  lint + editor-ui tests  →  deploy job (if green)
+push master  →  lint + tests/coverage + editor-ui  →  deploy job (if green)
                     │
                     ├─ Doppler → secrets.env (in CI runner)
                     ├─ scp secrets.env → VPS:/opt/shiftedblog/
@@ -155,7 +155,7 @@ push master  →  lint + editor-ui tests  →  deploy job (if green)
                               └─ sync editor dist + reload nginx
 ```
 
-- **Pull requests** run lint and editor tests only (no deploy).
+- **Pull requests** run lint, Django tests (coverage gate), and editor tests only (no deploy).
 - **Deploy** runs on `push` to `master` or **workflow_dispatch** (manual run in Actions tab).
 
 Remote script: [`scripts/ci/vps-deploy-remote.sh`](../../scripts/ci/vps-deploy-remote.sh).
@@ -221,7 +221,7 @@ Re-run steps 2–3 if the deploy user or server was recreated.
 
 | Symptom | Likely cause |
 |---------|----------------|
-| Deploy job skipped | Not `master`, or lint/editor-ui failed |
+| Deploy job skipped | Not `master`, or lint/test-coverage/editor-ui failed |
 | `Permission denied (publickey)` | `VPS_SSH_KEY` mismatch or key not in `authorized_keys` |
 | `git fetch` fails on VPS | Git deploy key missing or wrong remote |
 | `Ports 80/443 are already in use` | Host nginx/apache — stop it (see [production-deploy.md](production-deploy.md) step 3) |

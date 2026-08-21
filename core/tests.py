@@ -37,7 +37,9 @@ _FERNET_TEST_KEY = Fernet.generate_key().decode("ascii")
 @override_settings(CREDENTIALS_ENCRYPTION_KEY=_FERNET_TEST_KEY)
 class CredentialStorageTests(TestCase):
     def setUp(self):
-        self.net = Network.objects.create(slug="telegram", name="Telegram")
+        self.net, _ = Network.objects.get_or_create(
+            slug="telegram", defaults={"name": "Telegram"}
+        )
 
     def test_plaintext_json_in_db_is_readable_and_reencrypted_on_save(self):
         plain = json.dumps({"bot_token": "x", "channel_name": "ch"})
@@ -353,3 +355,32 @@ class UserAdminTests(TestCase):
         url = reverse("admin:core_user_change", args=[self.admin.pk])
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+
+
+class CorePublicErrorAndRobotsTests(TestCase):
+    def test_robots_txt_disallows_admin(self):
+        response = self.client.get("/robots.txt")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Disallow: /mellon/", response.content.decode())
+        self.assertIn("Sitemap:", response.content.decode())
+
+    def test_unknown_path_renders_404_template(self):
+        response = self.client.get("/this-path-does-not-exist-coverage/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_error_handlers_render(self):
+        factory = RequestFactory()
+        request = factory.get("/")
+        from core.views import (
+            custom_bad_request_view,
+            custom_error_view,
+            custom_page_not_found_view,
+            custom_permission_denied_view,
+        )
+
+        self.assertEqual(
+            custom_page_not_found_view(request, Exception()).status_code, 404
+        )
+        self.assertEqual(custom_permission_denied_view(request).status_code, 200)
+        self.assertEqual(custom_bad_request_view(request).status_code, 200)
+        self.assertEqual(custom_error_view(request).status_code, 200)

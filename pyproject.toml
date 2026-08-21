@@ -31,6 +31,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "bandit>=1.8.0",
+    "coverage>=7.10.0",
     "django-stubs>=6.1.0",
     "pip-audit>=2.10.1",
     "pyright>=1.1.411",
@@ -134,3 +135,29 @@ reportOptionalSubscript = "none"
 reportIndexIssue = "none"
 reportCallIssue = "none"
 reportInvalidTypeArguments = "none"
+
+# Application-code coverage. Industry practice is ~80% for business logic
+# (not 100% — that rewards assertion-free tests). The fail_under value is the
+# current floor so coverage cannot regress; raise it as the suite grows.
+# Migrations, settings, ASGI/WSGI, and management commands are excluded.
+[tool.coverage.run]
+branch = true
+source = ["api", "blog", "core", "editor", "sender", "team", "shiftedblog"]
+omit = [
+    "*/migrations/*",
+    "*/tests.py",
+    "manage.py",
+    "shiftedblog/asgi.py",
+    "shiftedblog/wsgi.py",
+    "shiftedblog/settings.py",
+    "*/management/commands/*",
+]
+
+[tool.coverage.report]
+fail_under = 68
+show_missing = true
+skip_empty = true
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]

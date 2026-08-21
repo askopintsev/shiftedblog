@@ -32,7 +32,7 @@ Full guide: [docs/en/local-deploy.md](docs/en/local-deploy.md) · [docs/ru/local
 
 ## Checks before a pull request
 
-CI runs Python lint and editor-ui (typecheck, build, e2e) on every PR. Reproduce locally.
+CI runs Python lint, **Django tests with a coverage gate**, and editor-ui (typecheck, build, e2e) on every PR. Reproduce locally.
 
 ### Python (matches `.github/workflows/deploy.yml`)
 
@@ -47,7 +47,12 @@ uv run ruff format --check $PATHS
 uv run ruff check --ignore RUF001 $PATHS
 uv run pyright $PATHS
 uv run bandit -c pyproject.toml -r blog core editor sender shiftedblog team -ll -x '**/migrations/*'
+
+# Django tests + coverage (needs Postgres + Redis; matches CI `test-coverage`)
+./scripts/run-coverage.sh
 ```
+
+Coverage is measured with [coverage.py](https://coverage.readthedocs.io/) (`fail_under` in `pyproject.toml`). The CI gate is **68%** of application code (migrations, settings, and management commands are excluded). Industry practice is about **80%** on business logic, not 100%; raise `fail_under` as the suite grows, and do not drop below the current floor.
 
 Auto-format: `uv run ruff format $PATHS`
 
@@ -57,7 +62,7 @@ Auto-format: `uv run ruff format $PATHS`
 ./scripts/install-git-hooks.sh
 ```
 
-Pre-commit runs ruff, pyright, and bandit on staged Python files.
+Pre-commit runs ruff, pyright, and bandit on staged Python files. The coverage gate runs in CI (and locally via `./scripts/run-coverage.sh`) because it needs Postgres and Redis.
 
 ### Python dependencies
 

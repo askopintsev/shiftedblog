@@ -30,7 +30,7 @@ cd shiftedblog
 
 ## Проверки перед pull request
 
-CI на каждый PR запускает lint Python, editor-ui (typecheck, build, e2e). Воспроизведите локально.
+CI на каждый PR запускает lint Python, **Django-тесты с порогом coverage** и editor-ui (typecheck, build, e2e). Воспроизведите локально.
 
 ### Python (как в `.github/workflows/deploy.yml`)
 
@@ -45,7 +45,12 @@ uv run ruff format --check $PATHS
 uv run ruff check --ignore RUF001 $PATHS
 uv run pyright $PATHS
 uv run bandit -c pyproject.toml -r blog core editor sender shiftedblog team -ll -x '**/migrations/*'
+
+# Django-тесты + coverage (нужны Postgres и Redis; как CI `test-coverage`)
+./scripts/run-coverage.sh
 ```
+
+Coverage считается через [coverage.py](https://coverage.readthedocs.io/) (`fail_under` в `pyproject.toml`). Порог CI — **68%** прикладного кода (миграции, settings и management-команды не входят). В отрасли ориентир для бизнес-логики — около **80%**, не 100%; поднимайте `fail_under` по мере роста тестов и не опускайте текущий пол.
 
 Автоисправление форматирования: `uv run ruff format $PATHS`
 
@@ -55,7 +60,7 @@ uv run bandit -c pyproject.toml -r blog core editor sender shiftedblog team -ll 
 ./scripts/install-git-hooks.sh
 ```
 
-Pre-commit запускает ruff, pyright и bandit на staged Python-файлах.
+Pre-commit запускает ruff, pyright и bandit на staged Python-файлах. Порог coverage проверяется в CI (и локально через `./scripts/run-coverage.sh`), потому что нужны Postgres и Redis.
 
 ### Зависимости Python
 

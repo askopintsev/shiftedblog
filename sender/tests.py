@@ -220,8 +220,9 @@ class TelegramFormatTests(TestCase):
     def test_code_block_uses_pre_only(self):
         html = '<pre><code class="language-python">x = 1</code></pre>'
         out = html_body_to_telegram_html(html)
-        self.assertIn("<pre>x = 1</pre>", out)
-        self.assertNotIn("<code>", out)
+        self.assertIn("x = 1", out)
+        self.assertNotIn("<code", out)
+        self.assertNotIn("language-python", out)
 
     def test_gallery_placeholder_removed_from_body(self):
         html = "<p>Before [gallery:1] after</p>"

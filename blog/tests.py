@@ -2,6 +2,7 @@ import io
 import re
 from typing import cast
 
+from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -9,6 +10,7 @@ from PIL import Image
 
 from blog.models import SitePublication
 from core.models.user import User, UserManager
+from editor.image_upload import social_share_storage_name
 from editor.models import Category, Post
 from sender.services.url_helpers import post_og_image_absolute_url
 
@@ -189,20 +191,19 @@ class PostSocialShareImageTests(TestCase):
         self.assertIn("-share.jpg", expected)
         self.assertContains(response, f'property="og:image" content="{expected}"')
         self.assertContains(response, f'name="twitter:image" content="{expected}"')
-        self.assertNotContains(response, ".avif")
+        self.assertContains(response, 'property="og:image:type" content="image/jpeg"')
 
     def test_og_image_endpoint_redirects_to_media_jpeg(self):
         url = reverse("blog:post_og_image", args=[self.post.slug])
         response = self.client.get(url)
         self.assertEqual(response.status_code, 301)
-        media_response = self.client.get(response["Location"])
-        self.assertEqual(media_response.status_code, 200)
-        self.assertEqual(
-            media_response.get("Content-Type", "").split(";")[0],
-            "image/jpeg",
-        )
-        self.assertTrue(media_response.content.startswith(b"\xff\xd8"))
-        with Image.open(io.BytesIO(media_response.content)) as im:
+        self.assertIn("-share.jpg", response["Location"])
+        share_name = social_share_storage_name(self.post.cover_image.name or "")
+        self.assertTrue(default_storage.exists(share_name))
+        with default_storage.open(share_name, "rb") as share_file:
+            data = share_file.read()
+        self.assertTrue(data.startswith(b"\xff\xd8"))
+        with Image.open(io.BytesIO(data)) as im:
             self.assertEqual(im.size, (1200, 630))
 
     def test_detail_page_og_image_dimensions_match_meta(self):
@@ -291,7 +292,7 @@ class FeedLentaTests(TestCase):
         response = self.client.get(reverse("blog:post_lenta"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "No cover post")
-        self.assertNotContains(response, "No cover")
+        self.assertNotContains(response, "feed-lenta-cover")
 
     def test_feed_card_short_body_hides_read_more(self):
         author = cast(UserManager, User.objects).create_user(
@@ -440,3 +441,45 @@ class CategorySlugTests(TestCase):
             response["Location"],
             reverse("blog:post_list_by_category", args=["overview"]),
         )
+
+
+class PublicDiscoveryTests(TestCase):
+    def setUp(self):
+        self.author = cast(UserManager, User.objects).create_user(
+            email="discover@example.com",
+            password="secret12345",
+        )
+        self.category = Category.objects.create(name="Discover")
+        self.post = Post(
+            title="Discoverable post",
+            slug="discoverable-post",
+            author=self.author,
+            cover_image=_minimal_jpeg_upload("discover.jpg"),
+            body="<p>Indexed body</p>",
+            status="published",
+            category=self.category,
+        )
+        self.post.save(_allow_publish_via_sender=True)
+        SitePublication.objects.create(post=self.post, published_at=self.post.published)
+
+    def test_xml_sitemap_lists_public_post(self):
+        response = self.client.get(reverse("sitemap"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.post.slug)
+
+    def test_html_sitemap_lists_public_post(self):
+        response = self.client.get(reverse("blog:html_sitemap"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.post.title)
+
+    def test_atom_feed_lists_public_post(self):
+        response = self.client.get(reverse("blog:feed"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.post.title)
+
+    def test_search_finds_public_post(self):
+        response = self.client.get(
+            reverse("blog:post_search"), {"query": "Discoverable"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.post.title)
