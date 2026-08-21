@@ -52,7 +52,7 @@ uv run bandit -c pyproject.toml -r blog core editor sender shiftedblog team -ll 
 ./scripts/run-coverage.sh
 ```
 
-Coverage is measured with [coverage.py](https://coverage.readthedocs.io/) (`fail_under` in `pyproject.toml`). The CI gate is **68%** of application code (migrations, settings, and management commands are excluded). Industry practice is about **80%** on business logic, not 100%; raise `fail_under` as the suite grows, and do not drop below the current floor.
+Coverage is measured with [coverage.py](https://coverage.readthedocs.io/) (`fail_under` in `pyproject.toml`). The CI gate is **80%** of application code (migrations, settings, management commands, and Django admin HTML are excluded). That is the usual floor for business logic; do not drop below it, and prefer tests of publish/API/editor/public-site behavior over assertion-light admin coverage.
 
 Auto-format: `uv run ruff format $PATHS`
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import tempfile
 from datetime import date
@@ -10,11 +11,13 @@ from unittest.mock import patch
 
 from cryptography.fernet import Fernet
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import reverse
+from PIL import Image
 
 from core import crypto
 from core.fields import FernetEncryptedTextField
@@ -384,3 +387,84 @@ class CorePublicErrorAndRobotsTests(TestCase):
         self.assertEqual(custom_permission_denied_view(request).status_code, 200)
         self.assertEqual(custom_bad_request_view(request).status_code, 200)
         self.assertEqual(custom_error_view(request).status_code, 200)
+
+    def test_robots_txt_falls_back_to_request_host(self):
+        response = self.client.get("/robots.txt")
+        self.assertIn("Sitemap:", response.content.decode())
+
+    def test_custom_image_upload_rejects_bad_type_and_empty_request(self):
+        staff = cast(UserManager, User.objects).create_user(
+            email="upload@example.com",
+            password="secret12345",
+            is_staff=True,
+        )
+        self.client.force_login(staff)
+        empty = self.client.post("/custom-image-upload/")
+        self.assertEqual(empty.status_code, 400)
+        bad = self.client.post(
+            "/custom-image-upload/",
+            {
+                "upload": SimpleUploadedFile(
+                    "notes.txt",
+                    b"hi",
+                    content_type="text/plain",
+                )
+            },
+        )
+        self.assertEqual(bad.status_code, 400)
+
+    def test_custom_image_upload_accepts_png(self):
+        staff = cast(UserManager, User.objects).create_user(
+            email="upload-ok@example.com",
+            password="secret12345",
+            is_staff=True,
+        )
+        self.client.force_login(staff)
+        buf = io.BytesIO()
+        Image.new("RGB", (8, 8), color="red").save(buf, format="PNG")
+        uploaded = SimpleUploadedFile(
+            "shot.png",
+            buf.getvalue(),
+            content_type="image/png",
+        )
+        response = self.client.post("/custom-image-upload/", {"upload": uploaded})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["uploaded"], 1)
+
+
+@override_settings(CREDENTIALS_ENCRYPTION_KEY=_FERNET_TEST_KEY)
+class CryptoHelperTests(TestCase):
+    def test_empty_and_invalid_payloads(self):
+        self.assertEqual(crypto.decrypt_text(""), "")
+        self.assertEqual(crypto.encrypt_text(""), "")
+        self.assertEqual(crypto.payload_plaintext_from_stored(""), "")
+        self.assertEqual(crypto.payload_plaintext_from_stored("not-encrypted"), "")
+        self.assertEqual(
+            crypto.payload_plaintext_from_stored('{"bot_token": "x"}'),
+            '{"bot_token": "x"}',
+        )
+        with self.assertRaises(ValueError):
+            other = Fernet.generate_key()
+            token = Fernet(other).encrypt(b"secret").decode("ascii")
+            crypto.decrypt_bytes(token)
+
+    def test_invalid_fernet_key_raises(self):
+        with (
+            override_settings(CREDENTIALS_ENCRYPTION_KEY="not-a-key"),
+            self.assertRaises(ImproperlyConfigured),
+        ):
+            crypto.get_fernet()
+        with (
+            override_settings(CREDENTIALS_ENCRYPTION_KEY=""),
+            self.assertRaises(ImproperlyConfigured),
+        ):
+            crypto.get_fernet()
+
+    def test_encrypted_field_empty_and_plaintext_prep(self):
+        field = FernetEncryptedTextField()
+        self.assertEqual(field.from_db_value("", None, None), "")
+        self.assertEqual(field.to_python(None), "")
+        self.assertEqual(field.to_python(12), "12")
+        self.assertEqual(field.get_prep_value(""), "")
+        stored = field.get_prep_value('{"a": 1}')
+        self.assertTrue(crypto.looks_like_fernet_token(stored))

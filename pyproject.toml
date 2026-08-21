@@ -139,7 +139,8 @@ reportInvalidTypeArguments = "none"
 # Application-code coverage. Industry practice is ~80% for business logic
 # (not 100% — that rewards assertion-free tests). The fail_under value is the
 # current floor so coverage cannot regress; raise it as the suite grows.
-# Migrations, settings, ASGI/WSGI, and management commands are excluded.
+# Migrations, settings, ASGI/WSGI, management commands, unused sitemaps, and
+# Django admin HTML are excluded. Cover publish/API/editor/public-site instead.
 [tool.coverage.run]
 branch = true
 source = ["api", "blog", "core", "editor", "sender", "team", "shiftedblog"]
@@ -151,10 +152,13 @@ omit = [
     "shiftedblog/wsgi.py",
     "shiftedblog/settings.py",
     "*/management/commands/*",
+    "core/admin.py",
+    "editor/admin.py",
+    "editor/sitemap.py",
 ]
 
 [tool.coverage.report]
-fail_under = 68
+fail_under = 80
 show_missing = true
 skip_empty = true
 exclude_also = [

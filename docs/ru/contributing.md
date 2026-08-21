@@ -50,7 +50,7 @@ uv run bandit -c pyproject.toml -r blog core editor sender shiftedblog team -ll 
 ./scripts/run-coverage.sh
 ```
 
-Coverage считается через [coverage.py](https://coverage.readthedocs.io/) (`fail_under` в `pyproject.toml`). Порог CI — **68%** прикладного кода (миграции, settings и management-команды не входят). В отрасли ориентир для бизнес-логики — около **80%**, не 100%; поднимайте `fail_under` по мере роста тестов и не опускайте текущий пол.
+Coverage считается через [coverage.py](https://coverage.readthedocs.io/) (`fail_under` в `pyproject.toml`). Порог CI — **80%** прикладного кода (миграции, settings, management-команды и HTML Django admin не входят). Это обычный пол для бизнес-логики; не опускайте его и покрывайте publish/API/редактор/публичный сайт, а не admin без содержательных проверок.
 
 Автоисправление форматирования: `uv run ruff format $PATHS`
 

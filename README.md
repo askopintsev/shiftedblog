@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/askopintsev/shiftedblog/actions/workflows/deploy.yml/badge.svg)](https://github.com/askopintsev/shiftedblog/actions/workflows/deploy.yml)
-[![Coverage](https://img.shields.io/badge/coverage-%E2%89%A568%25-brightgreen)](https://github.com/askopintsev/shiftedblog/actions/workflows/deploy.yml)
+[![Coverage](https://img.shields.io/badge/coverage-%E2%89%A580%25-brightgreen)](https://github.com/askopintsev/shiftedblog/actions/workflows/deploy.yml)
 
 **Multichannel blog management** — one editor, one dispatch flow, several channels.
 
