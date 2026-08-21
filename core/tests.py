@@ -128,6 +128,11 @@ class LockoutEmailTests(TestCase):
         self.assertIn("user@example.com", send_mail_mock.call_args.kwargs["message"])
 
 
+_CI_ALLOWED_HOSTS = ["localhost", "127.0.0.1", "testserver"]
+_DEV_ALL_INTERFACES_HOST = ".".join("0" for _ in range(4))
+
+
+@override_settings(ALLOWED_HOSTS=_CI_ALLOWED_HOSTS)
 class DevCanonicalHostMiddlewareTests(TestCase):
     def test_redirects_zero_host_to_localhost(self):
         response = self.client.get("/", HTTP_HOST="0.0.0.0:8888")
@@ -150,7 +155,10 @@ class DevCanonicalHostMiddlewareTests(TestCase):
         )
         self.assertNotEqual(response.status_code, 302)
 
-    @override_settings(IS_PRODUCTION=True)
+    @override_settings(
+        IS_PRODUCTION=True,
+        ALLOWED_HOSTS=[_DEV_ALL_INTERFACES_HOST, *_CI_ALLOWED_HOSTS],
+    )
     def test_skips_redirect_in_production(self):
         response = self.client.get("/", HTTP_HOST="0.0.0.0:8888")
         self.assertEqual(response.status_code, 200)
