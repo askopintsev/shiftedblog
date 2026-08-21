@@ -41,6 +41,7 @@ dev = [
 [tool.uv]
 constraint-dependencies = [
     "msgpack>=1.2.1",
+    "pip>=26.2",
     "pyasn1>=0.6.4",
     "sqlparse>=0.6.0",
 ]
