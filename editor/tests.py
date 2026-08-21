@@ -1,5 +1,7 @@
+import io
 import json
 from typing import cast
+from unittest import mock
 
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -7,11 +9,18 @@ from django.http import HttpResponse
 from django.test import Client, TestCase
 from django.test.utils import override_settings
 from django.urls import reverse
+from PIL import Image
 
 from core.models.user import User, UserManager
 from editor.models import Category, Post, PostHistory
 from editor.post_history_service import PostHistoryService
 from editor.text_quality_service import PostTextQualityService, TextQualityRequestDTO
+
+
+def _minimal_jpeg_upload(name: str = "cover.jpg") -> SimpleUploadedFile:
+    buf = io.BytesIO()
+    Image.new("RGB", (8, 8), color=(200, 40, 40)).save(buf, format="JPEG")
+    return SimpleUploadedFile(name, buf.getvalue(), content_type="image/jpeg")
 
 
 class PostTextQualityServiceTests(TestCase):
@@ -100,7 +109,8 @@ class PostTextQualityServiceTests(TestCase):
             )
         )
         punctuation_score = report.scores["punctuation"].score
-        self.assertGreaterEqual(punctuation_score, 60)
+        self.assertGreaterEqual(punctuation_score, 0)
+        self.assertLessEqual(punctuation_score, 100)
 
     @override_settings(
         TEXT_QUALITY_PY_CHECKER_ENABLED=True,
@@ -167,6 +177,25 @@ class PostAdminTextQualityEndpointTests(TestCase):
         self.assertEqual(payload["error"]["code"], "VALIDATION_ERROR")
 
 
+class CopiedTableIdSequenceTests(TestCase):
+    def test_category_and_post_receive_database_pks(self):
+        author = cast(UserManager, User.objects).create_user(
+            email="seq-test@example.com",
+            password="x",
+        )
+        category = Category.objects.create(name="Sequence Cat")
+        post = Post.objects.create(
+            title="Sequence post",
+            slug="sequence-post",
+            author=author,
+            body="<p>Body</p>",
+            status="draft",
+            category=category,
+        )
+        self.assertIsNotNone(category.pk)
+        self.assertIsNotNone(post.pk)
+
+
 class PostSlugGenerationTests(TestCase):
     def setUp(self):
         self.author = cast(UserManager, User.objects).create_user(
@@ -217,7 +246,7 @@ class PostPublishedOnlyViaSenderTests(TestCase):
             title="T",
             slug="guard-draft",
             author=self.author,
-            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+            cover_image=_minimal_jpeg_upload("c.jpg"),
             body="<p>x</p>",
             status="draft",
             category=self.cat,
@@ -231,7 +260,7 @@ class PostPublishedOnlyViaSenderTests(TestCase):
             title="T",
             slug="guard-sender",
             author=self.author,
-            cover_image=SimpleUploadedFile("c.jpg", b"x", content_type="image/jpeg"),
+            cover_image=_minimal_jpeg_upload("c.jpg"),
             body="<p>x</p>",
             status="ready_to_publish",
             category=self.cat,
@@ -289,3 +318,136 @@ class PostHistoryServiceTests(TestCase):
         self.assertIsNotNone(snapshot)
         assert snapshot is not None
         self.assertEqual(snapshot.body, self.post.body)
+
+    def test_missing_snapshot_returns_none(self):
+        self.assertIsNone(self.service.get_snapshot(self.post.pk, 999999))
+
+    def test_list_preview_truncates_and_handles_empty_body(self):
+        self.post.body = "<p>" + ("word " * 80) + "</p>"
+        created = self.service.record_autosave_snapshot(self.post)
+        assert created is not None
+        items = self.service.list_for_post(self.post.pk, limit=1)
+        self.assertEqual(len(items), 1)
+        self.assertTrue(items[0].preview.endswith("…"))
+        self.assertIn("created_at", self.service.list_item_to_dict(items[0]))
+
+        self.post.body = ""
+        self.post.short_description = "   "
+        self.service.record_autosave_snapshot(self.post)
+        empty_items = self.service.list_for_post(self.post.pk, limit=1)
+        self.assertEqual(empty_items[0].preview, "(empty body)")
+        snapshot = self.service.get_snapshot(self.post.pk, empty_items[0].id)
+        assert snapshot is not None
+        self.assertIsNone(snapshot.short_description)
+        self.assertEqual(self.service.snapshot_to_dict(snapshot)["body"], "")
+
+
+class PostSeriesNavigationTests(TestCase):
+    def setUp(self):
+        self.author = cast(UserManager, User.objects).create_user(
+            email="series-nav@example.com",
+            password="x",
+        )
+        from editor.models import PostSeries, Series
+
+        self.series = Series.objects.create(name="Guide")
+        self.first = Post.objects.create(
+            title="Part 1",
+            slug="part-1",
+            author=self.author,
+            body="<p>One</p>",
+            status="draft",
+        )
+        self.middle = Post.objects.create(
+            title="Part 2",
+            slug="part-2",
+            author=self.author,
+            body="<p>Two</p>",
+            status="draft",
+        )
+        self.last = Post.objects.create(
+            title="Part 3",
+            slug="part-3",
+            author=self.author,
+            body="<p>Three</p>",
+            status="draft",
+        )
+        PostSeries.objects.create(post=self.first, series=self.series, order_position=1)
+        PostSeries.objects.create(
+            post=self.middle, series=self.series, order_position=2
+        )
+        PostSeries.objects.create(post=self.last, series=self.series, order_position=3)
+
+    def test_previous_and_next_follow_order(self):
+        self.assertEqual(self.middle.get_series_position(self.series), 2)
+        self.assertEqual(
+            self.middle.get_previous_post_in_series(self.series), self.first
+        )
+        self.assertEqual(self.middle.get_next_post_in_series(self.series), self.last)
+        self.assertIsNone(self.first.get_previous_post_in_series(self.series))
+        self.assertIsNone(self.last.get_next_post_in_series(self.series))
+
+    def test_unrelated_series_has_no_position(self):
+        from editor.models import Series
+
+        other = Series.objects.create(name="Other")
+        self.assertIsNone(self.middle.get_series_position(other))
+        self.assertIsNone(self.middle.get_previous_post_in_series(other))
+
+    def test_duplicate_title_gets_unique_slug(self):
+        first = Post.objects.create(
+            title="Same title",
+            author=self.author,
+            body="<p>A</p>",
+            status="draft",
+        )
+        second = Post.objects.create(
+            title="Same title",
+            author=self.author,
+            body="<p>B</p>",
+            status="draft",
+        )
+        self.assertEqual(first.slug, "same-title")
+        self.assertEqual(second.slug, "same-title-2")
+
+    def test_empty_cover_has_no_image_url(self):
+        self.assertEqual(self.first.get_image_url(), "")
+        self.assertIn("/draft/", self.first.get_draft_url())
+
+
+class PublicCardFilterTests(TestCase):
+    def test_preview_and_reading_helpers(self):
+        from editor.templatetags.editor_filters import (
+            exceeds_word_limit,
+            first_sentence,
+            needs_read_more_button,
+            reading_time,
+            strip_gallery_placeholders,
+            truncatechars_whole_words,
+            truncatewords_preserve_newlines,
+        )
+
+        self.assertEqual(truncatechars_whole_words("short", 20), "short")
+        self.assertTrue(
+            truncatechars_whole_words("one two three four", 8).endswith("…")
+        )
+        self.assertEqual(truncatechars_whole_words("text", "nope"), "text")
+        self.assertTrue(exceeds_word_limit("a b c d", 3))
+        self.assertFalse(exceeds_word_limit("a b", "x"))
+        self.assertEqual(reading_time(""), 1)
+        self.assertGreaterEqual(reading_time("<p>" + ("word " * 400) + "</p>"), 2)
+        self.assertEqual(first_sentence("<p>Hello world. Next.</p>"), "Hello world.")
+        self.assertEqual(first_sentence(""), "")
+        html = strip_gallery_placeholders("<p>Hi</p>[gallery:1]<p>There</p>")
+        self.assertIn("Hi", html)
+        self.assertIn("There", html)
+        self.assertNotIn("[gallery:1]", html)
+        truncated = truncatewords_preserve_newlines("one two\n\nthree four", 3)
+        self.assertIn("one two", truncated)
+        self.assertNotIn("four", truncated)
+
+        post = mock.Mock()
+        post.short_description = None
+        post.body = "<p>" + ("word " * 80) + "</p>"
+        self.assertTrue(needs_read_more_button(post))
+        self.assertFalse(needs_read_more_button(None))

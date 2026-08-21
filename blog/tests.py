@@ -2,6 +2,7 @@ import io
 import re
 from typing import cast
 
+from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -9,6 +10,7 @@ from PIL import Image
 
 from blog.models import SitePublication
 from core.models.user import User, UserManager
+from editor.image_upload import social_share_storage_name
 from editor.models import Category, Post
 from sender.services.url_helpers import post_og_image_absolute_url
 
@@ -127,11 +129,39 @@ class BlogPublicVisibilityTests(TestCase):
         self.assertNotIn(self.hidden_post.title, preview_titles)
         self.assertNotIn(draft.title, preview_titles)
 
+    def test_old_slug_redirects_to_new_canonical(self):
+        old_slug = self.visible_post.slug
+        self.visible_post.slug = "visible-post-renamed"
+        self.visible_post.save()
+        response = self.client.get(reverse("blog:post_detail", args=[old_slug]))
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(
+            response["Location"],
+            reverse("blog:post_detail", args=["visible-post-renamed"]),
+        )
+
     def test_draft_preview_route_stays_under_editor_namespace(self):
         response = self.client.get(
             reverse("editor:post_detail_by_uuid", args=[self.visible_post.uuid])
         )
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["X-Robots-Tag"], "noindex, nofollow")
+
+    def test_draft_preview_with_cover_builds_share_image(self):
+        draft = Post.objects.create(
+            title="Draft cover preview",
+            slug="draft-cover-preview",
+            author=self.author,
+            cover_image=_minimal_jpeg_upload("draft-cover.jpg"),
+            body="<p>Draft</p>",
+            status="draft",
+            category=self.category,
+        )
+        response = self.client.get(
+            reverse("editor:post_detail_by_uuid", args=[draft.uuid])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["is_draft_preview"])
 
     def test_tag_url_reverse_uses_latin_slug(self):
         url = reverse("blog:post_list_by_tag", args=["animatsiia"])
@@ -189,20 +219,19 @@ class PostSocialShareImageTests(TestCase):
         self.assertIn("-share.jpg", expected)
         self.assertContains(response, f'property="og:image" content="{expected}"')
         self.assertContains(response, f'name="twitter:image" content="{expected}"')
-        self.assertNotContains(response, ".avif")
+        self.assertContains(response, 'property="og:image:type" content="image/jpeg"')
 
     def test_og_image_endpoint_redirects_to_media_jpeg(self):
         url = reverse("blog:post_og_image", args=[self.post.slug])
         response = self.client.get(url)
         self.assertEqual(response.status_code, 301)
-        media_response = self.client.get(response["Location"])
-        self.assertEqual(media_response.status_code, 200)
-        self.assertEqual(
-            media_response.get("Content-Type", "").split(";")[0],
-            "image/jpeg",
-        )
-        self.assertTrue(media_response.content.startswith(b"\xff\xd8"))
-        with Image.open(io.BytesIO(media_response.content)) as im:
+        self.assertIn("-share.jpg", response["Location"])
+        share_name = social_share_storage_name(self.post.cover_image.name or "")
+        self.assertTrue(default_storage.exists(share_name))
+        with default_storage.open(share_name, "rb") as share_file:
+            data = share_file.read()
+        self.assertTrue(data.startswith(b"\xff\xd8"))
+        with Image.open(io.BytesIO(data)) as im:
             self.assertEqual(im.size, (1200, 630))
 
     def test_detail_page_og_image_dimensions_match_meta(self):
@@ -270,6 +299,13 @@ class FeedLentaTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Лента")
 
+    def test_feed_tolerates_invalid_and_empty_page(self):
+        self.client.login(email="feedreader@example.com", password="secret12345")
+        invalid = self.client.get(reverse("blog:post_lenta"), {"page": "abc"})
+        self.assertEqual(invalid.status_code, 200)
+        empty = self.client.get(reverse("blog:post_lenta"), {"page": "999"})
+        self.assertEqual(empty.status_code, 200)
+
     def test_feed_card_without_cover_omits_cover_block(self):
         author = cast(UserManager, User.objects).create_user(
             email="nocover@example.com",
@@ -291,7 +327,7 @@ class FeedLentaTests(TestCase):
         response = self.client.get(reverse("blog:post_lenta"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "No cover post")
-        self.assertNotContains(response, "No cover")
+        self.assertNotContains(response, "feed-lenta-cover")
 
     def test_feed_card_short_body_hides_read_more(self):
         author = cast(UserManager, User.objects).create_user(
@@ -440,3 +476,125 @@ class CategorySlugTests(TestCase):
             response["Location"],
             reverse("blog:post_list_by_category", args=["overview"]),
         )
+
+
+class PublicDiscoveryTests(TestCase):
+    def setUp(self):
+        self.author = cast(UserManager, User.objects).create_user(
+            email="discover@example.com",
+            password="secret12345",
+        )
+        self.category = Category.objects.create(name="Discover")
+        self.post = Post(
+            title="Discoverable post",
+            slug="discoverable-post",
+            author=self.author,
+            cover_image=_minimal_jpeg_upload("discover.jpg"),
+            body="<p>Indexed body</p>",
+            status="published",
+            category=self.category,
+        )
+        self.post.save(_allow_publish_via_sender=True)
+        SitePublication.objects.create(post=self.post, published_at=self.post.published)
+
+    def test_xml_sitemap_lists_public_post(self):
+        response = self.client.get(reverse("sitemap"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.post.slug)
+
+    def test_html_sitemap_lists_public_post(self):
+        response = self.client.get(reverse("blog:html_sitemap"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.post.title)
+
+    def test_atom_feed_lists_public_post(self):
+        response = self.client.get(reverse("blog:feed"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.post.title)
+
+    def test_search_finds_public_post(self):
+        response = self.client.get(
+            reverse("blog:post_search"), {"query": "Discoverable"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.post.title)
+
+    def test_empty_search_query_does_not_run_lookup(self):
+        response = self.client.get(reverse("blog:post_search"), {"query": "   "})
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, self.post.title)
+
+    def test_long_search_query_is_truncated(self):
+        response = self.client.get(
+            reverse("blog:post_search"),
+            {"query": "Discoverable " + ("x" * 250)},
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_unknown_tag_is_404(self):
+        response = self.client.get(
+            reverse("blog:post_list_by_tag", args=["does-not-exist"])
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_empty_category_renders_list_without_posts(self):
+        response = self.client.get(
+            reverse("blog:post_list_by_category", args=["missing-category"])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, self.post.title)
+
+    def test_tag_list_and_similar_posts(self):
+        from blog.related_posts import similar_and_newest_posts
+        from editor.models import PostSeries, Series
+
+        self.post.tags.add("coverage")
+        other = Post(
+            title="Related tagged",
+            slug="related-tagged",
+            author=self.author,
+            body="<p>Also tagged</p>",
+            status="published",
+            category=self.category,
+        )
+        other.save(_allow_publish_via_sender=True)
+        SitePublication.objects.create(post=other, published_at=other.published)
+        other.tags.add("coverage")
+        similar, newest = similar_and_newest_posts(self.post)
+        self.assertEqual([item.pk for item in similar], [other.pk])
+        self.assertEqual(newest, [])
+
+        tagged = self.client.get(reverse("blog:post_list_by_tag", args=["coverage"]))
+        self.assertEqual(tagged.status_code, 200)
+        self.assertContains(tagged, self.post.title)
+
+        series = Series.objects.create(name="Public series")
+        next_post = Post(
+            title="Next in series",
+            slug="next-in-series",
+            author=self.author,
+            body="<p>Next</p>",
+            status="published",
+            category=self.category,
+        )
+        next_post.save(_allow_publish_via_sender=True)
+        SitePublication.objects.create(post=next_post, published_at=next_post.published)
+        PostSeries.objects.create(post=self.post, series=series, order_position=1)
+        PostSeries.objects.create(post=next_post, series=series, order_position=2)
+        detail = self.client.get(self.post.get_absolute_url())
+        self.assertEqual(detail.status_code, 200)
+        self.assertContains(detail, "Next in series")
+
+    def test_search_and_list_tolerate_bad_page_numbers(self):
+        search_invalid = self.client.get(
+            reverse("blog:post_search"),
+            {"query": "Discoverable", "page": "abc"},
+        )
+        self.assertEqual(search_invalid.status_code, 200)
+        search_empty = self.client.get(
+            reverse("blog:post_search"),
+            {"query": "Discoverable", "page": "999"},
+        )
+        self.assertEqual(search_empty.status_code, 200)
+        list_invalid = self.client.get(reverse("blog:post_list"), {"page": "abc"})
+        self.assertEqual(list_invalid.status_code, 200)

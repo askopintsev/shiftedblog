@@ -143,7 +143,7 @@ Workflow: [`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml)
 ## Шаг 6. Что происходит при push в `master`
 
 ```text
-push master  →  lint + editor-ui tests  →  deploy job (если зелёные)
+push master  →  lint + tests/coverage + editor-ui  →  deploy job (если зелёные)
                     │
                     ├─ Doppler → secrets.env (в CI runner)
                     ├─ scp secrets.env → VPS:/opt/shiftedblog/
@@ -155,7 +155,7 @@ push master  →  lint + editor-ui tests  →  deploy job (если зелёны
                               └─ sync editor dist + reload nginx
 ```
 
-- **Pull request** — только lint и тесты редактора (без деплоя).
+- **Pull request** — lint, Django-тесты (порог coverage) и тесты редактора (без деплоя).
 - **Deploy** — при `push` в `master` или **workflow_dispatch** (ручной запуск во вкладке Actions).
 
 Скрипт на сервере: [`scripts/ci/vps-deploy-remote.sh`](../../scripts/ci/vps-deploy-remote.sh).
@@ -221,7 +221,7 @@ git pull origin master   # или fetch/reset как в CI
 
 | Симптом | Вероятная причина |
 |---------|-------------------|
-| Deploy job пропущен | Не `master`, или упали lint/editor-ui |
+| Deploy job пропущен | Не `master`, или упали lint/test-coverage/editor-ui |
 | `Permission denied (publickey)` | Неверный `VPS_SSH_KEY` или ключ не в `authorized_keys` |
 | `git fetch` падает на VPS | Нет git deploy key или неверный remote |
 | `Ports 80/443 are already in use` | Хостовый nginx/apache — остановите (см. [production-deploy.md](production-deploy.md), шаг 3) |

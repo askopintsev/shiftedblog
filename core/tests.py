@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import tempfile
 from datetime import date
@@ -10,11 +11,13 @@ from unittest.mock import patch
 
 from cryptography.fernet import Fernet
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import reverse
+from PIL import Image
 
 from core import crypto
 from core.fields import FernetEncryptedTextField
@@ -37,7 +40,9 @@ _FERNET_TEST_KEY = Fernet.generate_key().decode("ascii")
 @override_settings(CREDENTIALS_ENCRYPTION_KEY=_FERNET_TEST_KEY)
 class CredentialStorageTests(TestCase):
     def setUp(self):
-        self.net = Network.objects.create(slug="telegram", name="Telegram")
+        self.net, _ = Network.objects.get_or_create(
+            slug="telegram", defaults={"name": "Telegram"}
+        )
 
     def test_plaintext_json_in_db_is_readable_and_reencrypted_on_save(self):
         plain = json.dumps({"bot_token": "x", "channel_name": "ch"})
@@ -123,6 +128,11 @@ class LockoutEmailTests(TestCase):
         self.assertIn("user@example.com", send_mail_mock.call_args.kwargs["message"])
 
 
+_CI_ALLOWED_HOSTS = ["localhost", "127.0.0.1", "testserver"]
+_DEV_ALL_INTERFACES_HOST = ".".join("0" for _ in range(4))
+
+
+@override_settings(ALLOWED_HOSTS=_CI_ALLOWED_HOSTS)
 class DevCanonicalHostMiddlewareTests(TestCase):
     def test_redirects_zero_host_to_localhost(self):
         response = self.client.get("/", HTTP_HOST="0.0.0.0:8888")
@@ -145,7 +155,10 @@ class DevCanonicalHostMiddlewareTests(TestCase):
         )
         self.assertNotEqual(response.status_code, 302)
 
-    @override_settings(IS_PRODUCTION=True)
+    @override_settings(
+        IS_PRODUCTION=True,
+        ALLOWED_HOSTS=[_DEV_ALL_INTERFACES_HOST, *_CI_ALLOWED_HOSTS],
+    )
     def test_skips_redirect_in_production(self):
         response = self.client.get("/", HTTP_HOST="0.0.0.0:8888")
         self.assertEqual(response.status_code, 200)
@@ -353,3 +366,113 @@ class UserAdminTests(TestCase):
         url = reverse("admin:core_user_change", args=[self.admin.pk])
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+
+
+class CorePublicErrorAndRobotsTests(TestCase):
+    def test_robots_txt_disallows_admin(self):
+        response = self.client.get("/robots.txt")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Disallow: /mellon/", response.content.decode())
+        self.assertIn("Sitemap:", response.content.decode())
+
+    def test_unknown_path_renders_404_template(self):
+        response = self.client.get("/this-path-does-not-exist-coverage/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_error_handlers_render(self):
+        factory = RequestFactory()
+        request = factory.get("/")
+        from core.views import (
+            custom_bad_request_view,
+            custom_error_view,
+            custom_page_not_found_view,
+            custom_permission_denied_view,
+        )
+
+        self.assertEqual(
+            custom_page_not_found_view(request, Exception()).status_code, 404
+        )
+        self.assertEqual(custom_permission_denied_view(request).status_code, 200)
+        self.assertEqual(custom_bad_request_view(request).status_code, 200)
+        self.assertEqual(custom_error_view(request).status_code, 200)
+
+    def test_robots_txt_falls_back_to_request_host(self):
+        response = self.client.get("/robots.txt")
+        self.assertIn("Sitemap:", response.content.decode())
+
+    def test_custom_image_upload_rejects_bad_type_and_empty_request(self):
+        staff = cast(UserManager, User.objects).create_user(
+            email="upload@example.com",
+            password="secret12345",
+            is_staff=True,
+        )
+        self.client.force_login(staff)
+        empty = self.client.post("/custom-image-upload/")
+        self.assertEqual(empty.status_code, 400)
+        bad = self.client.post(
+            "/custom-image-upload/",
+            {
+                "upload": SimpleUploadedFile(
+                    "notes.txt",
+                    b"hi",
+                    content_type="text/plain",
+                )
+            },
+        )
+        self.assertEqual(bad.status_code, 400)
+
+    def test_custom_image_upload_accepts_png(self):
+        staff = cast(UserManager, User.objects).create_user(
+            email="upload-ok@example.com",
+            password="secret12345",
+            is_staff=True,
+        )
+        self.client.force_login(staff)
+        buf = io.BytesIO()
+        Image.new("RGB", (8, 8), color="red").save(buf, format="PNG")
+        uploaded = SimpleUploadedFile(
+            "shot.png",
+            buf.getvalue(),
+            content_type="image/png",
+        )
+        response = self.client.post("/custom-image-upload/", {"upload": uploaded})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["uploaded"], 1)
+
+
+@override_settings(CREDENTIALS_ENCRYPTION_KEY=_FERNET_TEST_KEY)
+class CryptoHelperTests(TestCase):
+    def test_empty_and_invalid_payloads(self):
+        self.assertEqual(crypto.decrypt_text(""), "")
+        self.assertEqual(crypto.encrypt_text(""), "")
+        self.assertEqual(crypto.payload_plaintext_from_stored(""), "")
+        self.assertEqual(crypto.payload_plaintext_from_stored("not-encrypted"), "")
+        self.assertEqual(
+            crypto.payload_plaintext_from_stored('{"bot_token": "x"}'),
+            '{"bot_token": "x"}',
+        )
+        with self.assertRaises(ValueError):
+            other = Fernet.generate_key()
+            token = Fernet(other).encrypt(b"secret").decode("ascii")
+            crypto.decrypt_bytes(token)
+
+    def test_invalid_fernet_key_raises(self):
+        with (
+            override_settings(CREDENTIALS_ENCRYPTION_KEY="not-a-key"),
+            self.assertRaises(ImproperlyConfigured),
+        ):
+            crypto.get_fernet()
+        with (
+            override_settings(CREDENTIALS_ENCRYPTION_KEY=""),
+            self.assertRaises(ImproperlyConfigured),
+        ):
+            crypto.get_fernet()
+
+    def test_encrypted_field_empty_and_plaintext_prep(self):
+        field = FernetEncryptedTextField()
+        self.assertEqual(field.from_db_value("", None, None), "")
+        self.assertEqual(field.to_python(None), "")
+        self.assertEqual(field.to_python(12), "12")
+        self.assertEqual(field.get_prep_value(""), "")
+        stored = field.get_prep_value('{"a": 1}')
+        self.assertTrue(crypto.looks_like_fernet_token(stored))

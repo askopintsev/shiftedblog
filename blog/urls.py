@@ -14,7 +14,7 @@ urlpatterns = [
         views.post_list,
         name="post_list_by_category",
     ),
-    path("tag/<slug:tag_slug>/", views.post_list, name="post_list_by_tag"),
+    path("tag/<str:tag_slug>/", views.post_list, name="post_list_by_tag"),
     path("search/", views.post_search, name="post_search"),
     path("lenta/", views.post_feed_lenta, name="post_lenta"),
     path("og-image/<slug>.jpg", views.post_og_image, name="post_og_image"),

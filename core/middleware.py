@@ -27,7 +27,9 @@ class DevCanonicalHostMiddleware:
         if request.path.startswith("/api/"):
             return self.get_response(request)
 
-        host = request.get_host()
+        # Read the raw Host header. ``request.get_host()`` raises DisallowedHost
+        # when 0.0.0.0 is not in ALLOWED_HOSTS, which is the usual CI/dev list.
+        host = (request.META.get("HTTP_HOST") or "").strip()
         hostname = host.split(":", 1)[0].lower()
         if hostname not in _DEV_ALTERNATE_HOSTS:
             return self.get_response(request)
