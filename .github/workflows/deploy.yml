@@ -117,7 +117,6 @@ jobs:
       RATELIMIT_ENABLE: "False"
       TELEGRAM_USE_RICH_MESSAGES: "false"
       TEXT_QUALITY_PY_CHECKER_ENABLED: "false"
-      CREDENTIALS_ENCRYPTION_KEY: "da4Y29Ynej_iHIqmLOVlbbG_Ww9a7Pc9g9HJkIlPALs="
     steps:
       - uses: actions/checkout@v7
         with:
