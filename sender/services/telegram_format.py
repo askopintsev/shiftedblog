@@ -50,7 +50,7 @@ _BALANCE_TAGS: frozenset[str] = frozenset(
 
 _NESTABLE_INLINE = frozenset({"b", "i", "u", "s"})
 
-_GALLERY_PLACEHOLDER_RE = re.compile(r"\[gallery:\d+\]", re.IGNORECASE)
+_GALLERY_PLACEHOLDER_RE = re.compile(r"\[gallery:(\d+)\]", re.IGNORECASE)
 _NBSP_CHARS_RE = re.compile(r"[\u00a0\u202f]")
 _ZWSP_RE = re.compile(r"[\u200b-\u200d\ufeff]")
 _IMG_SRC_RE = re.compile(

@@ -155,3 +155,21 @@
   font-size: 0.85rem;
   color: var(--color-text-muted);
 }
+
+.telegram-rich-preview tg-slideshow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.telegram-rich-preview tg-slideshow figure {
+  margin: 0;
+}
+
+.telegram-rich-preview tg-slideshow img {
+  display: block;
+  max-height: 8rem;
+  width: auto;
+  border-radius: 0.5rem;
+}

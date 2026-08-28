@@ -407,7 +407,7 @@ def build_telegram_rich_plan(
     has_subscription: bool,
     continuation_prefix: str | None = None,
 ) -> TelegramPublishPlan:
-    """Rich-message plan: cover + body images inline; galleries as albums."""
+    """Rich-message plan: cover + body images inline; body galleries as slideshows."""
     tags_suffix, tags_line, _tags_reserve = format_tags_suffix(post)
     cover_path: str | None = None
     if post.cover_image:

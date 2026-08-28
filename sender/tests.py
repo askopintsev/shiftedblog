@@ -49,6 +49,7 @@ from sender.services.telegram_plan import (
 from sender.services.telegram_publisher import resolve_telegram_plan
 from sender.services.telegram_rich_format import (
     MAX_RICH_MESSAGE_LEN,
+    RichGalleryItem,
     build_formatted_rich_message,
     html_body_to_telegram_rich_html,
     telegram_rich_utf8_len,
@@ -443,6 +444,49 @@ class TelegramRichFormatTests(TestCase):
         self.assertIn("<figcaption>Caption text</figcaption>", payload.html)
         self.assertIn("tg://photo?id=img1", payload.html)
 
+    def test_gallery_placeholder_becomes_slideshow(self):
+        payload = html_body_to_telegram_rich_html(
+            "<p>Before [gallery:1] after</p>",
+            galleries={
+                1: [
+                    RichGalleryItem("img/g1.jpg", caption="First"),
+                    RichGalleryItem("img/g2.jpg", caption="Second"),
+                ],
+            },
+        )
+        self.assertNotIn("[gallery", payload.html)
+        self.assertIn("<tg-slideshow>", payload.html)
+        self.assertIn("</tg-slideshow>", payload.html)
+        self.assertIn("tg://photo?id=img1", payload.html)
+        self.assertIn("tg://photo?id=img2", payload.html)
+        self.assertIn("<figcaption>First</figcaption>", payload.html)
+        self.assertIn("<figcaption>Second</figcaption>", payload.html)
+        self.assertIn("<p>Before", payload.html)
+        self.assertIn("after</p>", payload.html)
+        self.assertEqual(
+            [item.storage_path for item in payload.media],
+            ["img/g1.jpg", "img/g2.jpg"],
+        )
+
+    def test_single_gallery_image_is_figure_not_slideshow(self):
+        payload = html_body_to_telegram_rich_html(
+            "<p>[gallery:1]</p>",
+            galleries={1: [RichGalleryItem("img/only.jpg", caption="Solo")]},
+        )
+        self.assertNotIn("[gallery", payload.html)
+        self.assertNotIn("<tg-slideshow>", payload.html)
+        self.assertIn("tg://photo?id=img1", payload.html)
+        self.assertIn("<figcaption>Solo</figcaption>", payload.html)
+        self.assertEqual(payload.media[0].storage_path, "img/only.jpg")
+
+    def test_unknown_gallery_placeholder_is_stripped(self):
+        payload = html_body_to_telegram_rich_html("<p>Before [gallery:9] after</p>")
+        self.assertNotIn("[gallery", payload.html)
+        self.assertNotIn("<tg-slideshow>", payload.html)
+        self.assertIn("Before", payload.html)
+        self.assertIn("after", payload.html)
+        self.assertEqual(payload.media, [])
+
     def test_rich_message_template_uses_h1_title(self):
         post = Post(title="Title", body="<p>Hello</p>")
         post.save()
@@ -531,6 +575,74 @@ class TelegramRichFormatTests(TestCase):
         self.assertTrue(step.legacy_text)
         self.assertEqual(step.legacy_fallback_series(), [step.legacy_text])
         self.assertIsNone(caption_for_step(step, has_subscription=False))
+
+    @override_settings(TELEGRAM_USE_RICH_MESSAGES=True)
+    def test_rich_plan_inlines_body_gallery_as_slideshow(self):
+        post = Post(
+            title="Gallery post",
+            body="<p>Intro</p><p>[gallery:1]</p><p>Outro</p>",
+        )
+        post.save()
+        PostGalleryImage.objects.create(
+            post=post,
+            gallery_key=1,
+            order=0,
+            caption="One",
+            image=_minimal_jpeg_upload("g1.jpg"),
+        )
+        PostGalleryImage.objects.create(
+            post=post,
+            gallery_key=1,
+            order=1,
+            caption="Two",
+            image=_minimal_jpeg_upload("g2.jpg"),
+        )
+        with mock.patch(
+            "sender.services.telegram_plan.default_storage.exists",
+            return_value=True,
+        ):
+            plan = build_telegram_plan(post, has_subscription=False)
+        self.assertEqual(len(plan.steps), 1)
+        step = plan.steps[0]
+        self.assertTrue(step.use_rich_message)
+        self.assertIn("<tg-slideshow>", step.text)
+        self.assertNotIn("[gallery", step.text)
+        self.assertEqual(step.media_paths, [])
+        gallery_paths = [
+            gi.image.name
+            for gi in PostGalleryImage.objects.filter(post=post).order_by("order")
+        ]
+        inlined = [item.storage_path for item in step.rich_media]
+        self.assertEqual(inlined, gallery_paths)
+        cards = build_preview_send_cards(plan)
+        self.assertEqual(len(cards), 1)
+        self.assertEqual(cards[0]["kind"], "rich_message")
+        self.assertIn("<tg-slideshow>", cards[0]["text"])
+        self.assertNotIn("tg://photo", cards[0]["text"])
+        for path in gallery_paths:
+            self.assertIn(f"/media/{path}", cards[0]["text"])
+
+    @override_settings(TELEGRAM_USE_RICH_MESSAGES=True)
+    def test_rich_plan_unreferenced_gallery_stays_album(self):
+        post = Post(
+            title="Extra gallery",
+            body="<p>No marker here.</p>",
+        )
+        post.save()
+        extra = PostGalleryImage.objects.create(
+            post=post,
+            gallery_key=2,
+            order=0,
+            image=_minimal_jpeg_upload("extra.jpg"),
+        )
+        with mock.patch(
+            "sender.services.telegram_plan.default_storage.exists",
+            return_value=True,
+        ):
+            plan = build_telegram_plan(post, has_subscription=False)
+        step = plan.steps[0]
+        self.assertNotIn("<tg-slideshow>", step.text)
+        self.assertEqual(step.media_paths, [extra.image.name])
 
     @override_settings(TELEGRAM_USE_RICH_MESSAGES=True)
     def test_rich_plan_keeps_full_legacy_fallback_series(self):
