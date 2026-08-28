@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from html import escape, unescape
 from html.parser import HTMLParser
@@ -84,6 +84,7 @@ _RICH_BALANCE_TAGS: frozenset[str] = frozenset(
         "summary",
         "figure",
         "figcaption",
+        "tg-slideshow",
     }
 )
 
@@ -135,10 +136,12 @@ def add_rich_block_spacing(html: str) -> str:
         return ""
     text = html
     block_boundary = (
-        r"(</(?:p|h[1-6]|li|blockquote|figure|pre|ul|ol|table|tr)>"
+        r"(</(?:p|h[1-6]|li|blockquote|figure|pre|ul|ol|table|tr|tg-slideshow)>"
         r"|<figure><img src=\"tg://photo[^\"]*\">(?:</figure>)?)"
     )
-    next_block = r"(<(?:p|h[1-6]|ul|ol|li|blockquote|figure|pre|table|img))"
+    next_block = (
+        r"(<(?:p|h[1-6]|ul|ol|li|blockquote|figure|pre|table|img|tg-slideshow))"
+    )
     text = re.sub(
         rf"{block_boundary}\s*{next_block}",
         r"\1\n\2",
@@ -148,7 +151,7 @@ def add_rich_block_spacing(html: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", text)
 
 
-_TAG_TOKEN_RE = re.compile(r"</?([a-zA-Z]+)(?:\s[^>]*)?>", re.IGNORECASE)
+_TAG_TOKEN_RE = re.compile(r"</?([a-zA-Z][\w-]*)(?:\s[^>]*)?>", re.IGNORECASE)
 
 
 @dataclass(slots=True)
@@ -157,6 +160,14 @@ class RichMediaAttachment:
 
     media_id: str
     storage_path: str
+
+
+@dataclass(slots=True)
+class RichGalleryItem:
+    """One post-gallery image to embed at ``[gallery:N]``."""
+
+    storage_path: str
+    caption: str = ""
 
 
 @dataclass(slots=True)
@@ -224,12 +235,6 @@ def _normalize_plain_text(text: str) -> str:
     value = _NBSP_CHARS_RE.sub(" ", value)
     value = _ZWSP_RE.sub("", value)
     return value
-
-
-def _strip_gallery_placeholders(html: str) -> str:
-    if not html:
-        return ""
-    return _GALLERY_PLACEHOLDER_RE.sub("", html)
 
 
 def _map_inline_tag(tag_l: str) -> str | None:
@@ -341,6 +346,7 @@ class _TelegramRichHTMLConverter(HTMLParser):
         media_id_prefix: str = "img",
         max_media: int = MAX_RICH_MEDIA,
         skip_storage_paths: set[str] | None = None,
+        galleries: Mapping[int, Sequence[RichGalleryItem]] | None = None,
     ) -> None:
         super().__init__(convert_charrefs=True)
         self._out: list[str] = []
@@ -350,6 +356,7 @@ class _TelegramRichHTMLConverter(HTMLParser):
         self._media_id_prefix = media_id_prefix
         self._max_media = max_media
         self._skip_paths = skip_storage_paths or set()
+        self._galleries = galleries or {}
         self.media: list[RichMediaAttachment] = []
         self._figure_depth = 0
         self._figure_src = ""
@@ -501,10 +508,20 @@ class _TelegramRichHTMLConverter(HTMLParser):
             if self._in_figcaption:
                 self._figure_caption_parts.append(_normalize_plain_text(data))
             return
-        if self._resume_block_tag and data.strip():
-            self._open_block(self._resume_block_tag)
-            self._resume_block_tag = None
-        self._out.append(escape_telegram_html(_normalize_plain_text(data)))
+        text = _normalize_plain_text(data)
+        if self._in_pre:
+            self._emit_text(text)
+            return
+        pos = 0
+        for match in _GALLERY_PLACEHOLDER_RE.finditer(text):
+            before = text[pos : match.start()]
+            if before:
+                self._emit_text(before)
+            self._emit_gallery(int(match.group(1)))
+            pos = match.end()
+        rest = text[pos:]
+        if rest:
+            self._emit_text(rest)
 
     def handle_entityref(self, name: str) -> None:
         self.handle_data(unescape(f"&{name};"))
@@ -512,29 +529,66 @@ class _TelegramRichHTMLConverter(HTMLParser):
     def handle_charref(self, name: str) -> None:
         self.handle_data(unescape(f"&#{name};"))
 
-    def _emit_photo(self, *, src: str, caption: str = "") -> None:
-        if not src or self._resolve is None:
+    def _emit_text(self, text: str) -> None:
+        if not text:
             return
-        if len(self.media) >= self._max_media:
-            return
-        path = self._resolve(src)
+        if self._resume_block_tag and text.strip():
+            self._open_block(self._resume_block_tag)
+            self._resume_block_tag = None
+        self._out.append(escape_telegram_html(text))
+
+    def _media_id_for_path(self, path: str) -> str | None:
         if not path or path in self._skip_paths:
-            return
-        if any(item.storage_path == path for item in self.media):
-            # Still show duplicate references via the same media id.
-            media_id = next(
-                item.media_id for item in self.media if item.storage_path == path
-            )
-        else:
-            media_id = f"{self._media_id_prefix}{len(self.media) + 1}"
-            self.media.append(RichMediaAttachment(media_id=media_id, storage_path=path))
+            return None
+        for item in self.media:
+            if item.storage_path == path:
+                return item.media_id
+        if len(self.media) >= self._max_media:
+            return None
+        media_id = f"{self._media_id_prefix}{len(self.media) + 1}"
+        self.media.append(RichMediaAttachment(media_id=media_id, storage_path=path))
+        return media_id
+
+    def _close_for_media_block(self) -> str | None:
         resume_tag = self._resume_block_for_inline_photo()
         if resume_tag:
             self._close_block(resume_tag)
         else:
             self._close_all_open_tags()
+        return resume_tag
+
+    def _emit_photo(self, *, src: str, caption: str = "") -> None:
+        if not src or self._resolve is None:
+            return
+        path = self._resolve(src)
+        media_id = self._media_id_for_path(path or "")
+        if not media_id:
+            return
+        resume_tag = self._close_for_media_block()
         self._out.append("\n")
         self._out.append(rich_photo_tag(media_id, caption=caption))
+        self._out.append("\n")
+        self._resume_block_tag = resume_tag
+
+    def _emit_gallery(self, gallery_key: int) -> None:
+        photos: list[tuple[str, str]] = []
+        for item in self._galleries.get(gallery_key, ()):
+            media_id = self._media_id_for_path(item.storage_path)
+            if media_id:
+                photos.append((media_id, item.caption))
+        if not photos:
+            return
+        resume_tag = self._close_for_media_block()
+        self._out.append("\n")
+        if len(photos) == 1:
+            media_id, caption = photos[0]
+            self._out.append(rich_photo_tag(media_id, caption=caption))
+        else:
+            inner = "".join(
+                rich_photo_tag(media_id, caption=caption)
+                for media_id, caption in photos
+            )
+            self._out.append(f"<tg-slideshow>{inner}</tg-slideshow>")
         self._out.append("\n")
         self._resume_block_tag = resume_tag
 
@@ -584,16 +638,17 @@ def html_body_to_telegram_rich_html(
     resolve_storage_path: ResolveStoragePath | None = None,
     skip_storage_paths: set[str] | None = None,
     max_media: int = MAX_RICH_MEDIA,
+    galleries: Mapping[int, Sequence[RichGalleryItem]] | None = None,
 ) -> RichMessagePayload:
     """Convert body HTML to rich-message HTML; keep single images as media blocks."""
     if not html:
         return RichMessagePayload()
     cleaned = normalize_editor_html_for_rich(html)
-    cleaned = _strip_gallery_placeholders(cleaned)
     parser = _TelegramRichHTMLConverter(
         resolve_storage_path=resolve_storage_path,
         skip_storage_paths=skip_storage_paths,
         max_media=max_media,
+        galleries=galleries,
     )
     try:
         parser.feed(cleaned)
@@ -606,10 +661,32 @@ def html_body_to_telegram_rich_html(
         from django.utils.html import strip_tags
 
         plain = _normalize_plain_text(strip_tags(cleaned))
+        plain = _GALLERY_PLACEHOLDER_RE.sub("", plain)
         return RichMessagePayload(
             html=sanitize_telegram_rich_html(f"<p>{escape_telegram_html(plain)}</p>"),
         )
     return RichMessagePayload(html=parser.get_html(), media=parser.media)
+
+
+def _galleries_from_post(post: Post) -> dict[int, list[RichGalleryItem]]:
+    """Group saved gallery rows by ``gallery_key`` for ``[gallery:N]`` expansion."""
+    if post.pk is None:
+        return {}
+    galleries: dict[int, list[RichGalleryItem]] = {}
+    for gi in post.gallery_images.order_by(  # pyright: ignore[reportAttributeAccessIssue]
+        "gallery_key",
+        "order",
+        "id",
+    ):
+        if not gi.image:
+            continue
+        path = gi.image.name
+        if not path:
+            continue
+        galleries.setdefault(gi.gallery_key, []).append(
+            RichGalleryItem(storage_path=path, caption=gi.caption or ""),
+        )
+    return galleries
 
 
 def build_formatted_rich_message(
@@ -639,6 +716,7 @@ def build_formatted_rich_message(
         resolve_storage_path=resolve_storage_path,
         skip_storage_paths=skip_paths,
         max_media=remaining_slots,
+        galleries=_galleries_from_post(post),
     )
     if body_payload.html:
         parts.append(body_payload.html)
@@ -708,6 +786,7 @@ def find_telegram_rich_html_split_index(
         "</li>",
         "</blockquote>",
         "</figure>",
+        "</tg-slideshow>",
         ">",  # end of standalone <img ...> media block
     ):
         # Prefer structural closes; for ">" only accept after tg://photo img tags.
