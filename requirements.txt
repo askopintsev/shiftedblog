@@ -172,9 +172,9 @@ django-otp==1.7.0 \
     --hash=sha256:406d2d7f797dc313569270e06d6c360c7d986c9f653eab80b190d663ed5f1133 \
     --hash=sha256:961ccf2d80a67303cb46d97427b16c476ee075acfa2b4c82a59d8f1e0745a454
     # via django-two-factor-auth
-django-phonenumber-field==8.4.0 \
-    --hash=sha256:2b83e843dac35eec6a69880a166487235b737a71a1e38c9a52e5ad67d6996083 \
-    --hash=sha256:7a1cb3a6456edb54d879f11ffa0acb227ded08c93b587035d0f28093f0e46511
+django-phonenumber-field==8.5.0 \
+    --hash=sha256:19c606fda7bb25630c4913f7ac83c1824186ea17e2e4c6dc9aa9373e8f5843c5 \
+    --hash=sha256:a6dd71250f7fd0724aad995df01bdb4ac457a65622f120d0d623792fe8283798
     # via django-two-factor-auth
 django-ratelimit==4.1.0 \
     --hash=sha256:555943b283045b917ad59f196829530d63be2a39adb72788d985b90c81ba808b \
