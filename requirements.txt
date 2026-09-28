@@ -218,9 +218,9 @@ jsonschema-specifications==2025.9.1 \
     --hash=sha256:98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe \
     --hash=sha256:b540987f239e745613c7a9176f3edb72b832a4ac465cf02712288397832b5e8d
     # via jsonschema
-phonenumbers==9.0.38 \
-    --hash=sha256:6806bebd46638af2fc2609675ea046067a40512eca81bf1446132e2fda29d113 \
-    --hash=sha256:f3cbeb1a42bf226060c60fc6277f5431755d325eddc23fbf2c72ef7e156113c6
+phonenumbers==9.0.40 \
+    --hash=sha256:189c028c4acd41ee80782e50f74a91260bd76d9115c83be94302509e1cdb5e84 \
+    --hash=sha256:a0dd1bc98efa0b6f5839c7b1fface2ebdf0a811645dd8211ae3f037a17ec07ac
     # via shiftedblog
 pillow==12.3.0 \
     --hash=sha256:06ff022112bc9cbf83b60f8e028d94ad87b60621706487e65f673de61610ab59 \
