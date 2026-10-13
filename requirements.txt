@@ -252,9 +252,9 @@ django-formtools==2.7 \
     --hash=sha256:06e4ab1f9c999f5b2ec6670cb2d51b77117599f4f17c5855f38de158b1c7f247 \
     --hash=sha256:52b30c08571108023937e4b5d96a5cc35282ff0a2e51630aeea00e27d723d3ac
     # via django-two-factor-auth
-django-otp==1.7.3 \
-    --hash=sha256:3ce501173bf1b936146ffe5ff0cfdae1a0c7eb46cce1e9e3fdddd984d993c74f \
-    --hash=sha256:7d52fb0f76c4c1c86cbc71c196d3f79941b0b84aff980e45193bef89a70a7a12
+django-otp==1.7.4 \
+    --hash=sha256:2fa56711167db887bf80ebdc35820355e756a3fdc0b9af0e34494b737312bc16 \
+    --hash=sha256:f3a970be59ca407d90fd278de3253979417364f91e9edcfcd7a9f05235859b27
     # via django-two-factor-auth
 django-phonenumber-field==8.5.0 \
     --hash=sha256:19c606fda7bb25630c4913f7ac83c1824186ea17e2e4c6dc9aa9373e8f5843c5 \
